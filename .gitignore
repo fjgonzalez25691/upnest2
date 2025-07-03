@@ -1,0 +1,45 @@
+# --- Node/Frontend ---
+frontend/node_modules/
+frontend/.env*
+frontend/dist/
+frontend/.next/
+frontend/.cache/
+frontend/.DS_Store
+
+# --- Python/Backend ---
+backend/venv*/
+backend/__pycache__/
+backend/*.pyc
+backend/.env*
+backend/*.log
+
+# --- Logs ---
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- General ---
+*.pyc
+__pycache__/
+.env
+.env.*
+*.local
+
+# --- Editor/OS/Global ---
+.vscode/
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Ignore documentation files
+docs/ 
