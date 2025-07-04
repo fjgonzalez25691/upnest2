@@ -43,3 +43,7 @@ Thumbs.db
 
 # Ignore documentation files
 docs/ 
+
+
+# Ignore test
+frontend/__tests__/
