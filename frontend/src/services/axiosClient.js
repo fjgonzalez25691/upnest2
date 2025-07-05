@@ -14,16 +14,18 @@ const axiosClient = axios.create({
     },
 });
 
-// Interceptor to add Authorization header if token is available
+// Function to set/clear Authorization header
 export function setAuthToken(token) {
     if (token) {
         axiosClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        console.log('🔧 Token configured in axiosClient:', token.substring(0, 20) + '...');
     } else {
         delete axiosClient.defaults.headers.common['Authorization'];
+        console.log('🔧 Token cleared from axiosClient');
     }
 }
 
-// Interceptor to handle errors globally
+// Response interceptor to handle errors globally
 axiosClient.interceptors.response.use(
     response => response,
     error => {
@@ -31,17 +33,19 @@ axiosClient.interceptors.response.use(
             // Handle specific error responses
             if (error.response.status === 401) {
                 // Unauthorized access, redirect to login or show a message
-                console.error('Unauthorized access - please log in again.');
+                console.error('❌ Unauthorized access - please log in again.');
+                // Optionally redirect to login
+                // window.location.href = '/';
             } else if (error.response.status === 403) {
                 // Forbidden access, show a message or redirect
-                console.error('Forbidden access - you do not have permission to view this resource.');
+                console.error('❌ Forbidden access - you do not have permission to view this resource.');
             } else {
                 // Other errors, log them or show a generic message
-                console.error('An error occurred:', error.response.data);
+                console.error('❌ An error occurred:', error.response.data);
             }
         } else {
             // Network error or no response from server
-            console.error('Network error or no response from server:', error.message);
+            console.error('❌ Network error or no response from server:', error.message);
         }
         return Promise.reject(error);
     }

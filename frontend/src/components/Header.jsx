@@ -40,7 +40,7 @@ function Header() {
           {user ? (
             <>
               <Link to="#" className="hover:text-primary">AI Chat</Link>
-              <Link to="#" className="hover:text-primary">My Dashboard</Link>
+              <Link to="/dashboard" className="hover:text-primary">My Dashboard</Link>
               <Link to="#" className="hover:text-primary">Add Baby</Link>
               <div className="bg-primary text-white rounded-full w-9 h-9 flex items-center justify-center font-bold text-lg">
                 {user.profile?.name?.[0]?.toUpperCase() || user.profile?.email?.[0]?.toUpperCase() || 'U'}
