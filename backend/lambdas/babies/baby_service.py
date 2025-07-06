@@ -7,126 +7,18 @@ POST /babies, GET /babies, GET /babies/{id}, PUT /babies/{id}, DELETE /babies/{i
 import json
 import logging
 from datetime import datetime
-import sys
 import os
 import uuid
 
-# Add shared utilities to path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-backend_dir = os.path.abspath(os.path.join(current_dir, '..', '..'))
-# Ensure 'shared' directory is in the path
-shared_dir = os.path.join(backend_dir, 'shared')
-sys.path.insert(0, shared_dir)
-
-try:
-    from dynamodb_client import get_dynamodb_client
-    from jwt_utils import get_jwt_validator, extract_token_from_event
-    from response_utils import (
-        success_response, created_response, bad_request_response,
-        unauthorized_response, not_found_response, forbidden_response,
-        internal_error_response, method_not_allowed_response, handle_lambda_error
-    )
-    from validation_utils import BabyValidator, generate_id, ValidationError
-except ImportError as e:
-    print(f"Import error: {e}")
-    # Fallback for local development WITH CORS HEADERS
-
-    # CORS headers for fallback functions
-    def _get_cors_headers():
-        return {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent',
-            'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-            'Access-Control-Allow-Credentials': 'false'
-        }
-
-    def handle_lambda_error(func):
-        return func
-
-    def success_response(data=None, message="Success"):
-        return {
-            'statusCode': 200,
-            'headers': _get_cors_headers(),
-            'body': json.dumps({'success': True, 'data': data, 'message': message})
-        }
-
-    def created_response(data=None, message="Created"):
-        return {
-            'statusCode': 201,
-            'headers': _get_cors_headers(),
-            'body': json.dumps({'success': True, 'data': data, 'message': message})
-        }
-
-    def bad_request_response(message="Bad request"):
-        return {
-            'statusCode': 400,
-            'headers': _get_cors_headers(),
-            'body': json.dumps({'success': False, 'error': message})
-        }
-
-    def unauthorized_response(message="Unauthorized"):
-        return {
-            'statusCode': 401,
-            'headers': _get_cors_headers(),
-            'body': json.dumps({'success': False, 'error': message})
-        }
-
-    def not_found_response(message="Not found"):
-        return {
-            'statusCode': 404,
-            'headers': _get_cors_headers(),
-            'body': json.dumps({'success': False, 'error': message})
-        }
-
-    def forbidden_response(message="Forbidden"):
-        return {
-            'statusCode': 403,
-            'headers': _get_cors_headers(),
-            'body': json.dumps({'success': False, 'error': message})
-        }
-
-    def internal_error_response(message="Internal error"):
-        return {
-            'statusCode': 500,
-            'headers': _get_cors_headers(),
-            'body': json.dumps({'success': False, 'error': message})
-        }
-
-    def method_not_allowed_response(message="Method not allowed"):
-        return {
-            'statusCode': 405,
-            'headers': _get_cors_headers(),
-            'body': json.dumps({'success': False, 'error': message})
-        }
-
-    class BabyValidator:
-        def validate_create(self, data):
-            return data
-
-        def validate_update(self, data):
-            return data
-
-    class ValidationError(Exception):
-        pass
-
-    def get_dynamodb_client():
-        import boto3
-        return boto3.resource('dynamodb')
-
-    def get_jwt_validator():
-        class MockValidator:
-            def extract_user_id(self, token):
-                return 'test-user-123'
-        return MockValidator()
-
-    def extract_token_from_event(event):
-        headers = event.get('headers', {})
-        auth_header = headers.get(
-            'Authorization', headers.get('authorization', ''))
-        if auth_header.startswith('Bearer '):
-            return auth_header[7:]
-        return None
+# Import directly from the layer
+from dynamodb_client import get_dynamodb_client
+from jwt_utils import get_jwt_validator, extract_token_from_event
+from response_utils import (
+    success_response, created_response, bad_request_response,
+    unauthorized_response, not_found_response, forbidden_response,
+    internal_error_response, method_not_allowed_response, handle_lambda_error
+)
+from validation_utils import BabyValidator, generate_id, ValidationError
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

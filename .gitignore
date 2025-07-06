@@ -47,3 +47,9 @@ docs/
 
 # Ignore test
 frontend/__tests__/
+
+# Ignore aws sam artifacts
+.aws-sam/
+
+# Ignore auxiliars scripts
+scripts/

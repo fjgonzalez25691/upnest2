@@ -1,0 +1,249 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: "UpNest2 - Baby Tracking API"
+
+Parameters:
+  Stage:
+    Type: String
+    Default: Stage
+    Description: API Gateway stage name
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: python3.12
+    Environment:
+      Variables:
+        BABIES_TABLE: !Ref BabiesTable
+        COGNITO_USER_POOL_ID: "eu-south-2_WInbcDDjo"
+        COGNITO_CLIENT_ID: "75g0r5a7bbp1mgpmqrg3e1iibm"
+        LOG_LEVEL: "INFO"
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'http://localhost:5173'"
+      AllowCredentials: true
+
+Resources:
+  # DynamoDB Tables
+  BabiesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "UpNest-Babies-${Stage}"
+      AttributeDefinitions:
+        - AttributeName: babyId
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: babyId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UserBabiesIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  GrowthDataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "UpNest-GrowthData-${Stage}"
+      AttributeDefinitions:
+        - AttributeName: growthDataId
+          AttributeType: S
+        - AttributeName: babyId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: growthDataId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: BabyGrowthDataIndex
+          KeySchema:
+            - AttributeName: babyId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  MilestonesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "UpNest-Milestones-${Stage}"
+      AttributeDefinitions:
+        - AttributeName: milestoneId
+          AttributeType: S
+        - AttributeName: babyId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: milestoneId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: BabyMilestonesIndex
+          KeySchema:
+            - AttributeName: babyId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "UpNest-Users-${Stage}"
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  VaccinationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "UpNest-Vaccinations-${Stage}"
+      AttributeDefinitions:
+        - AttributeName: vaccinationId
+          AttributeType: S
+        - AttributeName: babyId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: vaccinationId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: BabyVaccinationsIndex
+          KeySchema:
+            - AttributeName: babyId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  # API Gateway
+  UpNest2Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "upnest-lambdas-hackathon-v2-${Stage}"
+      StageName: !Ref Stage
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/eu-south-2_WInbcDDjo"
+        AddDefaultAuthorizerToCorsPreflight: false
+
+  # Lambda Functions
+  UpNest2BabyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: upnest2-baby
+      CodeUri: backend/lambdas/babies/
+      Handler: baby_service.lambda_handler
+      Description: "UpNest2 Baby CRUD operations"
+      Layers:
+        - !Ref SharedLayer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BabiesTable
+      Events:
+        BabiesApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UpNest2Api
+            Path: /babies
+            Method: ANY
+        BabiesProxyApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UpNest2Api
+            Path: /babies/{proxy+}
+            Method: ANY
+
+  UpNest2PercentilesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: upnest2-percentiles
+      CodeUri: backend/lambdas/percentiles/
+      Handler: percentiles_service.lambda_handler
+      Description: "UpNest2 Growth Percentiles calculations"
+      Layers:
+        - !Ref SharedLayer
+      Events:
+        PercentilesApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UpNest2Api
+            Path: /percentiles
+            Method: ANY
+        PercentilesProxyApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UpNest2Api
+            Path: /percentiles/{proxy+}
+            Method: ANY
+
+  UpNest2GrowthDataFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: upnest2-growth-data
+      CodeUri: backend/lambdas/growth-data/
+      Handler: growth_data_service.lambda_handler
+      Description: "UpNest2 Growth Data tracking"
+      Environment:
+        Variables:
+          GROWTH_DATA_TABLE: !Ref GrowthDataTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GrowthDataTable
+      Events:
+        GrowthDataApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UpNest2Api
+            Path: /growth-data
+            Method: ANY
+        GrowthDataProxyApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UpNest2Api
+            Path: /growth-data/{proxy+}
+            Method: ANY
+
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "upnest2-shared-layer-${Stage}"
+      Description: "Shared Python code for UpNest2 Lambdas"
+      ContentUri: backend/layers/shared/
+      CompatibleRuntimes:
+        - python3.12
+      RetentionPolicy: Delete
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${UpNest2Api}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiUrl"
+
+  BabyFunctionName:
+    Description: "Baby Lambda function name"
+    Value: !Ref UpNest2BabyFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-BabyFunction"
+
+  PercentilesFunctionName:
+    Description: "Percentiles Lambda function name"
+    Value: !Ref UpNest2PercentilesFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-PercentilesFunction"
+
+  GrowthDataFunctionName:
+    Description: "Growth Data Lambda function name"
+    Value: !Ref UpNest2GrowthDataFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-GrowthDataFunction"
