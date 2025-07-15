@@ -11,14 +11,14 @@ import os
 import uuid
 
 # Import directly from the layer
-from dynamodb_client import get_dynamodb_client
-from jwt_utils import get_jwt_validator, extract_token_from_event
-from response_utils import (
+from upnest_shared.dynamodb_client import get_dynamodb_client
+from upnest_shared.jwt_utils import get_jwt_validator, extract_token_from_event
+from upnest_shared.response_utils import (
     success_response, created_response, bad_request_response,
     unauthorized_response, not_found_response, forbidden_response,
     internal_error_response, method_not_allowed_response, handle_lambda_error
 )
-from validation_utils import BabyValidator, generate_id, ValidationError
+from upnest_shared.validation_utils import BabyValidator, generate_id, ValidationError
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

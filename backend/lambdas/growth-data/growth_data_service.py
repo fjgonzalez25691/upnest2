@@ -14,10 +14,10 @@ import logging
 from datetime import datetime
 
 # Direct imports from the layer
-from validation_utils import GrowthDataValidator, generate_id, is_valid_uuid
-from dynamodb_client import get_dynamodb_client
-from jwt_utils import get_jwt_validator, extract_token_from_event
-from response_utils import (
+from upnest_shared.validation_utils import GrowthDataValidator, generate_id, is_valid_uuid
+from upnest_shared.dynamodb_client import get_dynamodb_client
+from upnest_shared.jwt_utils import get_jwt_validator, extract_token_from_event
+from upnest_shared.response_utils import (
     success_response, bad_request_response, unauthorized_response,
     not_found_response, internal_error_response, handle_lambda_error
 )

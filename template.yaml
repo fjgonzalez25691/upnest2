@@ -5,7 +5,8 @@ Description: "UpNest2 - Baby Tracking API"
 Parameters:
   Stage:
     Type: String
-    Default: Stage
+    Default: dev
+    AllowedValues: [dev, staging, prod]
     Description: API Gateway stage name
 
 Globals:
@@ -22,8 +23,18 @@ Globals:
     Cors:
       AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
       AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
-      AllowOrigin: "'http://localhost:5173'"
+      AllowOrigin: !If
+        - IsStaging
+        - "'http://localhost:5173'"
+        - !If
+          - IsDev
+          - "'https://d1j2f1d7ly5iyk.cloudfront.net'"
+          - "'https://your-prod-domain.com'"
       AllowCredentials: true
+
+Conditions:
+  IsStaging: !Equals [!Ref Stage, "staging"]
+  IsDev: !Equals [!Ref Stage, "dev"]
 
 Resources:
   # DynamoDB Tables
@@ -127,7 +138,7 @@ Resources:
   UpNest2Api:
     Type: AWS::Serverless::Api
     Properties:
-      Name: !Sub "upnest-lambdas-hackathon-v2-${Stage}"
+      Name: !Sub "upnest-api-${Stage}"
       StageName: !Ref Stage
       Auth:
         DefaultAuthorizer: CognitoAuthorizer
@@ -148,6 +159,8 @@ Resources:
         - !Ref SharedLayer
       Policies:
         - DynamoDBCrudPolicy:
+            TableName: !Ref BabiesTable
+        - DynamoDBReadPolicy:
             TableName: !Ref BabiesTable
       Events:
         BabiesApi:
@@ -196,6 +209,8 @@ Resources:
       Environment:
         Variables:
           GROWTH_DATA_TABLE: !Ref GrowthDataTable
+      Layers:
+        - !Ref SharedLayer
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GrowthDataTable

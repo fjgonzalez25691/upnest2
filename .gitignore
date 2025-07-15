@@ -53,3 +53,6 @@ frontend/__tests__/
 
 # Ignore auxiliars scripts
 scripts/
+informe.md
+resumen.md
+.gitignore

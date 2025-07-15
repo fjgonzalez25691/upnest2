@@ -12,12 +12,12 @@ from datetime import datetime
 from scipy.stats import norm
 
 # Import from layer
-from jwt_utils import get_jwt_validator, extract_token_from_event
-from response_utils import (
+from upnest_shared.jwt_utils import get_jwt_validator, extract_token_from_event
+from upnest_shared.response_utils import (
     success_response, bad_request_response, unauthorized_response,
     internal_error_response, handle_lambda_error
 )
-from validation_utils import is_valid_uuid
+from upnest_shared.validation_utils import is_valid_uuid
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
