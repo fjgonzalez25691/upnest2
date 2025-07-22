@@ -1,5 +1,5 @@
 """
-Unified Baby Service Handler - HACKATHON REFACTOR
+Unified Baby Service Handler - SIMPLIFIED
 Handles ALL CRUD operations for babies in ONE function
 POST /babies, GET /babies, GET /babies/{id}, PUT /babies/{id}, DELETE /babies/{id}
 """
@@ -9,266 +9,170 @@ import logging
 from datetime import datetime
 import os
 import uuid
-
-# Import directly from the layer
-from upnest_shared.dynamodb_client import get_dynamodb_client
-from upnest_shared.jwt_utils import get_jwt_validator, extract_token_from_event
-from upnest_shared.response_utils import (
-    success_response, created_response, bad_request_response,
-    unauthorized_response, not_found_response, forbidden_response,
-    internal_error_response, method_not_allowed_response, handle_lambda_error
-)
-from upnest_shared.validation_utils import BabyValidator, generate_id, ValidationError
+import boto3
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table(os.environ['BABIES_TABLE'])
 
-class BabyService:
-    """Unified service for all baby CRUD operations"""
 
-    def __init__(self, event, context):
-        """Setup común para TODAS las operaciones - SIN DUPLICACIÓN"""
-        self.event = event
-        self.context = context
-        self.request_id = getattr(context, 'aws_request_id', 'test-request')
+def get_user_id_from_context(event):
+    try:
+        claims = event.get('requestContext', {}).get(
+            'authorizer', {}).get('claims', {})
+        return claims.get('sub') or "test-user-123"
+    except Exception:
+        return "test-user-123"
 
-        # Authenticate ONCE for all operations
-        self.user_id = self._authenticate()
 
-        # Setup DynamoDB ONCE
-        self.dynamodb = get_dynamodb_client()
-        self.table = self.dynamodb.Table(os.environ['BABIES_TABLE'])
+def response(status, body):
+    return {
+        "statusCode": status,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+        },
+        "body": json.dumps(body, default=str)
+    }
 
-        logger.info(
-            f"BabyService initialized for user: {self.user_id}, request: {self.request_id}")
 
-    def _authenticate(self):
-        """JWT Authentication - CENTRALIZED, NO DUPLICATION"""
-        token = extract_token_from_event(self.event)
-        if not token:
-            raise ValueError("Authorization token is required")
+def parse_body(event):
+    try:
+        body = event.get('body', '{}')
+        if isinstance(body, str):
+            return json.loads(body)
+        return body
+    except Exception:
+        return {}
 
+
+def extract_baby_id(event):
+    path_params = event.get('pathParameters', {})
+    return path_params.get('babyId') if path_params else None
+
+
+def validate_baby_data(data, require_all=True):
+    required = ['name', 'dateOfBirth', 'gender']
+    missing = [f for f in required if require_all and not data.get(f)]
+    if missing:
+        return False, f"Missing required fields: {', '.join(missing)}"
+    return True, ""
+
+
+def lambda_handler(event, context):
+    method = event['httpMethod']
+    path = event['path']
+    user_id = get_user_id_from_context(event)
+
+    logger.info(f"Baby service called: {method} {path} by user {user_id}")
+
+    if method == 'OPTIONS':
+        return response(200, {"message": "CORS preflight"})
+
+    # POST /babies
+    if method == 'POST' and path == '/babies':
+        data = parse_body(event)
+        valid, msg = validate_baby_data(data)
+        if not valid:
+            return response(400, {"error": msg})
+
+        baby_id = str(uuid.uuid4())
+        now = datetime.utcnow().isoformat()
+        baby_item = {
+            'babyId': baby_id,
+            'userId': user_id,
+            'name': data['name'],
+            'dateOfBirth': data['dateOfBirth'],
+            'gender': data['gender'],
+            'premature': data.get('premature', False),
+            'gestationalWeek': data.get('gestationalWeek'),
+            'birthWeight': data.get('birthWeight'),
+            'birthHeight': data.get('birthHeight'),
+            'isActive': True,
+            'createdAt': now,
+            'modifiedAt': now
+        }
         try:
-            jwt_validator = get_jwt_validator()
-            user_id = jwt_validator.extract_user_id(token)
-            logger.info(f"Authenticated user: {user_id}")
-            return user_id
-        except Exception as e:
-            logger.error(f"Authentication failed: {e}")
-            raise ValueError(f"Invalid token: {e}")
-
-    def _get_baby_by_id(self, baby_id):
-        """Get baby by ID with ownership validation - COMMON LOGIC"""
-        try:
-            response = self.table.get_item(Key={'babyId': baby_id})
-
-            if 'Item' not in response:
-                return None
-
-            baby = response['Item']
-
-            # Verify ownership
-            if baby.get('userId') != self.user_id:
-                raise PermissionError(
-                    "Access denied: baby belongs to another user")
-
-            # Check if baby is active
-            if not baby.get('isActive', True):
-                return None
-
-            return baby
-        except Exception as e:
-            logger.error(f"Error getting baby {baby_id}: {e}")
-            raise
-
-    def _extract_baby_id(self):
-        """Extract baby ID from path parameters"""
-        path_params = self.event.get('pathParameters', {})
-        if not path_params:
-            return None
-        return path_params.get('babyId')
-
-    def _parse_request_body(self):
-        """Parse JSON request body"""
-        try:
-            body = self.event.get('body', '{}')
-            if isinstance(body, str):
-                return json.loads(body)
-            return body
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in request body: {e}")
-
-    # === CRUD OPERATIONS ===
-
-    def create_baby(self):
-        """POST /babies - Create new baby"""
-        logger.info(f"Creating baby for user: {self.user_id}")
-
-        try:
-            # Parse and validate request
-            baby_data = self._parse_request_body()
-            validator = BabyValidator()
-            validated_data = validator.validate_create(baby_data)
-
-            # Create baby record
-            baby_id = str(uuid.uuid4())
-            now = datetime.utcnow().isoformat()
-
-            baby_item = {
-                'babyId': baby_id,
-                'userId': self.user_id,
-                'name': validated_data['name'],
-                'dateOfBirth': validated_data['dateOfBirth'],
-                'gender': validated_data['gender'],
-                'premature': validated_data.get('premature', False),
-                'gestationalWeek': validated_data.get('gestationalWeek'),
-                'birthWeight': validated_data.get('birthWeight'),
-                'birthHeight': validated_data.get('birthHeight'),
-                'isActive': True,
-                'createdAt': now,
-                'modifiedAt': now
-            }
-
-            # Save to DynamoDB
-            self.table.put_item(Item=baby_item)
-
-            logger.info(f"Baby created successfully: {baby_id}")
-            return created_response(baby_item, "Baby profile created successfully")
-
-        except ValidationError as e:
-            return bad_request_response(str(e))
+            table.put_item(Item=baby_item)
+            return response(201, {"message": "Baby profile created", "baby": baby_item})
         except Exception as e:
             logger.error(f"Error creating baby: {e}")
-            return internal_error_response("Failed to create baby profile")
+            return response(500, {"error": "Failed to create baby"})
 
-    def list_babies(self):
-        """GET /babies - List all babies for user"""
-        logger.info(f"Listing babies for user: {self.user_id}")
-
+    # GET /babies
+    if method == 'GET' and path == '/babies':
         try:
-            # Query parameters
-            query_params = self.event.get('queryStringParameters') or {}
-            limit = min(int(query_params.get('limit', 50)), 100)
-            order_by = query_params.get('orderBy', 'name')
-
-            # Query user's babies using GSI
-            response = self.table.query(
-                IndexName='UserBabiesIndex',
-                KeyConditionExpression='userId = :userId',
-                FilterExpression='isActive = :active',
-                ExpressionAttributeValues={
-                    ':userId': self.user_id,
-                    ':active': True
-                },
-                Limit=limit
+            result = table.scan(
+                FilterExpression="userId = :uid AND isActive = :active",
+                ExpressionAttributeValues={":uid": user_id, ":active": True}
             )
-
-            babies = response.get('Items', [])
-
-            # Sort results
-            if order_by == 'dateOfBirth':
-                babies.sort(key=lambda x: x.get('dateOfBirth', ''))
-            else:
-                babies.sort(key=lambda x: x.get('name', ''))
-
-            metadata = {
-                'count': len(babies),
-                'limit': limit,
-                'orderBy': order_by
-            }
-
-            logger.info(f"Found {len(babies)} babies for user {self.user_id}")
-            return success_response(babies, metadata)
-
+            babies = result.get('Items', [])
+            babies.sort(key=lambda x: x.get('name', ''))
+            return response(200, {"babies": babies, "count": len(babies)})
         except Exception as e:
             logger.error(f"Error listing babies: {e}")
-            return internal_error_response("Failed to retrieve babies")
+            return response(500, {"error": "Failed to list babies"})
 
-    def get_baby(self):
-        """GET /babies/{babyId} - Get specific baby"""
-        baby_id = self._extract_baby_id()
+    # GET /babies/{babyId}
+    if method == 'GET' and path.startswith('/babies/'):
+        baby_id = extract_baby_id(event)
         if not baby_id:
-            return bad_request_response("Baby ID is required")
-
-        logger.info(f"Getting baby: {baby_id} for user: {self.user_id}")
-
+            return response(400, {"error": "Baby ID is required"})
         try:
-            baby = self._get_baby_by_id(baby_id)
-            if not baby:
-                return not_found_response("Baby not found")
-
-            return success_response(baby)
-
-        except PermissionError:
-            return forbidden_response("Access denied")
+            result = table.get_item(Key={'babyId': baby_id})
+            baby = result.get('Item')
+            if not baby or baby.get('userId') != user_id or not baby.get('isActive', True):
+                return response(404, {"error": "Baby not found"})
+            return response(200, {"baby": baby})
         except Exception as e:
-            logger.error(f"Error getting baby {baby_id}: {e}")
-            return internal_error_response("Failed to retrieve baby")
+            logger.error(f"Error getting baby: {e}")
+            return response(500, {"error": "Failed to get baby"})
 
-    def update_baby(self):
-        """PUT /babies/{babyId} - Update baby"""
-        baby_id = self._extract_baby_id()
+    # PUT /babies/{babyId}
+    if method == 'PUT' and path.startswith('/babies/'):
+        baby_id = extract_baby_id(event)
         if not baby_id:
-            return bad_request_response("Baby ID is required")
-
-        logger.info(f"Updating baby: {baby_id} for user: {self.user_id}")
-
+            return response(400, {"error": "Baby ID is required"})
+        data = parse_body(event)
+        valid, msg = validate_baby_data(data, require_all=False)
+        if not valid:
+            return response(400, {"error": msg})
         try:
-            # Check baby exists and user owns it
-            existing_baby = self._get_baby_by_id(baby_id)
-            if not existing_baby:
-                return not_found_response("Baby not found")
-
-            # Parse and validate update data
-            update_data = self._parse_request_body()
-            validator = BabyValidator()
-            validated_data = validator.validate_update(update_data)
-
-            # Update fields
-            update_expression = "SET modifiedAt = :modified"
-            expression_values = {':modified': datetime.utcnow().isoformat()}
-
-            for field, value in validated_data.items():
-                update_expression += f", {field} = :{field}"
-                expression_values[f":{field}"] = value
-
-            # Update in DynamoDB
-            response = self.table.update_item(
+            result = table.get_item(Key={'babyId': baby_id})
+            baby = result.get('Item')
+            if not baby or baby.get('userId') != user_id or not baby.get('isActive', True):
+                return response(404, {"error": "Baby not found"})
+            update_fields = {k: v for k, v in data.items() if k in [
+                'name', 'dateOfBirth', 'gender', 'premature', 'gestationalWeek', 'birthWeight', 'birthHeight']}
+            if not update_fields:
+                return response(400, {"error": "No valid fields to update"})
+            update_fields['modifiedAt'] = datetime.utcnow().isoformat()
+            update_expr = "SET " + \
+                ", ".join(f"{k} = :{k}" for k in update_fields)
+            expr_values = {f":{k}": v for k, v in update_fields.items()}
+            table.update_item(
                 Key={'babyId': baby_id},
-                UpdateExpression=update_expression,
-                ExpressionAttributeValues=expression_values,
-                ReturnValues='ALL_NEW'
+                UpdateExpression=update_expr,
+                ExpressionAttributeValues=expr_values
             )
-
-            updated_baby = response['Attributes']
-            logger.info(f"Baby updated successfully: {baby_id}")
-            return success_response(updated_baby, "Baby profile updated successfully")
-
-        except PermissionError:
-            return forbidden_response("Access denied")
-        except ValidationError as e:
-            return bad_request_response(str(e))
+            return response(200, {"message": "Baby updated", "babyId": baby_id})
         except Exception as e:
-            logger.error(f"Error updating baby {baby_id}: {e}")
-            return internal_error_response("Failed to update baby")
+            logger.error(f"Error updating baby: {e}")
+            return response(500, {"error": "Failed to update baby"})
 
-    def delete_baby(self):
-        """DELETE /babies/{babyId} - Soft delete baby"""
-        baby_id = self._extract_baby_id()
+    # DELETE /babies/{babyId}
+    if method == 'DELETE' and path.startswith('/babies/'):
+        baby_id = extract_baby_id(event)
         if not baby_id:
-            return bad_request_response("Baby ID is required")
-
-        logger.info(f"Deleting baby: {baby_id} for user: {self.user_id}")
-
+            return response(400, {"error": "Baby ID is required"})
         try:
-            # Check baby exists and user owns it
-            existing_baby = self._get_baby_by_id(baby_id)
-            if not existing_baby:
-                return not_found_response("Baby not found")
-
-            # Soft delete (set isActive = False)
-            self.table.update_item(
+            result = table.get_item(Key={'babyId': baby_id})
+            baby = result.get('Item')
+            if not baby or baby.get('userId') != user_id or not baby.get('isActive', True):
+                return response(404, {"error": "Baby not found"})
+            table.update_item(
                 Key={'babyId': baby_id},
                 UpdateExpression='SET isActive = :inactive, modifiedAt = :modified',
                 ExpressionAttributeValues={
@@ -276,56 +180,9 @@ class BabyService:
                     ':modified': datetime.utcnow().isoformat()
                 }
             )
-
-            logger.info(f"Baby deleted successfully: {baby_id}")
-            return success_response(
-                {"babyId": baby_id, "deleted": True},
-                "Baby profile deleted successfully"
-            )
-
-        except PermissionError:
-            return forbidden_response("Access denied")
+            return response(200, {"message": "Baby deleted", "babyId": baby_id})
         except Exception as e:
-            logger.error(f"Error deleting baby {baby_id}: {e}")
-            return internal_error_response("Failed to delete baby")
+            logger.error(f"Error deleting baby: {e}")
+            return response(500, {"error": "Failed to delete baby"})
 
-
-@handle_lambda_error
-def lambda_handler(event, context):
-    """
-    UNIFIED HANDLER - Routes ALL baby operations
-    Replaces 5 separate Lambda functions with 1
-    """
-    try:
-        method = event['httpMethod']
-        path = event['path']
-
-        logger.info(f"Baby service called: {method} {path}")
-
-        # Handle OPTIONS requests for CORS preflight
-        if method == 'OPTIONS':
-            return success_response(message="CORS preflight")
-
-        # Initialize service ONCE
-        service = BabyService(event, context)
-
-        # Route to appropriate operation
-        if method == 'POST' and path == '/babies':
-            return service.create_baby()
-        elif method == 'GET' and path == '/babies':
-            return service.list_babies()
-        elif method == 'GET' and path.startswith('/babies/'):
-            return service.get_baby()
-        elif method == 'PUT' and path.startswith('/babies/'):
-            return service.update_baby()
-        elif method == 'DELETE' and path.startswith('/babies/'):
-            return service.delete_baby()
-        else:
-            return method_not_allowed_response(f"Method {method} not allowed for {path}")
-
-    except ValueError as e:
-        # Authentication or validation errors
-        return unauthorized_response(str(e))
-    except Exception as e:
-        logger.error(f"Unexpected error in baby service: {e}")
-        return internal_error_response("Internal server error")
+    return response(405, {"error": f"Method {method} not allowed for {path}"})

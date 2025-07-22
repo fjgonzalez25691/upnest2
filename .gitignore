@@ -12,9 +12,15 @@ backend/__pycache__/
 backend/*.pyc
 backend/.env*
 backend/*.log
+backend/lambdas/babies2/jwt
+backend/lambdas/babies2/PyJWT*
+backend/layers/shared/python
+!backend/layers/shared/python/upnest_shared
+backend/layers/jwt-auth/
+
 
 # --- Logs ---
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
