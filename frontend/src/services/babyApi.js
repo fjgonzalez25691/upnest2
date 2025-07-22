@@ -41,6 +41,8 @@ export const getBabies = async () => {
             return response.data;
         } else if (response.data && Array.isArray(response.data.data)) {
             return response.data.data;
+        } else if (response.data && Array.isArray(response.data.babies)) {
+            return response.data.babies;
         } else {
             console.warn("Unexpected response format:", response.data);
             return [];

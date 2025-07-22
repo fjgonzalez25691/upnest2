@@ -29,15 +29,19 @@ const Dashboard = () => {
         setLoading(true);
         const babiesData = await getBabies();
         console.log("Babies data received:", babiesData);
-        
+
         // Ensure babiesData is always an array
-        const babiesArray = Array.isArray(babiesData) ? babiesData : 
-                           (babiesData?.data && Array.isArray(babiesData.data)) ? babiesData.data : [];
-        
+        const babiesArray = Array.isArray(babiesData) ? babiesData :
+          (babiesData?.data && Array.isArray(babiesData.data)) ? babiesData.data : [];
+
         setBabies(babiesArray);
       } catch (err) {
         console.error("Error fetching babies:", err);
-        setError("Failed to load babies. Please try again.");
+        if (err.message === "Network Error" || err.code === "ERR_NETWORK") {
+          setError("Could not connect to the server. Please check your connection.");
+        } else {
+          setError("Failed to load babies. Please try again.");
+        }
         setBabies([]); // Set empty array on error
       } finally {
         setLoading(false);
@@ -51,24 +55,24 @@ const Dashboard = () => {
 
   // The ProtectedRoute component handles authentication redirect
   // So we can assume user is authenticated here
-  
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
       <div className="max-w-5xl mx-auto">
-        
+
         <div className="mb-8">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
             My Dashboard
           </h1>
         </div>
-        
+
         {/* Welcome message */}
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-3xl p-8 mb-8 shadow-lg">
           <h2 className="text-2xl font-semibold mb-3">
             Welcome back, {name || 'Parent'}!
           </h2>
           <p className="text-blue-100 text-lg">
-            Track your baby's growth with confidence using WHO percentile standards. 
+            Track your baby's growth with confidence using WHO percentile standards.
             Every measurement tells a story of healthy development.
           </p>
         </div>
@@ -129,7 +133,7 @@ const Dashboard = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-4 mb-5">
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
@@ -148,7 +152,7 @@ const Dashboard = () => {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-3">
                     <Link to={`/baby/${baby.babyId}`} className="flex-1">
                       <PrimaryButton variant="blue" className="w-full text-sm">
@@ -166,7 +170,7 @@ const Dashboard = () => {
             </div>
           )}
         </div>
-        
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Quick Actions */}
           <div className="bg-white p-6 rounded-3xl shadow-lg border border-green-100">
@@ -248,7 +252,7 @@ const Dashboard = () => {
               Need Help Getting Started?
             </h2>
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-              UpNest is designed to be intuitive for parents of all technical backgrounds. 
+              UpNest is designed to be intuitive for parents of all technical backgrounds.
               Add your baby's information and start tracking their growth with confidence.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
