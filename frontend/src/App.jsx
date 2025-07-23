@@ -13,6 +13,7 @@ import ProtectedRoute from "./auth/ProtectedRoute.jsx";
 // Pages
 import Landing from "./pages/Landing.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import BabyProfile from "./pages/BabyProfile.jsx";
 
 export default function App() {
   return (
@@ -22,7 +23,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/dashboard" element={<ProtectedRoute element={<Dashboard />} />} />
-        {/* Puedes agregar más rutas protegidas aquí */}
+        <Route path="/baby/:babyId" element={<ProtectedRoute element={<BabyProfile />} />} />
       </Routes>
       <Footer />
     </>
