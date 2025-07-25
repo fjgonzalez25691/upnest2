@@ -14,6 +14,7 @@ import ProtectedRoute from "./auth/ProtectedRoute.jsx";
 import Landing from "./pages/Landing.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import BabyProfile from "./pages/BabyProfile.jsx";
+import AddBaby from "./pages/AddBaby.jsx";
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/dashboard" element={<ProtectedRoute element={<Dashboard />} />} />
         <Route path="/baby/:babyId" element={<ProtectedRoute element={<BabyProfile />} />} />
+        <Route path="/add-baby" element={<ProtectedRoute element={<AddBaby />} />} />
       </Routes>
       <Footer />
     </>
