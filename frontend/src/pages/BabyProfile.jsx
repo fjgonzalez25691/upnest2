@@ -90,9 +90,9 @@ const BabyProfile = () => {
                         Back to Dashboard
                     </Link>
                     <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        {baby.name}'s Profile
+                        {baby?.baby.name}'s Profile
                     </h1>
-                    <p className="text-gray-600 mt-2">{calculateAge(baby.dateOfBirth)}</p>
+                    <p className="text-gray-600 mt-2">{calculateAge(baby?.baby.dateOfBirth)}</p>
                 </div>
 
                 {/* Baby Profile Form Component */}
