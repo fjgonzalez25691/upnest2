@@ -12,4 +12,42 @@
   --color-surface: #FFFFFF;
   --color-text-main: #22223B;
   --color-text-subtle: #64748B;
+  /* Gradients */
+  --color-gradient-primary: linear-gradient(to right, #3b82f6, #2563eb);
+  --color-gradient-success: linear-gradient(to right, #16a34a, #15803d);
+  --color-gradient-add: linear-gradient(to right, #22c55e, #16a34a);
+  --color-gradient-danger: linear-gradient(to right, #f43f5e, #dc2626);
+  --color-gradient-ai: linear-gradient(to right, #10b981, #059669);
+  --color-gradient-cancel: linear-gradient(to right, #6b7280, #4b5563);
+}
+
+@layer components {
+  .btn-base {
+    @apply rounded-xl px-6 py-4 font-semibold transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-white;
+  }
+
+  .btn-base:hover {
+    @apply shadow-xl;
+    filter: brightness(0.9);
+  }
+
+  .btn-primary {
+    background-color: var(--color-gradient-primary);
+  }
+
+  .btn-add {
+    background-color: var(--color-gradient-add);
+  }
+
+  .btn-cancel {
+    background-color: var(--color-gradient-cancel);
+  }
+
+  .btn-success {
+    background-color: var(--color-gradient-success);
+  }
+
+  .btn-danger {
+    background-color: var(--color-gradient-danger);
+  }
 }
