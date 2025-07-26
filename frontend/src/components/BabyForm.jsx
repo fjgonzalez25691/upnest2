@@ -136,7 +136,7 @@ const BabyForm = ({
                 />
             </div>
 
-            <PrimaryButton type="submit" className="w-full mt-6">
+            <PrimaryButton type="submit" variant="add" className="w-full mt-6">
                 {submitLabel}
             </PrimaryButton>
             {error && <p className="text-red-600 mt-4">{error}</p>}

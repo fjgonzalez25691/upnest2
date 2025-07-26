@@ -103,15 +103,15 @@ const BabyProfile = () => {
                 {/* Action Buttons */}
                 <div className="bg-white rounded-3xl shadow-lg p-8 mb-8 border border-blue-100">
                     <div className="flex gap-4">
-                        <PrimaryButton variant="blue" className="flex-1">
+                        <PrimaryButton variant="primary" className="flex-1">
                             Edit Profile
                         </PrimaryButton>
                         <Link to={`/add-growth-data/${baby.babyId}`} className="flex-1">
-                            <PrimaryButton variant="green" className="w-full">
+                            <PrimaryButton variant="add" className="w-full">
                                 Add Growth Data
                             </PrimaryButton>
                         </Link>
-                        <PrimaryButton variant="red" className="flex-1">
+                        <PrimaryButton variant="danger" className="flex-1">
                             Delete Profile
                         </PrimaryButton>
                     </div>
@@ -131,7 +131,7 @@ const BabyProfile = () => {
                             Add your first measurement to start tracking {baby.name}'s growth with WHO percentile charts.
                         </p>
                         <Link to={`/add-growth-data/${baby.babyId}`}>
-                            <PrimaryButton variant="green">Add First Measurement</PrimaryButton>
+                            <PrimaryButton variant="add">Add First Measurement</PrimaryButton>
                         </Link>
                     </div>
                 </div>

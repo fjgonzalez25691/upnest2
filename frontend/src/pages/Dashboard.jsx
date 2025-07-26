@@ -84,7 +84,7 @@ const Dashboard = () => {
               My Babies
             </h2>
             <Link to="/add-baby">
-              <PrimaryButton>
+              <PrimaryButton variant="add">
                 <span className="flex items-center">
                   Add New Baby
                 </span>
@@ -113,7 +113,7 @@ const Dashboard = () => {
                 Add your first baby to begin tracking their growth and development with WHO-standard percentiles.
               </p>
               <Link to="/add-baby">
-                <PrimaryButton>Add Your First Baby</PrimaryButton>
+                <PrimaryButton variant="add">Add Your First Baby</PrimaryButton>
               </Link>
             </div>
           ) : (
@@ -155,12 +155,12 @@ const Dashboard = () => {
 
                   <div className="flex gap-3">
                     <Link to={`/baby/${baby.babyId}`} className="flex-1">
-                      <PrimaryButton variant="blue" className="w-full text-sm">
+                      <PrimaryButton variant="primary" className="w-full text-sm">
                         View Profile
                       </PrimaryButton>
                     </Link>
                     <Link to={`/add-growth-data/${baby.babyId}`} className="flex-1">
-                      <PrimaryButton variant="green" className="w-full text-sm">
+                      <PrimaryButton variant="add" className="w-full text-sm">
                         Add Data
                       </PrimaryButton>
                     </Link>
@@ -179,17 +179,17 @@ const Dashboard = () => {
             </h2>
             <div className="space-y-4">
               <Link to="/add-baby">
-                <PrimaryButton variant="blue" className="w-full">
+                <PrimaryButton variant="add" className="w-full">
                   Add New Baby
                 </PrimaryButton>
               </Link>
               <Link to="/percentiles">
-                <PrimaryButton variant="purple" className="w-full">
+                <PrimaryButton variant="primary" className="w-full">
                   View Percentiles
                 </PrimaryButton>
               </Link>
               <Link to="/ai-chat">
-                <PrimaryButton variant="emerald" className="w-full">
+                <PrimaryButton variant="ai" className="w-full">
                   AI Assistant
                 </PrimaryButton>
               </Link>
@@ -257,12 +257,12 @@ const Dashboard = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/add-baby">
-                <PrimaryButton variant="blue">
+                <PrimaryButton variant="add">
                   Add Your First Baby
                 </PrimaryButton>
               </Link>
               <Link to="/percentiles">
-                <PrimaryButton variant="purple">
+                <PrimaryButton variant="primary">
                   Learn About Percentiles
                 </PrimaryButton>
               </Link>
