@@ -14,6 +14,7 @@
   --color-text-subtle: #64748B;
   /* Gradients */
   --color-gradient-primary: linear-gradient(to right, #3b82f6, #2563eb);
+  --color-gradient-edit: linear-gradient(to right, #a78bfa, #7c3aed);
   --color-gradient-success: linear-gradient(to right, #16a34a, #15803d);
   --color-gradient-add: linear-gradient(to right, #22c55e, #16a34a);
   --color-gradient-danger: linear-gradient(to right, #f43f5e, #dc2626);
@@ -32,22 +33,30 @@
   }
 
   .btn-primary {
-    background-color: var(--color-gradient-primary);
+    background: var(--color-gradient-primary);
   }
 
   .btn-add {
-    background-color: var(--color-gradient-add);
+    background: var(--color-gradient-add);
+  }
+
+  .btn-edit {
+    background: var(--color-gradient-edit);
   }
 
   .btn-cancel {
-    background-color: var(--color-gradient-cancel);
+    background: var(--color-gradient-cancel);
   }
 
   .btn-success {
-    background-color: var(--color-gradient-success);
+    background: var(--color-gradient-success);
   }
 
   .btn-danger {
-    background-color: var(--color-gradient-danger);
+    background: var(--color-gradient-danger);
+  }
+
+  .btn-ai {
+    background: var(--color-gradient-ai);
   }
 }

@@ -136,11 +136,27 @@ const BabyForm = ({
                 />
             </div>
 
-            <PrimaryButton type="submit" className="w-full mt-6">
-                {submitLabel}
-            </PrimaryButton>
+            <div className="flex gap-4 mt-6">
+                <PrimaryButton variant="add" type="submit" className="flex-1">
+                    {submitLabel}
+                </PrimaryButton>
+                <PrimaryButton
+                    variant="cancel"
+                    type="button"
+                    className="flex-1"
+                    onClick={() => {
+                        // Acción recomendada: navegar al dashboard o limpiar el formulario
+                        // Si usas react-router-dom:
+                        window.location.href = "/dashboard";
+                        // O si tienes un callback onCancel:
+                        // onCancel && onCancel();
+                    }}
+                >
+                    Cancel
+                </PrimaryButton>
+            </div>
             {error && <p className="text-red-600 mt-4">{error}</p>}
-        </form>
+        </form >
     );
 };
 
