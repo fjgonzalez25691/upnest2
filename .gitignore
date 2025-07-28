@@ -14,9 +14,7 @@ backend/.env*
 backend/*.log
 backend/lambdas/babies2/jwt
 backend/lambdas/babies2/PyJWT*
-backend/layers/shared/python
-!backend/layers/shared/python/upnest_shared
-backend/layers/jwt-auth/
+backend/layers/percentiles/python
 
 
 # --- Logs ---

@@ -58,6 +58,7 @@ Resources:
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
+    DeletionPolicy: Retain
 
   GrowthDataTable:
     Type: AWS::DynamoDB::Table
@@ -154,27 +155,52 @@ Resources:
       FunctionName: upnest2-baby
       CodeUri: backend/lambdas/babies/
       Handler: baby_service.lambda_handler
-      Description: "UpNest2 Baby CRUD operations"
-      Layers:
-        - !Ref SharedLayer
+      Description: UpNest2 Baby CRUD operations
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref BabiesTable
+            TableName:
+              Ref: BabiesTable
         - DynamoDBReadPolicy:
-            TableName: !Ref BabiesTable
+            TableName:
+              Ref: BabiesTable
       Events:
-        BabiesApi:
+        BabiesGet:
           Type: Api
           Properties:
-            RestApiId: !Ref UpNest2Api
+            RestApiId:
+              Ref: UpNest2Api
             Path: /babies
-            Method: ANY
-        BabiesProxyApi:
+            Method: GET
+        BabiesPost:
           Type: Api
           Properties:
-            RestApiId: !Ref UpNest2Api
-            Path: /babies/{proxy+}
-            Method: ANY
+            RestApiId:
+              Ref: UpNest2Api
+            Path: /babies
+            Method: POST
+        BabyGet:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: UpNest2Api
+            Path: /babies/{babyId}
+            Method: GET
+        BabyPut:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: UpNest2Api
+            Path: /babies/{babyId}
+            Method: PUT
+        BabyDelete:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: UpNest2Api
+            Path: /babies/{babyId}
+            Method: DELETE
+    Metadata:
+      SamResourceId: UpNest2BabyFunction
 
   UpNest2PercentilesFunction:
     Type: AWS::Serverless::Function
@@ -182,22 +208,26 @@ Resources:
       FunctionName: upnest2-percentiles
       CodeUri: backend/lambdas/percentiles/
       Handler: percentiles_service.lambda_handler
-      Description: "UpNest2 Growth Percentiles calculations"
-      Layers:
-        - !Ref SharedLayer
+      Description: UpNest2 Growth Percentiles calculations
       Events:
         PercentilesApi:
           Type: Api
           Properties:
-            RestApiId: !Ref UpNest2Api
+            RestApiId:
+              Ref: UpNest2Api
             Path: /percentiles
             Method: ANY
         PercentilesProxyApi:
           Type: Api
           Properties:
-            RestApiId: !Ref UpNest2Api
+            RestApiId:
+              Ref: UpNest2Api
             Path: /percentiles/{proxy+}
             Method: ANY
+      Layers:
+        - !Ref PercentilesLayer
+    Metadata:
+      SamResourceId: UpNest2PercentilesFunction
 
   UpNest2GrowthDataFunction:
     Type: AWS::Serverless::Function
@@ -205,38 +235,41 @@ Resources:
       FunctionName: upnest2-growth-data
       CodeUri: backend/lambdas/growth-data/
       Handler: growth_data_service.lambda_handler
-      Description: "UpNest2 Growth Data tracking"
+      Description: UpNest2 Growth Data tracking
       Environment:
         Variables:
-          GROWTH_DATA_TABLE: !Ref GrowthDataTable
-      Layers:
-        - !Ref SharedLayer
+          GROWTH_DATA_TABLE:
+            Ref: GrowthDataTable
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref GrowthDataTable
+            TableName:
+              Ref: GrowthDataTable
       Events:
         GrowthDataApi:
           Type: Api
           Properties:
-            RestApiId: !Ref UpNest2Api
+            RestApiId:
+              Ref: UpNest2Api
             Path: /growth-data
             Method: ANY
         GrowthDataProxyApi:
           Type: Api
           Properties:
-            RestApiId: !Ref UpNest2Api
+            RestApiId:
+              Ref: UpNest2Api
             Path: /growth-data/{proxy+}
             Method: ANY
+    Metadata:
+      SamResourceId: UpNest2GrowthDataFunction
 
-  SharedLayer:
+  PercentilesLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
-      LayerName: !Sub "upnest2-shared-layer-${Stage}"
-      Description: "Shared Python code for UpNest2 Lambdas"
-      ContentUri: backend/layers/shared/
+      LayerName: upnest2-percentiles-layer
+      Description: Dependencias para percentiles (pandas, scipy, openpyxl)
+      ContentUri: backend/layers/percentiles/
       CompatibleRuntimes:
         - python3.12
-      RetentionPolicy: Delete
 
 Outputs:
   ApiUrl:

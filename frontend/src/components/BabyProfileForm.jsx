@@ -1,6 +1,7 @@
 // src/components/BabyProfileForm.jsx
 // Reusable component for displaying baby profile information in form layout
 import React from "react";
+import PrimaryButton from "./PrimaryButton";
 
 const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
     const calculateAge = (dateOfBirth) => {
@@ -162,18 +163,22 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
             {/* Action Buttons for Edit Mode */}
             {isEditable && (
                 <div className="flex gap-4 mt-8 pt-6 border-t border-gray-200">
-                    <button
+                    <PrimaryButton
+                        variant="primary"
+                        className="flex-1"
                         onClick={onSave}
-                        className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all shadow-md"
+                        type="button"
                     >
                         Save Changes
-                    </button>
-                    <button
+                    </PrimaryButton>
+                    <PrimaryButton
+                        variant="cancel"
+                        className="flex-1"
                         onClick={onCancel}
-                        className="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 text-white px-6 py-3 rounded-xl font-semibold hover:from-gray-500 hover:to-gray-600 transition-all shadow-md"
+                        type="button"
                     >
                         Cancel
-                    </button>
+                    </PrimaryButton>
                 </div>
             )}
         </div>

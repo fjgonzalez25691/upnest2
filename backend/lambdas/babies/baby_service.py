@@ -149,13 +149,25 @@ def lambda_handler(event, context):
             if not update_fields:
                 return response(400, {"error": "No valid fields to update"})
             update_fields['modifiedAt'] = datetime.utcnow().isoformat()
-            update_expr = "SET " + \
-                ", ".join(f"{k} = :{k}" for k in update_fields)
+
+            # Map reserved attribute names
+            attribute_names = {}
+            update_expr_parts = []
+            for k in update_fields:
+                if k == "name":
+                    attribute_names["#name"] = "name"
+                    update_expr_parts.append("#name = :name")
+                else:
+                    update_expr_parts.append(f"{k} = :{k}")
+
+            update_expr = "SET " + ", ".join(update_expr_parts)
             expr_values = {f":{k}": v for k, v in update_fields.items()}
+
             table.update_item(
                 Key={'babyId': baby_id},
                 UpdateExpression=update_expr,
-                ExpressionAttributeValues=expr_values
+                ExpressionAttributeValues=expr_values,
+                ExpressionAttributeNames=attribute_names if attribute_names else None
             )
             return response(200, {"message": "Baby updated", "babyId": baby_id})
         except Exception as e:
