@@ -84,7 +84,7 @@ const Dashboard = () => {
               My Babies
             </h2>
             <Link to="/add-baby">
-              <PrimaryButton variant="add">
+              <PrimaryButton variant="add" className="flex items-center">
                 <span className="flex items-center">
                   Add New Baby
                 </span>
@@ -257,12 +257,12 @@ const Dashboard = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/add-baby">
-                <PrimaryButton variant="add">
+                <PrimaryButton variant="add" className="w-full sm:w-auto">
                   Add Your First Baby
                 </PrimaryButton>
               </Link>
               <Link to="/percentiles">
-                <PrimaryButton variant="primary">
+                <PrimaryButton variant="primary" className="w-full sm:w-auto">
                   Learn About Percentiles
                 </PrimaryButton>
               </Link>

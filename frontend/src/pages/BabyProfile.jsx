@@ -103,7 +103,7 @@ const BabyProfile = () => {
                 {/* Action Buttons */}
                 <div className="bg-white rounded-3xl shadow-lg p-8 mb-8 border border-blue-100">
                     <div className="flex gap-4">
-                        <PrimaryButton variant="primary" className="flex-1">
+                        <PrimaryButton variant="edit" className="flex-1">
                             Edit Profile
                         </PrimaryButton>
                         <Link to={`/add-growth-data/${baby.babyId}`} className="flex-1">

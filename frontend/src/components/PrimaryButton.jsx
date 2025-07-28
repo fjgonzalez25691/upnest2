@@ -1,17 +1,29 @@
 // .src/components/PrimaryButton.jsx
-// Purpose: A reusable primary button component for the UpNest application. Used for primary actions like submitting forms or confirming actions.
+// Pourpose: A reusable primary button component for the UpNest application. Used for primary actions like submitting forms or confirming actions.
+/*
+- 🔵 **primary** — Ver/editar
+- 🟢 **add** — Crear/agregar
+- 🟢 **success** — Confirmaciones
+- 🟢 **ai** — AI Assistant
+- 🔴 **danger** — Eliminar
+- ⚫ **cancel** — Cancelar
+*/
+
 
 import React from "react";
 
-const variantClasses = {
-  primary: "btn-base btn-primary",
-  add: "btn-base btn-add",
-  success: "btn-base btn-success",
-  danger: "btn-base btn-danger",
-  ai: "btn-base btn-ai",
-  cancel: "btn-base btn-cancel",
-  default: "btn-base btn-primary"
+const variantStyles = {
+  primary: "btn-primary",
+  cancel: "btn-cancel",
+  add: "btn-add",
+  edit: "btn-edit",
+  success: "btn-success",
+  ai: "btn-ai",
+  danger: "btn-danger",
+  default: "btn-primary",
 };
+;
+
 
 const PrimaryButton = ({
   children,
@@ -21,7 +33,9 @@ const PrimaryButton = ({
 }) => (
   <button
     type={props.type || "button"}
-    className={`${variantClasses[variant] || variantClasses.default} ${className}`}
+    className={
+      `btn-base ${variantStyles[variant] || variantStyles.default} ${className}`
+    }
     {...props}
   >
     {children}
