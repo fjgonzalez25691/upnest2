@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getBabyById } from "../services/babyApi";
+import { updateBaby } from "../services/babyApi";
 import PrimaryButton from "../components/PrimaryButton";
 import BabyProfileForm from "../components/BabyProfileForm";
 
@@ -11,6 +12,7 @@ const BabyProfile = () => {
     const [baby, setBaby] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [editMode, setEditMode] = useState(false)
 
     console.log("🔍 BabyProfile mounted with babyId:", babyId);
 
@@ -46,6 +48,33 @@ const BabyProfile = () => {
             return `${months} months and ${days} days old`;
         }
         return `${days} days old`;
+    };
+    // Handle to save changes in edit mode
+    const handleSave = async (updatedBaby) => {
+        try {
+            setLoading(true);
+            // Call API to update baby profile
+            const res = await updateBaby(babyId, updatedBaby);
+            if (res.baby) {
+                console.log("🔍 Baby profile updated successfully:", res.baby);
+                setBaby({ baby: res.baby }); // <-- Corrige aquí
+            } else {
+                const babyData = await getBabyById(babyId);
+                setBaby(babyData);
+            }
+            setEditMode(false); // <-- Esto debe ir fuera del else, para ambos casos
+        } catch (err) {
+            console.error("Error saving baby profile:", err);
+            setError("Failed to save changes. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handle to candel edit mode
+    const handleCancel = () => {
+        setEditMode(false);
+        setError("");
     };
 
     if (loading) {
@@ -97,13 +126,18 @@ const BabyProfile = () => {
 
                 {/* Baby Profile Form Component */}
                 <div className="mb-8">
-                    <BabyProfileForm baby={baby?.baby} isEditable={false} />
+                    <BabyProfileForm
+                        baby={baby?.baby}
+                        isEditable={editMode}
+                        onSave={handleSave}
+                        onCancel={() => handleCancel()}
+                    />
                 </div>
 
                 {/* Action Buttons */}
                 <div className="bg-white rounded-3xl shadow-lg p-8 mb-8 border border-blue-100">
                     <div className="flex gap-4">
-                        <PrimaryButton variant="edit" className="flex-1">
+                        <PrimaryButton variant="edit" className="flex-1" onClick={() => setEditMode(true)}>
                             Edit Profile
                         </PrimaryButton>
                         <Link to={`/add-growth-data/${baby.babyId}`} className="flex-1">

@@ -1,9 +1,19 @@
 // src/components/BabyProfileForm.jsx
 // Reusable component for displaying baby profile information in form layout
-import React from "react";
+import React, { useState } from "react";
 import PrimaryButton from "./PrimaryButton";
 
 const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
+    const [formData, setFormData] = useState(baby ? { ...baby } : {});
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData((prevData) => ({
+            ...prevData,
+            [name]: type === "checkbox" ? checked : value,
+        }));
+    };
+
     const calculateAge = (dateOfBirth) => {
         const today = new Date();
         const birth = new Date(dateOfBirth);
@@ -52,7 +62,9 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
                         {isEditable ? (
                             <input
                                 type="text"
-                                defaultValue={baby.name}
+                                name="name"
+                                value={formData.name || ""}
+                                onChange={handleChange}
                                 className="w-full p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                             />
                         ) : (
@@ -67,7 +79,9 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
                         {isEditable ? (
                             <input
                                 type="date"
-                                defaultValue={baby.dateOfBirth}
+                                name="dateOfBirth"
+                                value={formData.dateOfBirth || ""}
+                                onChange={handleChange}
                                 className="w-full p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                             />
                         ) : (
@@ -81,7 +95,9 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Gender</label>
                         {isEditable ? (
                             <select
-                                defaultValue={baby.gender}
+                                name="gender"
+                                value={formData.gender || ""}
+                                onChange={handleChange}
                                 className="w-full p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                             >
                                 <option value="male">Male</option>
@@ -112,7 +128,9 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
                             <div className="relative">
                                 <input
                                     type="number"
-                                    defaultValue={baby.birthWeight || ''}
+                                    name="birthWeight"
+                                    value={formData.birthWeight || ""}
+                                    onChange={handleChange}
                                     placeholder="Enter weight"
                                     className="w-full p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
                                 />
@@ -131,7 +149,9 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
                             <div className="relative">
                                 <input
                                     type="number"
-                                    defaultValue={baby.birthHeight || ''}
+                                    name="birthHeight"
+                                    value={formData.birthHeight || ""}
+                                    onChange={handleChange}
                                     placeholder="Enter height"
                                     className="w-full p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
                                 />
@@ -166,7 +186,7 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
                     <PrimaryButton
                         variant="primary"
                         className="flex-1"
-                        onClick={onSave}
+                        onClick={() => onSave(formData)}
                         type="button"
                     >
                         Save Changes
