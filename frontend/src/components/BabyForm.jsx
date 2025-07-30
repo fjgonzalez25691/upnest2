@@ -30,7 +30,14 @@ const BabyForm = ({
         e.preventDefault();
         if (!onSubmit) return;
         try {
-            await onSubmit(form);
+            // Convierte los campos numéricos a Number antes de enviar
+            const dataToSend = {
+                ...form,
+                birthWeight: form.birthWeight ? Number(form.birthWeight) : undefined,
+                birthHeight: form.birthHeight ? Number(form.birthHeight) : undefined,
+                gestationalWeek: form.gestationalWeek ? Number(form.gestationalWeek) : undefined,
+            };
+            await onSubmit(dataToSend);
         } catch (err) {
             setError(
                 "Failed to submit. Please check the data and try again."

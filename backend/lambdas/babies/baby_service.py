@@ -6,7 +6,7 @@ POST /babies, GET /babies, GET /babies/{id}, PUT /babies/{id}, DELETE /babies/{i
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import uuid
 import boto3
@@ -78,8 +78,16 @@ def lambda_handler(event, context):
         if not valid:
             return response(400, {"error": msg})
 
+        # Normalize numeric types
+        for key in ['birthWeight', 'birthHeight', 'gestationalWeek']:
+            if key in data and data[key] not in (None, ""):
+                try:
+                    data[key] = int(data[key])
+                except (ValueError, TypeError):
+                    pass
+
         baby_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         baby_item = {
             'babyId': baby_id,
             'userId': user_id,
@@ -139,6 +147,15 @@ def lambda_handler(event, context):
         valid, msg = validate_baby_data(data, require_all=False)
         if not valid:
             return response(400, {"error": msg})
+
+        # Normalize numeric types
+        for key in ['birthWeight', 'birthHeight', 'gestationalWeek']:
+            if key in data and data[key] not in (None, ""):
+                try:
+                    data[key] = int(data[key])
+                except (ValueError, TypeError):
+                    pass
+
         try:
             result = table.get_item(Key={'babyId': baby_id})
             baby = result.get('Item')
@@ -148,7 +165,7 @@ def lambda_handler(event, context):
                 'name', 'dateOfBirth', 'gender', 'premature', 'gestationalWeek', 'birthWeight', 'birthHeight']}
             if not update_fields:
                 return response(400, {"error": "No valid fields to update"})
-            update_fields['modifiedAt'] = datetime.utcnow().isoformat()
+            update_fields['modifiedAt'] = datetime.now(timezone.utc).isoformat()
 
             # Map reserved attribute names
             attribute_names = {}
@@ -189,7 +206,7 @@ def lambda_handler(event, context):
                 UpdateExpression='SET isActive = :inactive, modifiedAt = :modified',
                 ExpressionAttributeValues={
                     ':inactive': False,
-                    ':modified': datetime.utcnow().isoformat()
+                    ':modified': datetime.now(timezone.utc).isoformat()
                 }
             )
             return response(200, {"message": "Baby deleted", "babyId": baby_id})

@@ -186,7 +186,16 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
                     <PrimaryButton
                         variant="primary"
                         className="flex-1"
-                        onClick={() => onSave(formData)}
+                        onClick={() => {
+                            const dataToSend = {
+                                ...formData,
+                                birthWeight: formData.birthWeight ? Number(formData.birthWeight) : undefined,
+                                birthHeight: formData.birthHeight ? Number(formData.birthHeight) : undefined,
+                                gestationalWeek: formData.gestationalWeek ? Number(formData.gestationalWeek) : undefined,
+                            };
+                            console.log("Saving data:", dataToSend);
+                            onSave(dataToSend);
+                        }}
                         type="button"
                     >
                         Save Changes

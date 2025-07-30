@@ -12,9 +12,8 @@ backend/__pycache__/
 backend/*.pyc
 backend/.env*
 backend/*.log
-backend/lambdas/babies2/jwt
-backend/lambdas/babies2/PyJWT*
 backend/layers/percentiles/python
+backend/tests/
 
 
 # --- Logs ---
