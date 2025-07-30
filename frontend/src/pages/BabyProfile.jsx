@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getBabyById } from "../services/babyApi";
 import { updateBaby } from "../services/babyApi";
+import { deleteBaby } from "../services/babyApi";
 import PrimaryButton from "../components/PrimaryButton";
 import BabyProfileForm from "../components/BabyProfileForm";
 
@@ -77,6 +78,24 @@ const BabyProfile = () => {
         setError("");
     };
 
+    // Handle to delete baby profile
+    const handleDelete = async () => {
+        if (window.confirm("Are you sure you want to delete this baby profile? This action cannot be undone.")) {
+            try {
+                setLoading(true);
+                await deleteBaby(babyId);
+                console.log("🔍 Baby profile deleted successfully");
+                // Redirect to dashboard or show success message
+                window.location.href = "/dashboard";
+            } catch (err) {
+                console.error("Error deleting baby profile:", err);
+                setError("Failed to delete baby profile. Please try again.");
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6 flex items-center justify-center">
@@ -145,7 +164,7 @@ const BabyProfile = () => {
                                 Add Growth Data
                             </PrimaryButton>
                         </Link>
-                        <PrimaryButton variant="danger" className="flex-1">
+                        <PrimaryButton variant="danger" className="flex-1" onClick={handleDelete}>
                             Delete Profile
                         </PrimaryButton>
                     </div>

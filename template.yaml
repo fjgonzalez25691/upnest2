@@ -271,6 +271,35 @@ Resources:
       CompatibleRuntimes:
         - python3.12
 
+  UpNest2BabyAdminFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: upnest2-baby-admin
+      CodeUri: backend/lambdas/babies/
+      Handler: baby_service_admin.lambda_handler
+      Description: UpNest2 Baby admin operations (hard delete, list all)
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Ref: BabiesTable
+      Events:
+        BabiesAll:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: UpNest2Api
+            Path: /babies/all
+            Method: GET
+        BabyHardDelete:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: UpNest2Api
+            Path: /babies/hard/{babyId}
+            Method: DELETE
+    Metadata:
+      SamResourceId: UpNest2BabyAdminFunction
+
 Outputs:
   ApiUrl:
     Description: "API Gateway endpoint URL"
@@ -295,3 +324,9 @@ Outputs:
     Value: !Ref UpNest2GrowthDataFunction
     Export:
       Name: !Sub "${AWS::StackName}-GrowthDataFunction"
+
+  BabyAdminFunctionName:
+    Description: "Baby Admin Lambda function name"
+    Value: !Ref UpNest2BabyAdminFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-BabyAdminFunction"
