@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from 'react-oidc-context'
 // Importing styles and main App component
 import './index.css'
+import 'react-datepicker/dist/react-datepicker.css';
 // Importing the main App component
 import App from './App.jsx'
 

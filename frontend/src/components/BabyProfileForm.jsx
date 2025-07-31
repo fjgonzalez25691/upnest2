@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import PrimaryButton from "./PrimaryButton";
 import TextBox from "./TextBox";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
     const [formData, setFormData] = useState(baby ? { ...baby } : {});
@@ -87,16 +89,34 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
                         required
                     />
 
-                    <TextBox
-                        label="Date of Birth"
-                        name="dateOfBirth"
-                        value={formData.dateOfBirth || ""}
-                        onChange={handleChange}
-                        editable={isEditable}
-                        type="date"
-                        required
-                        lang="en"
-                    />
+                    {isEditable ? (
+  <div>
+    <label className="textbox-label" htmlFor="dateOfBirth">Date of Birth</label>
+    <DatePicker
+      id="dateOfBirth"
+      name="dateOfBirth"
+      selected={formData.dateOfBirth ? new Date(formData.dateOfBirth) : null}
+      onChange={date => handleChange({
+        target: {
+          name: "dateOfBirth",
+          value: date ? date.toISOString().slice(0, 10) : ""
+        }
+      })}
+      dateFormat="yyyy-MM-dd"
+      className="textbox-input-edit w-full"
+      placeholderText="YYYY-MM-DD"
+      required
+    />
+  </div>
+) : (
+  <TextBox
+    label="Date of Birth"
+    name="dateOfBirth"
+    value={formData.dateOfBirth || ""}
+    editable={false}
+    type="date"
+  />
+)}
 
                     <TextBox
                         label="Gender"
