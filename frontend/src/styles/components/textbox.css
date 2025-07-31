@@ -16,16 +16,18 @@
   }
 
   .textbox-input-edit {
-    @apply textbox-base border-blue-100;
+    @apply textbox-base border-blue-200;
     background: linear-gradient(to right, #eff6ff, #f0f9ff);
     @apply focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1); /* Inner shadow */
   }
 
   .textbox-input-edit-number {
-    @apply textbox-base border-green-100;
+    @apply textbox-base border-green-200;
     background: var(--gradient-number);
     @apply focus:ring-2 focus:ring-emerald-500 focus:border-transparent;
-  }
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1); /* Inner shadow */
+  } 
 
   .textbox-readonly {
     @apply textbox-base border-gray-100 cursor-not-allowed;
@@ -36,7 +38,9 @@
     @apply textbox-base border-blue-100 bg-white;
     @apply focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
     @apply hover:border-blue-200;
-    background: var(--gradient-select)
+    background: var(--gradient-select);
+    @apply focus:ring-2 focus:ring-purple-500 focus:border-transparent;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1)
   }
 
   .textbox-readonly-block {

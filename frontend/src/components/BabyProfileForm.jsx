@@ -115,6 +115,7 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
     value={formData.dateOfBirth || ""}
     editable={false}
     type="date"
+    required
   />
 )}
 
