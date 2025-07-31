@@ -180,6 +180,9 @@ def lambda_handler(event, context):
             'createdAt': now,
             'modifiedAt': now
         }
+        # In POST /babies (right before table.put_item)
+        logger.info(f"[POST] Data before save: {data} (types: { {k: type(v).__name__ for k,v in data.items()} })")
+        logger.info(f"[POST] Baby item to save: {baby_item} (types: { {k: type(v).__name__ for k,v in baby_item.items()} })")
         try:
             table.put_item(Item=baby_item)
             return response(201, {"message": "Baby profile created", "baby": baby_item})
@@ -244,6 +247,10 @@ def lambda_handler(event, context):
             
             update_fields['modifiedAt'] = datetime.now(timezone.utc).isoformat()
             update_expr, expr_values, attribute_names = build_update_expression(update_fields)
+
+            # In PUT /babies/{babyId} (right before table.update_item)
+            logger.info(f"[PUT] Data before update: {data} (types: { {k: type(v).__name__ for k,v in data.items()} })")
+            logger.info(f"[PUT] Update fields: {update_fields} (types: { {k: type(v).__name__ for k,v in update_fields.items()} })")
 
             table.update_item(
                 Key={'babyId': baby_id},
