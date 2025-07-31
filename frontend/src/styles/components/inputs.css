@@ -1,0 +1,75 @@
+/* /home/fjgaparicio/upnest2/frontend/src/styles/components/inputs.css */
+
+/* Utilidades atómicas */
+@utility input-base {
+  @apply w-full p-4 rounded-xl transition-all duration-200 outline-none border;
+}
+
+/* Componentes de input */
+@layer components {
+  /* Base input styles */
+
+  /* Input variants */
+  .input-default {
+    @apply input-base border-blue-100 bg-white;
+    @apply focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    @apply hover:border-blue-200;
+  }
+
+  .input-numeric {
+    @apply input-base border-emerald-100 bg-white;
+    @apply focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500;
+    @apply hover:border-emerald-200;
+  }
+
+  .input-edit {
+    @apply input-base border-blue-100;
+    background: linear-gradient(to right, #eff6ff, #f0f9ff);
+    @apply focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  }
+
+  .input-edit-numeric {
+    @apply input-base border-green-100;
+    background: linear-gradient(to right, #f0fdf4, #ecfdf5);
+    @apply focus:ring-2 focus:ring-emerald-500 focus:border-transparent;
+  }
+
+  .input-readonly {
+    @apply input-base border-gray-100 cursor-not-allowed text-gray-700;
+    background: linear-gradient(to right, #f9fafb, #f1f5f9);
+  }
+
+  .input-error {
+    @apply border-red-300;
+    @apply focus:border-red-500 focus:ring-red-500;
+  }
+
+  /* Select styles */
+  .select-base {
+    @apply input-base border-blue-100 bg-white;
+    @apply focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    @apply hover:border-blue-200;
+  }
+
+  /* Input group styles */
+  .input-group {
+    @apply space-y-2;
+  }
+
+  .input-label {
+    @apply block text-sm font-semibold text-gray-700;
+  }
+
+  .input-label-required::after {
+    @apply text-red-500 ml-1;
+    content: "*";
+  }
+
+  .input-error-message {
+    @apply text-red-500 text-sm mt-1;
+  }
+
+  .input-suffix {
+    @apply absolute right-4 top-4 text-gray-500 text-sm pointer-events-none;
+  }
+}

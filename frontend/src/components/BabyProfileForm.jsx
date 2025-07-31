@@ -2,6 +2,7 @@
 // Reusable component for displaying baby profile information in form layout
 import React, { useState } from "react";
 import PrimaryButton from "./PrimaryButton";
+import TextInput from "./TextInput";
 
 const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
     const [formData, setFormData] = useState(baby ? { ...baby } : {});
@@ -74,12 +75,13 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
                         {isEditable ? (
-                            <input
-                                type="text"
+                            <TextInput
+                                label="Full Name"
                                 name="name"
                                 value={formData.name || ""}
                                 onChange={handleChange}
-                                className="w-full p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                required
+                                variant="edit"
                             />
                         ) : (
                             <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">

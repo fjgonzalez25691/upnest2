@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./styles/components/buttons.css";
+@import "./styles/components/inputs.css";
 /* Estilos personalizados para la aplicación */
 @theme {
   --font-display: "Inter", "sans-serif";
@@ -22,27 +23,51 @@
   --color-gradient-cancel: linear-gradient(to right, #6b7280, #4b5563);
 }
 
-/*
 @layer base {
   body {
-    @apply bg-(--color-background) text-(--color-text-main) font-display;
+    @apply bg-gray-50 text-gray-900;
+    font-family: var(--font-display);
+    background-color: var(--color-background);
+    color: var(--color-text-main);
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-semibold text-(--color-text-main);
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold;
+    color: var(--color-text-main);
   }
 
   p {
-    @apply text-(--color-text-subtle);
+    color: var(--color-text-subtle);
   }
 
   a {
-    @apply text-(--color-primary) hover:text-(--color-secondary) transition-colors duration-300;
+    color: var(--color-primary);
+    @apply transition-colors duration-300;
+  }
+
+  a:hover {
+    color: var(--color-secondary);
+  }
+
+  /* Base styles for form elements */
+  input, select, textarea {
+    font-family: inherit;
+  }
+
+  button {
+    font-family: inherit;
+  }
+
+  /* Utility classes that work with your existing buttons */
+  .rounded-card {
+    @apply rounded-3xl;
+  }
+
+  .rounded-input {
+    @apply rounded-xl;
+  }
+
+  .shadow-card {
+    @apply shadow-lg hover:shadow-xl;
   }
 }
-*/

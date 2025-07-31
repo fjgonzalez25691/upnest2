@@ -68,7 +68,7 @@ const Dashboard = () => {
 
         {/* Welcome message */}
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-3xl p-8 mb-8 shadow-lg">
-          <h2 className="text-2xl font-semibold mb-3">
+          <h2 className="text-2xl font-semibold mb-3 text-white">
             Welcome back, {name || 'Parent'}!
           </h2>
           <p className="text-blue-100 text-lg">
