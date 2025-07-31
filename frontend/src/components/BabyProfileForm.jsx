@@ -5,6 +5,7 @@ import PrimaryButton from "./PrimaryButton";
 
 const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
     const [formData, setFormData] = useState(baby ? { ...baby } : {});
+    const [errors, setErrors] = useState({});
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -26,6 +27,19 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
             return `${months} months and ${days} days old`;
         }
         return `${days} days old`;
+    };
+
+    const validate = (data) => {
+        const errs = {};
+        if (data.premature) {
+            if (!data.gestationalWeek) {
+                errs.gestationalWeek = "Required";
+            } else if (data.gestationalWeek < 20 || data.gestationalWeek > 37) {
+                errs.gestationalWeek = "Must be between 20 and 37";
+            }
+        }
+        // Add more validation rules as needed
+        return errs;
     };
 
     if (!baby) {
@@ -112,11 +126,54 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
 
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Birth Status</label>
-                        <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
-                            <p className="text-gray-800 font-medium">
-                                {baby.premature ? `Premature (${baby.gestationalWeek} weeks)` : 'Full Term'}
-                            </p>
-                        </div>
+                        {isEditable ? (
+                            <div className="flex items-center gap-4">
+                                <input
+                                    type="checkbox"
+                                    name="premature"
+                                    checked={!!formData.premature}
+                                    onChange={e => {
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            premature: e.target.checked,
+                                            gestationalWeek: e.target.checked ? prev.gestationalWeek : undefined
+                                        }));
+                                    }}
+                                    id="premature-checkbox"
+                                />
+                                <label htmlFor="premature-checkbox" className="mr-2">Premature</label>
+                                {formData.premature && (
+                                    <div>
+                                        <input
+                                            type="number"
+                                            name="gestationalWeek"
+                                            min={20}
+                                            max={37}
+                                            value={formData.gestationalWeek || ""}
+                                            onChange={e => {
+                                                const value = Number(e.target.value);
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    gestationalWeek: value,
+                                                    premature: value < 38
+                                                }));
+                                            }}
+                                            placeholder="Gestational weeks"
+                                            className="w-32 p-2 ml-2 border rounded"
+                                        />
+                                        {errors.gestationalWeek && (
+                                            <span className="text-red-500 text-xs ml-2">{errors.gestationalWeek}</span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
+                                <p className="text-gray-800 font-medium">
+                                    {baby.premature ? `Premature (${baby.gestationalWeek} weeks)` : 'Full Term'}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -193,7 +250,9 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
                                 birthHeight: formData.birthHeight ? Number(formData.birthHeight) : undefined,
                                 gestationalWeek: formData.gestationalWeek ? Number(formData.gestationalWeek) : undefined,
                             };
-                            console.log("Saving data:", dataToSend);
+                            const validationErrors = validate(dataToSend);
+                            setErrors(validationErrors);
+                            if (Object.keys(validationErrors).length > 0) return;
                             onSave(dataToSend);
                         }}
                         type="button"

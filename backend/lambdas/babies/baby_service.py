@@ -61,6 +61,87 @@ def validate_baby_data(data, require_all=True):
     return True, ""
 
 
+def normalize_baby_data(data):
+    """
+    Ensures consistency between 'premature' and 'gestationalWeek' fields.
+    - If not premature, gestationalWeek is set to 40.
+    - If gestationalWeek >= 38, premature is set to False and gestationalWeek to 40.
+    - If premature, gestationalWeek must be between 20 and 37.
+    """
+    gestational_week = data.get("gestationalWeek")
+    premature = data.get("premature")
+
+    if gestational_week is not None and gestational_week != "":
+        try:
+            gestational_week = int(gestational_week)
+        except (ValueError, TypeError):
+            gestational_week = None
+    else:
+        gestational_week = None
+
+    if not premature:
+        data["gestationalWeek"] = 40
+        data["premature"] = False
+    elif gestational_week is not None and gestational_week >= 38:
+        data["premature"] = False
+        data["gestationalWeek"] = 40
+    elif premature and (gestational_week is None or not (20 <= gestational_week <= 37)):
+        raise ValueError("Gestational week must be between 20 and 37 for premature babies.")
+    else:
+        data["gestationalWeek"] = gestational_week
+
+    return data
+
+
+def normalize_numeric_fields(data):
+    """Convert numeric string fields to integers where possible."""
+    for key in ['birthWeight', 'birthHeight', 'gestationalWeek']:
+        if key in data and data[key] not in (None, ""):
+            try:
+                data[key] = int(data[key])
+            except (ValueError, TypeError):
+                pass
+    return data
+
+
+def get_baby_if_accessible(baby_id, user_id):
+    """Get baby if it exists and is accessible to the user."""
+    result = table.get_item(Key={'babyId': baby_id})
+    baby = result.get('Item')
+    if not baby or baby.get('userId') != user_id or not baby.get('isActive', True):
+        return None
+    return baby
+
+
+def build_update_expression(update_fields):
+    """Build DynamoDB update expression handling reserved keywords."""
+    attribute_names = {}
+    update_expr_parts = []
+    
+    for k in update_fields:
+        if k == "name":  # Reserved keyword
+            attribute_names["#name"] = "name"
+            update_expr_parts.append("#name = :name")
+        else:
+            update_expr_parts.append(f"{k} = :{k}")
+    
+    update_expr = "SET " + ", ".join(update_expr_parts)
+    expr_values = {f":{k}": v for k, v in update_fields.items()}
+    
+    return update_expr, expr_values, attribute_names if attribute_names else None
+
+
+def process_baby_data(data):
+    """Process and normalize baby data for create/update operations."""
+    try:
+        data = normalize_baby_data(data)
+    except ValueError as ve:
+        raise ValueError(str(ve))
+    
+    data = normalize_numeric_fields(data)
+    return data
+
+
 def lambda_handler(event, context):
     method = event['httpMethod']
     path = event['path']
@@ -78,13 +159,10 @@ def lambda_handler(event, context):
         if not valid:
             return response(400, {"error": msg})
 
-        # Normalize numeric types
-        for key in ['birthWeight', 'birthHeight', 'gestationalWeek']:
-            if key in data and data[key] not in (None, ""):
-                try:
-                    data[key] = int(data[key])
-                except (ValueError, TypeError):
-                    pass
+        try:
+            data = process_baby_data(data)
+        except ValueError as ve:
+            return response(400, {"error": str(ve)})
 
         baby_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
@@ -128,10 +206,10 @@ def lambda_handler(event, context):
         baby_id = extract_baby_id(event)
         if not baby_id:
             return response(400, {"error": "Baby ID is required"})
+        
         try:
-            result = table.get_item(Key={'babyId': baby_id})
-            baby = result.get('Item')
-            if not baby or baby.get('userId') != user_id or not baby.get('isActive', True):
+            baby = get_baby_if_accessible(baby_id, user_id)
+            if not baby:
                 return response(404, {"error": "Baby not found"})
             return response(200, {"baby": baby})
         except Exception as e:
@@ -143,48 +221,35 @@ def lambda_handler(event, context):
         baby_id = extract_baby_id(event)
         if not baby_id:
             return response(400, {"error": "Baby ID is required"})
+        
         data = parse_body(event)
         valid, msg = validate_baby_data(data, require_all=False)
         if not valid:
             return response(400, {"error": msg})
 
-        # Normalize numeric types
-        for key in ['birthWeight', 'birthHeight', 'gestationalWeek']:
-            if key in data and data[key] not in (None, ""):
-                try:
-                    data[key] = int(data[key])
-                except (ValueError, TypeError):
-                    pass
+        try:
+            data = process_baby_data(data)
+        except ValueError as ve:
+            return response(400, {"error": str(ve)})
 
         try:
-            result = table.get_item(Key={'babyId': baby_id})
-            baby = result.get('Item')
-            if not baby or baby.get('userId') != user_id or not baby.get('isActive', True):
+            baby = get_baby_if_accessible(baby_id, user_id)
+            if not baby:
                 return response(404, {"error": "Baby not found"})
+
             update_fields = {k: v for k, v in data.items() if k in [
                 'name', 'dateOfBirth', 'gender', 'premature', 'gestationalWeek', 'birthWeight', 'birthHeight']}
             if not update_fields:
                 return response(400, {"error": "No valid fields to update"})
+            
             update_fields['modifiedAt'] = datetime.now(timezone.utc).isoformat()
-
-            # Map reserved attribute names
-            attribute_names = {}
-            update_expr_parts = []
-            for k in update_fields:
-                if k == "name":
-                    attribute_names["#name"] = "name"
-                    update_expr_parts.append("#name = :name")
-                else:
-                    update_expr_parts.append(f"{k} = :{k}")
-
-            update_expr = "SET " + ", ".join(update_expr_parts)
-            expr_values = {f":{k}": v for k, v in update_fields.items()}
+            update_expr, expr_values, attribute_names = build_update_expression(update_fields)
 
             table.update_item(
                 Key={'babyId': baby_id},
                 UpdateExpression=update_expr,
                 ExpressionAttributeValues=expr_values,
-                ExpressionAttributeNames=attribute_names if attribute_names else None
+                ExpressionAttributeNames=attribute_names
             )
             return response(200, {"message": "Baby updated", "babyId": baby_id})
         except Exception as e:
@@ -196,11 +261,12 @@ def lambda_handler(event, context):
         baby_id = extract_baby_id(event)
         if not baby_id:
             return response(400, {"error": "Baby ID is required"})
+        
         try:
-            result = table.get_item(Key={'babyId': baby_id})
-            baby = result.get('Item')
-            if not baby or baby.get('userId') != user_id or not baby.get('isActive', True):
+            baby = get_baby_if_accessible(baby_id, user_id)
+            if not baby:
                 return response(404, {"error": "Baby not found"})
+
             table.update_item(
                 Key={'babyId': baby_id},
                 UpdateExpression='SET isActive = :inactive, modifiedAt = :modified',
