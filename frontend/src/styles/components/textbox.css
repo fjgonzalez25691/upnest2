@@ -1,0 +1,92 @@
+/* /home/fjgaparicio/upnest2/frontend/src/styles/components/textbox.css */
+
+/* Utilidades atómicas */
+@utility textbox-base {
+  @apply w-full p-4 rounded-xl transition-all duration-200 outline-none text-gray-800 font-medium border;
+}
+
+/* Componentes de textbox */
+@layer components {
+  /* TextBox variantes */
+
+  .textbox-input {
+    @apply textbox-base border-blue-100 bg-white;
+    @apply focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    @apply hover:border-blue-200;
+  }
+
+  .textbox-input-edit {
+    @apply textbox-base border-blue-100;
+    background: linear-gradient(to right, #eff6ff, #f0f9ff);
+    @apply focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  }
+
+  .textbox-input-edit-number {
+    @apply textbox-base border-green-100;
+    background: var(--gradient-number);
+    @apply focus:ring-2 focus:ring-emerald-500 focus:border-transparent;
+  }
+
+  .textbox-readonly {
+    @apply textbox-base border-gray-100 cursor-not-allowed;
+    background: linear-gradient(to right, #f9fafb, #f1f5f9);
+  }
+
+  .textbox-select {
+    @apply textbox-base border-blue-100 bg-white;
+    @apply focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    @apply hover:border-blue-200;
+    background: var(--gradient-select)
+  }
+
+  .textbox-readonly-block {
+    @apply p-4 rounded-xl font-medium border;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    /* Elimina cualquier bg-gradient o border-color aquí */
+  }
+
+  .textbox-group {
+    @apply space-y-2;
+  }
+
+  .textbox-label {
+    @apply block text-sm font-semibold text-gray-700;
+  }
+
+  .textbox-label-required::after {
+    @apply text-red-500 ml-1;
+    content: "*";
+  }
+
+  .textbox-error-message {
+    @apply text-red-500 text-sm mt-1;
+  }
+
+  .textbox-suffix {
+    @apply absolute right-4 top-4 text-gray-500 text-sm pointer-events-none;
+  }
+
+  /* Fondos para solo lectura según tipo */
+  .textbox-bg-string {
+    background: var(--gradient-string);
+    @apply border-blue-100;
+  }
+  .textbox-bg-number {
+    background: var(--gradient-number);
+    @apply border-green-100;
+  }
+  .textbox-bg-date {
+    background: var(--gradient-date);
+    @apply border-gray-100;
+  }
+  .textbox-bg-select {
+    background: var(--gradient-select);
+    @apply border-purple-100;
+  }
+  .textbox-bg-default {
+    background: var(--gradient-string);
+    @apply border-blue-100;
+  }
+}

@@ -2,7 +2,7 @@
 // Reusable component for displaying baby profile information in form layout
 import React, { useState } from "react";
 import PrimaryButton from "./PrimaryButton";
-import TextInput from "./TextInput";
+import TextBox from "./TextBox";
 
 const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
     const [formData, setFormData] = useState(baby ? { ...baby } : {});
@@ -43,6 +43,9 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
         return errs;
     };
 
+    const formatDateISO = date =>
+      date ? new Date(date).toISOString().slice(0, 10) : "";
+
     if (!baby) {
         return (
             <div className="bg-white rounded-3xl shadow-lg p-8 border border-blue-100">
@@ -72,170 +75,90 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
             <div className="grid gap-6 md:grid-cols-2">
                 {/* Left Column */}
                 <div className="space-y-6">
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
-                        {isEditable ? (
-                            <TextInput
-                                label="Full Name"
-                                name="name"
-                                value={formData.name || ""}
-                                onChange={handleChange}
-                                required
-                                variant="edit"
-                            />
-                        ) : (
-                            <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
-                                <p className="text-gray-800 font-medium">{baby.name}</p>
-                            </div>
-                        )}
-                    </div>
+                    <TextBox
+                        label="Name"
+                        name="name"
+                        value={formData.name || ""}
+                        onChange={handleChange}
+                        editable={isEditable}
+                        required
+                    />
 
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Date of Birth</label>
-                        {isEditable ? (
-                            <input
-                                type="date"
-                                name="dateOfBirth"
-                                value={formData.dateOfBirth || ""}
-                                onChange={handleChange}
-                                className="w-full p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                            />
-                        ) : (
-                            <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
-                                <p className="text-gray-800 font-medium">{new Date(baby.dateOfBirth).toLocaleDateString()}</p>
-                            </div>
-                        )}
-                    </div>
+                    <TextBox
+                        label="Date of Birth"
+                        name="dateOfBirth"
+                        value={formData.dateOfBirth || ""}
+                        onChange={handleChange}
+                        editable={isEditable}
+                        type="date"
+                        required
+                        lang="en"
+                    />
 
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Gender</label>
-                        {isEditable ? (
-                            <select
-                                name="gender"
-                                value={formData.gender || ""}
-                                onChange={handleChange}
-                                className="w-full p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                            >
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
-                            </select>
-                        ) : (
-                            <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
-                                <p className="text-gray-800 font-medium capitalize">{baby.gender}</p>
-                            </div>
-                        )}
-                    </div>
+                    <TextBox
+                        label="Gender"
+                        name="gender"
+                        value={formData.gender || ""}
+                        onChange={handleChange}
+                        editable={isEditable}
+                        type="select"
+                        options={[
+                            { value: "male", label: "Male" },
+                            { value: "female", label: "Female" }
+                        ]}
+                        required
+                    />
 
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Birth Status</label>
-                        {isEditable ? (
-                            <div className="flex items-center gap-4">
-                                <input
-                                    type="checkbox"
-                                    name="premature"
-                                    checked={!!formData.premature}
-                                    onChange={e => {
-                                        setFormData(prev => ({
-                                            ...prev,
-                                            premature: e.target.checked,
-                                            gestationalWeek: e.target.checked ? prev.gestationalWeek : undefined
-                                        }));
-                                    }}
-                                    id="premature-checkbox"
-                                />
-                                <label htmlFor="premature-checkbox" className="mr-2">Premature</label>
-                                {formData.premature && (
-                                    <div>
-                                        <input
-                                            type="number"
-                                            name="gestationalWeek"
-                                            min={20}
-                                            max={37}
-                                            value={formData.gestationalWeek || ""}
-                                            onChange={e => {
-                                                const value = Number(e.target.value);
-                                                setFormData(prev => ({
-                                                    ...prev,
-                                                    gestationalWeek: value,
-                                                    premature: value < 38
-                                                }));
-                                            }}
-                                            placeholder="Gestational weeks"
-                                            className="w-32 p-2 ml-2 border rounded"
-                                        />
-                                        {errors.gestationalWeek && (
-                                            <span className="text-red-500 text-xs ml-2">{errors.gestationalWeek}</span>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
-                                <p className="text-gray-800 font-medium">
-                                    {baby.premature ? `Premature (${baby.gestationalWeek} weeks)` : 'Full Term'}
-                                </p>
-                            </div>
-                        )}
-                    </div>
+                    <TextBox
+                        label="Birth Status"
+                        name="birthStatus"
+                        value={baby.premature ? `Premature (${baby.gestationalWeek} weeks)` : 'Full Term'}
+                        editable={false}
+                        type="string"
+                    />
                 </div>
 
                 {/* Right Column */}
                 <div className="space-y-6">
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Birth Weight</label>
-                        {isEditable ? (
-                            <div className="relative">
-                                <input
-                                    type="number"
-                                    name="birthWeight"
-                                    value={formData.birthWeight || ""}
-                                    onChange={handleChange}
-                                    placeholder="Enter weight"
-                                    className="w-full p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
-                                />
-                                <span className="absolute right-4 top-4 text-gray-500 text-sm">grams</span>
-                            </div>
-                        ) : (
-                            <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                                <p className="text-gray-800 font-medium">{baby.birthWeight ? `${baby.birthWeight} grams` : 'Not recorded'}</p>
-                            </div>
-                        )}
-                    </div>
+                    <TextBox
+                        label="Birth Weight"
+                        name="birthWeight"
+                        type="number"
+                        value={formData.birthWeight || ""}
+                        onChange={handleChange}
+                        editable={isEditable}
+                        suffix="g"
+                        placeholder="Enter weight"
+                        renderValue={v => v ? `${v} g` : "Not recorded"}
+                    />
 
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Birth Height</label>
-                        {isEditable ? (
-                            <div className="relative">
-                                <input
-                                    type="number"
-                                    name="birthHeight"
-                                    value={formData.birthHeight || ""}
-                                    onChange={handleChange}
-                                    placeholder="Enter height"
-                                    className="w-full p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
-                                />
-                                <span className="absolute right-4 top-4 text-gray-500 text-sm">cm</span>
-                            </div>
-                        ) : (
-                            <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                                <p className="text-gray-800 font-medium">{baby.birthHeight ? `${baby.birthHeight} cm` : 'Not recorded'}</p>
-                            </div>
-                        )}
-                    </div>
+                    <TextBox
+                        label="Birth Height"
+                        name="birthHeight"
+                        type="number"
+                        value={formData.birthHeight || ""}
+                        onChange={handleChange}
+                        editable={isEditable}
+                        suffix="cm"
+                        placeholder="Enter height"
+                        renderValue={v => v ? `${v} cm` : "Not recorded"}
+                    />
 
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Age</label>
-                        <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
-                            <p className="text-gray-800 font-medium">{calculateAge(baby.dateOfBirth)}</p>
-                        </div>
-                    </div>
+                    <TextBox
+                        label="Age"
+                        name="age"
+                        value={calculateAge(baby.dateOfBirth)}
+                        editable={false}
+                        type="string"
+                    />
 
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Profile Created</label>
-                        <div className="p-4 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl border border-gray-100">
-                            <p className="text-gray-800 font-medium">{new Date(baby.createdAt).toLocaleDateString()}</p>
-                        </div>
-                    </div>
+                    <TextBox
+                        label="Profile Created"
+                        name="profileCreated"
+                        value={formatDateISO(baby.createdAt)}
+                        editable={false}
+                        type="date"
+                    />
                 </div>
             </div>
 
