@@ -112,13 +112,56 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
                         required
                     />
 
-                    <TextBox
-                        label="Birth Status"
-                        name="birthStatus"
-                        value={baby.premature ? `Premature (${baby.gestationalWeek} weeks)` : 'Full Term'}
-                        editable={false}
-                        type="string"
-                    />
+                    {isEditable ? (
+  <div>
+    <label className="textbox-label">Birth Status</label>
+    <div className="flex items-center gap-4">
+      <input
+        type="checkbox"
+        id="premature"
+        name="premature"
+        checked={!!formData.premature}
+        onChange={handleChange}
+        className="mr-2"
+      />
+      <label htmlFor="premature" className="mr-4">Premature</label>
+      {formData.premature && (
+        <TextBox
+          label="Gestational Week"
+          name="gestationalWeek"
+          type="number"
+          value={formData.gestationalWeek || ""}
+          onChange={e => {
+            handleChange(e);
+            const week = Number(e.target.value);
+            // If gestational week is greater than 37, automatically set premature to false and clear week
+            if (week > 37) {
+              setFormData(prev => ({
+                ...prev,
+                premature: false,
+                gestationalWeek: ""
+              }));
+            }
+          }}
+          editable={isEditable}
+          min={20}
+          max={37}
+          required
+          suffix="weeks"
+          error={errors.gestationalWeek}
+        />
+      )}
+    </div>
+  </div>
+) : (
+  <TextBox
+    label="Birth Status"
+    name="birthStatus"
+    value={baby.premature ? `Premature (${baby.gestationalWeek} weeks)` : 'Full Term'}
+    editable={false}
+    type="string"
+  />
+)}
                 </div>
 
                 {/* Right Column */}
