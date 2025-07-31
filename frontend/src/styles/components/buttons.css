@@ -1,0 +1,38 @@
+@layer components {
+  .btn-base {
+    @apply rounded-xl px-6 py-4 font-semibold transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-white;
+  }
+
+  .btn-base:hover {
+    @apply shadow-xl;
+    filter: brightness(0.9);
+  }
+
+  .btn-primary {
+    background: var(--color-gradient-primary);
+  }
+
+  .btn-add {
+    background: var(--color-gradient-add);
+  }
+
+  .btn-edit {
+    background: var(--color-gradient-edit);
+  }
+
+  .btn-cancel {
+    background: var(--color-gradient-cancel);
+  }
+
+  .btn-success {
+    background: var(--color-gradient-success);
+  }
+
+  .btn-danger {
+    background: var(--color-gradient-danger);
+  }
+
+  .btn-ai {
+    background: var(--color-gradient-ai);
+  }
+}

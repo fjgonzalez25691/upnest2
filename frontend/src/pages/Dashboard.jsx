@@ -144,12 +144,12 @@ const Dashboard = () => {
                         <span className="text-gray-600 block">Gender</span>
                         <span className="font-semibold text-gray-800">{baby.gender}</span>
                       </div>
-                      {baby.premature && (
-                        <div className="col-span-2">
-                          <span className="text-gray-600 block">Gestational Age</span>
-                          <span className="font-semibold text-orange-600">{baby.gestationalWeek} weeks</span>
-                        </div>
-                      )}
+                      {/* Solo mostrar estado, sin detalles de semanas */}
+                      <div className="col-span-2 text-center">
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${baby.premature ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
+                          {baby.premature ? 'Premature' : 'Full Term'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
