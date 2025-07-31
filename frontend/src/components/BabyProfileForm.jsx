@@ -1,5 +1,5 @@
 // src/components/BabyProfileForm.jsx
-// Reusable component for displaying baby profile information in form layout
+// Reusable component for displaying baby profile information in a form layout
 import React, { useState } from "react";
 import PrimaryButton from "./PrimaryButton";
 import TextBox from "./TextBox";
@@ -16,6 +16,7 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
         }));
     };
 
+    // Calculates the baby's age based on the date of birth
     const calculateAge = (dateOfBirth) => {
         const today = new Date();
         const birth = new Date(dateOfBirth);
@@ -30,6 +31,7 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
         return `${days} days old`;
     };
 
+    // Validates the form data
     const validate = (data) => {
         const errs = {};
         if (data.premature) {
@@ -43,6 +45,7 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
         return errs;
     };
 
+    // Formats a date as YYYY-MM-DD (ISO)
     const formatDateISO = date =>
       date ? new Date(date).toISOString().slice(0, 10) : "";
 

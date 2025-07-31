@@ -12,7 +12,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Debug useEffect - añadido para troubleshooting
+  // Debug useEffect - added for troubleshooting
   useEffect(() => {
     console.log('🔍 Dashboard Debug:');
     console.log('🔍 User:', user);
@@ -144,7 +144,7 @@ const Dashboard = () => {
                         <span className="text-gray-600 block">Gender</span>
                         <span className="font-semibold text-gray-800">{baby.gender}</span>
                       </div>
-                      {/* Solo mostrar estado, sin detalles de semanas */}
+                      {/* Only show status, no gestational weeks details */}
                       <div className="col-span-2 text-center">
                         <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${baby.premature ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
                           {baby.premature ? 'Premature' : 'Full Term'}

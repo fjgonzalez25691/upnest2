@@ -2,8 +2,8 @@
 @import "./styles/components/buttons.css";
 @import "./styles/components/textbox.css";
 
-/* Para verficiar responsibidad, usar Responsively App*/
-/* Estilos personalizados para la aplicación */
+/* To check responsiveness, use Responsively App */
+/* Custom styles for the application */
 @theme {
   --font-display: "Inter", "sans-serif";
   --color-primary: #3B82F6;
@@ -15,7 +15,7 @@
   --color-surface: #FFFFFF;
   --color-text-main: #22223B;
   --color-text-subtle: #64748B;
-  /* Gradients for buttons*/
+  /* Gradients for buttons */
   --color-gradient-primary: linear-gradient(to right, #3b82f6, #2563eb);
   --color-gradient-edit: linear-gradient(to right, #a78bfa, #7c3aed);
   --color-gradient-success: linear-gradient(to right, #16a34a, #15803d);
@@ -23,7 +23,7 @@
   --color-gradient-danger: linear-gradient(to right, #f43f5e, #dc2626);
   --color-gradient-ai: linear-gradient(to right, #10b981, #059669);
   --color-gradient-cancel: linear-gradient(to right, #6b7280, #4b5563);
-  /* Gradients for text box */
+  /* Gradients for text boxes */
   --gradient-string: linear-gradient(to right, #eff6ff, #f0f9ff);
   --gradient-number: linear-gradient(to right, #f0fdf4, #ecfdf5);
   --gradient-date: linear-gradient(to right, #f9fafb, #f1f5f9);
@@ -65,7 +65,7 @@
     font-family: inherit;
   }
 
-  /* Utility classes that work with your existing buttons */
+  /* Utility classes for your custom buttons */
   .rounded-card {
     @apply rounded-3xl;
   }

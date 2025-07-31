@@ -1,13 +1,13 @@
 /* /home/fjgaparicio/upnest2/frontend/src/styles/components/textbox.css */
 
-/* Utilidades atómicas */
+/* Atomic utilities */
 @utility textbox-base {
   @apply w-full p-4 rounded-xl transition-all duration-200 outline-none text-gray-800 font-medium border;
 }
 
-/* Componentes de textbox */
+/* TextBox component styles */
 @layer components {
-  /* TextBox variantes */
+  /* TextBox variants */
 
   .textbox-input {
     @apply textbox-base border-blue-100 bg-white;
@@ -44,7 +44,7 @@
     min-height: 48px;
     display: flex;
     align-items: center;
-    /* Elimina cualquier bg-gradient o border-color aquí */
+    /* Remove any bg-gradient or border-color here */
   }
 
   .textbox-group {
@@ -68,7 +68,7 @@
     @apply absolute right-4 top-4 text-gray-500 text-sm pointer-events-none;
   }
 
-  /* Fondos para solo lectura según tipo */
+  /* Read-only backgrounds by type */
   .textbox-bg-string {
     background: var(--gradient-string);
     @apply border-blue-100;

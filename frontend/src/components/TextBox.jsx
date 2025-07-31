@@ -1,8 +1,8 @@
-// src/components/ui/TextBox.jsx
+// src/components/TextBox.jsx
 import React from "react";
 
 /**
- * TextBox: Componente polivalente para input, select o solo lectura.
+ * TextBox: Versatile component for input, select, or read-only display.
  */
 const TextBox = ({
   label,
@@ -22,7 +22,7 @@ const TextBox = ({
   renderValue,
   ...props
 }) => {
-  // Determina la clase base según el tipo y estado
+  // Determines the base class according to type and state
   const getTextboxClasses = () => {
     if (!editable) return `textbox-readonly ${className}`;
     if (type === "number") return `textbox-input-edit-number ${className}`;
@@ -30,7 +30,7 @@ const TextBox = ({
     return `textbox-input-edit ${className}`;
   };
 
-  // Mapeo de tipo a clase de fondo solo lectura
+  // Maps type to read-only background class
   const typeToBgClass = {
     number: "textbox-bg-number",
     date: "textbox-bg-date",
@@ -48,7 +48,7 @@ const TextBox = ({
         </label>
       )}
 
-      {/* Campo editable */}
+      {/* Editable field */}
       {editable ? (
         type === "select" ? (
           <select
@@ -89,7 +89,7 @@ const TextBox = ({
           </div>
         )
       ) : (
-        // Solo lectura visual
+        // Read-only visual block
         <div className={`textbox-readonly-block ${typeToBgClass[type] || typeToBgClass.default}`}>
           <span>
             {renderValue
