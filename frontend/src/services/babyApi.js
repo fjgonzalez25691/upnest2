@@ -14,6 +14,7 @@ const BASE_URL = "/babies";
  * @param {string} babyData.sex - Baby's sex ('male' or 'female')
  * @param {boolean} babyData.premature - Whether baby was premature
  * @param {number} babyData.gestationalWeek - Gestational week if premature
+ * @param {number} babyData.headCircumference - Birth head circumference in cm
  * @param {string} babyData.userId - User ID (will be added automatically)
  * @returns {Promise<Object>} Created baby data
  */

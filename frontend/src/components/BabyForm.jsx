@@ -15,6 +15,7 @@ const BabyForm = ({
         gestationalWeek: initialData.gestationalWeek || "",
         birthWeight: initialData.birthWeight || "",
         birthHeight: initialData.birthHeight || "",
+        headCircumference: initialData.headCircumference || "",
     });
     const [error, setError] = useState("");
 
@@ -30,11 +31,12 @@ const BabyForm = ({
         e.preventDefault();
         if (!onSubmit) return;
         try {
-            // Convierte los campos numéricos a Number antes de enviar
+            // Convert numeric fields to Number before sending
             const dataToSend = {
                 ...form,
                 birthWeight: form.birthWeight ? Number(form.birthWeight) : undefined,
                 birthHeight: form.birthHeight ? Number(form.birthHeight) : undefined,
+                headCircumference: form.headCircumference ? Number(form.headCircumference) : undefined,
                 gestationalWeek: form.gestationalWeek ? Number(form.gestationalWeek) : undefined,
             };
             await onSubmit(dataToSend);
@@ -143,6 +145,26 @@ const BabyForm = ({
                 />
             </div>
 
+            <div>
+                <label className="block font-semibold mb-2">Head Circumference (cm)</label>
+                <input
+                    type="number"
+                    name="headCircumference"
+                    value={form.headCircumference}
+                    onChange={e => {
+                        // Allows comma or dot as decimal separator
+                        const value = typeof e.target.value === "string"
+                            ? e.target.value.replace(",", ".").replace(/\s/g, "")
+                            : e.target.value;
+                        handleChange({ ...e, target: { ...e.target, value } });
+                    }}
+                    min={20}
+                    max={60}
+                    step="0.1"
+                    className="w-full p-4 rounded-xl border border-green-100"
+                />
+            </div>
+
             <div className="flex gap-4 mt-6">
                 <PrimaryButton variant="add" type="submit" className="flex-1">
                     {submitLabel}
@@ -152,10 +174,10 @@ const BabyForm = ({
                     type="button"
                     className="flex-1"
                     onClick={() => {
-                        // Acción recomendada: navegar al dashboard o limpiar el formulario
-                        // Si usas react-router-dom:
+                        // Recommended action: navigate to dashboard or clear the form
+                        // If you use react-router-dom:
                         window.location.href = "/dashboard";
-                        // O si tienes un callback onCancel:
+                        // Or if you have an onCancel callback:
                         // onCancel && onCancel();
                     }}
                 >

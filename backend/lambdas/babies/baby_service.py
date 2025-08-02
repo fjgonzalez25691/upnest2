@@ -94,8 +94,19 @@ def normalize_baby_data(data):
 
 
 def normalize_numeric_fields(data):
-    """Convert numeric string fields to integers where possible."""
-    for key in ['birthWeight', 'birthHeight', 'gestationalWeek']:
+    """
+    Convert numeric string fields to float (for birthHeight and headCircumference)
+    and int (for birthWeight, gestationalWeek) where appropriate.
+    """
+    # Convert to float for decimal fields
+    for key in ['birthHeight', 'headCircumference']:
+        if key in data and data[key] not in (None, ""):
+            try:
+                data[key] = float(data[key])
+            except (ValueError, TypeError):
+                pass
+    # Convert to int for integer fields
+    for key in ['birthWeight', 'gestationalWeek']:
         if key in data and data[key] not in (None, ""):
             try:
                 data[key] = int(data[key])
@@ -176,6 +187,7 @@ def lambda_handler(event, context):
             'gestationalWeek': data.get('gestationalWeek'),
             'birthWeight': data.get('birthWeight'),
             'birthHeight': data.get('birthHeight'),
+            'headCircumference': data.get('headCircumference'),  # Added
             'isActive': True,
             'createdAt': now,
             'modifiedAt': now
@@ -241,7 +253,7 @@ def lambda_handler(event, context):
                 return response(404, {"error": "Baby not found"})
 
             update_fields = {k: v for k, v in data.items() if k in [
-                'name', 'dateOfBirth', 'gender', 'premature', 'gestationalWeek', 'birthWeight', 'birthHeight']}
+                'name', 'dateOfBirth', 'gender', 'premature', 'gestationalWeek', 'birthWeight', 'birthHeight', 'headCircumference']}
             if not update_fields:
                 return response(400, {"error": "No valid fields to update"})
             
