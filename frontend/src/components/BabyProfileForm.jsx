@@ -5,6 +5,7 @@ import PrimaryButton from "./PrimaryButton";
 import TextBox from "./TextBox";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { calculateAge } from "../utils/dateUtils.js";
 
 const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
   const [formData, setFormData] = useState(baby ? { ...baby } : {});
@@ -16,21 +17,6 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
       ...prevData,
       [name]: type === "checkbox" ? checked : value,
     }));
-  };
-
-  // Calculates the baby's age based on the date of birth
-  const calculateAge = (dateOfBirth) => {
-    const today = new Date();
-    const birth = new Date(dateOfBirth);
-    const diffTime = Math.abs(today - birth);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const months = Math.floor(diffDays / 30.44);
-    const days = Math.floor(diffDays % 30.44);
-
-    if (months > 0) {
-      return `${months} months and ${days} days old`;
-    }
-    return `${days} days old`;
   };
 
   // Validates the form data
@@ -81,8 +67,8 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
         <div>
           <h2 className="text-2xl font-bold text-gray-800 mb-1">{baby.name}</h2>
           <p className="text-gray-600 text-lg">{baby.gender}</p>
-          {/* Age is shown in header */}
-          <p className="text-gray-500 text-base">{calculateAge(baby.dateOfBirth)}</p>
+          {/* Age is shown in header using the new utility */}
+          <p className="text-gray-500 text-base">{calculateAge(baby.dateOfBirth).readable}</p>
         </div>
       </div>
 

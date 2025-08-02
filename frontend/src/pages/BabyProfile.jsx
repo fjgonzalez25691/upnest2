@@ -37,19 +37,6 @@ const BabyProfile = () => {
         }
     }, [babyId]);
 
-    const calculateAge = (dateOfBirth) => {
-        const today = new Date();
-        const birth = new Date(dateOfBirth);
-        const diffTime = Math.abs(today - birth);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        const months = Math.floor(diffDays / 30.44);
-        const days = Math.floor(diffDays % 30.44);
-
-        if (months > 0) {
-            return `${months} months and ${days} days old`;
-        }
-        return `${days} days old`;
-    };
     // Handle to save changes in edit mode
     const handleSave = async (updatedBaby) => {
         try {
@@ -58,12 +45,12 @@ const BabyProfile = () => {
             const res = await updateBaby(babyId, updatedBaby);
             if (res.baby) {
                 console.log("🔍 Baby profile updated successfully:", res.baby);
-                setBaby({ baby: res.baby }); // <-- Corrige aquí
+                setBaby({ baby: res.baby });
             } else {
                 const babyData = await getBabyById(babyId);
                 setBaby(babyData);
             }
-            setEditMode(false); // <-- Esto debe ir fuera del else, para ambos casos
+            setEditMode(false);
         } catch (err) {
             console.error("Error saving baby profile:", err);
             setError("Failed to save changes. Please try again.");
@@ -72,7 +59,7 @@ const BabyProfile = () => {
         }
     };
 
-    // Handle to candel edit mode
+    // Handle to cancel edit mode
     const handleCancel = () => {
         setEditMode(false);
         setError("");
@@ -137,10 +124,6 @@ const BabyProfile = () => {
                         </svg>
                         Back to Dashboard
                     </Link>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        {baby?.baby.name}'s Profile
-                    </h1>
-                    <p className="text-gray-600 mt-2">{calculateAge(baby?.baby.dateOfBirth)}</p>
                 </div>
 
                 {/* Baby Profile Form Component */}
@@ -181,7 +164,7 @@ const BabyProfile = () => {
                         </div>
                         <h3 className="text-xl font-bold text-gray-800 mb-3">Start Tracking Growth</h3>
                         <p className="text-gray-600 mb-6">
-                            Add your first measurement to start tracking {baby.name}'s growth with WHO percentile charts.
+                            Add your first measurement to start tracking {baby.baby.name}'s growth with WHO percentile charts.
                         </p>
                         <Link to={`/add-growth-data/${baby.babyId}`}>
                             <PrimaryButton variant="add">Add First Measurement</PrimaryButton>
