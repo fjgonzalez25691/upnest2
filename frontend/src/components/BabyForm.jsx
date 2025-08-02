@@ -1,5 +1,8 @@
 import React, { useState } from "react";
 import PrimaryButton from "./PrimaryButton";
+import TextBox from "./TextBox";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 const BabyForm = ({
     initialData = {},
@@ -24,6 +27,17 @@ const BabyForm = ({
         setForm((prev) => ({
             ...prev,
             [name]: type === "checkbox" ? checked : value,
+        }));
+    };
+
+    // Normaliza decimales (coma o punto) para los campos decimales
+    const handleDecimalChange = (name) => (e) => {
+        const value = typeof e.target.value === "string"
+            ? e.target.value.replace(",", ".").replace(/\s/g, "")
+            : e.target.value;
+        setForm((prev) => ({
+            ...prev,
+            [name]: value,
         }));
     };
 
@@ -54,44 +68,46 @@ const BabyForm = ({
         >
             <h2 className="text-2xl font-bold mb-6 text-blue-700">{heading}</h2>
 
-            <div>
-                <label className="block font-semibold mb-2">Full Name</label>
-                <input
-                    type="text"
-                    name="name"
-                    value={form.name}
-                    onChange={handleChange}
-                    required
-                    className="w-full p-4 rounded-xl border border-blue-100"
-                />
-            </div>
+            <TextBox
+                label="Full Name"
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                editable={true}
+                required
+            />
 
             <div>
-                <label className="block font-semibold mb-2">Date of Birth</label>
-                <input
-                    type="date"
+                <label className="textbox-label" htmlFor="dateOfBirth">Date of Birth</label>
+                <DatePicker
+                    id="dateOfBirth"
                     name="dateOfBirth"
-                    value={form.dateOfBirth}
-                    onChange={handleChange}
+                    selected={form.dateOfBirth ? new Date(form.dateOfBirth) : null}
+                    onChange={date => setForm(prev => ({
+                        ...prev,
+                        dateOfBirth: date ? date.toISOString().slice(0, 10) : ""
+                    }))}
+                    dateFormat="yyyy-MM-dd"
+                    className="textbox-input-edit w-full"
+                    placeholderText="YYYY-MM-DD"
                     required
-                    className="w-full p-4 rounded-xl border border-blue-100"
                 />
             </div>
 
-            <div>
-                <label className="block font-semibold mb-2">Gender</label>
-                <select
-                    name="gender"
-                    value={form.gender}
-                    onChange={handleChange}
-                    required
-                    className="w-full p-4 rounded-xl border border-blue-100"
-                >
-                    <option value="">Select gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                </select>
-            </div>
+            <TextBox
+                label="Gender"
+                name="gender"
+                value={form.gender}
+                onChange={handleChange}
+                editable={true}
+                type="select"
+                options={[
+                    { value: "", label: "Select gender" },
+                    { value: "male", label: "Male" },
+                    { value: "female", label: "Female" }
+                ]}
+                required
+            />
 
             <div className="flex items-center gap-3">
                 <input
@@ -105,65 +121,68 @@ const BabyForm = ({
             </div>
 
             {form.premature && (
-                <div>
-                    <label className="block font-semibold mb-2">Gestational Week</label>
-                    <input
-                        type="number"
-                        name="gestationalWeek"
-                        value={form.gestationalWeek}
-                        onChange={handleChange}
-                        min={20}
-                        max={42}
-                        className="w-full p-4 rounded-xl border border-blue-100"
-                    />
-                </div>
+                <TextBox
+                    label="Gestational Week"
+                    name="gestationalWeek"
+                    value={form.gestationalWeek}
+                    onChange={handleChange}
+                    editable={true}
+                    type="number"
+                    min={20}
+                    max={42}
+                    required
+                />
             )}
 
-            <div>
-                <label className="block font-semibold mb-2">Birth Weight (grams)</label>
-                <input
-                    type="number"
-                    name="birthWeight"
-                    value={form.birthWeight}
-                    onChange={handleChange}
-                    min={500}
-                    max={6000}
-                    className="w-full p-4 rounded-xl border border-green-100"
-                />
-            </div>
+            <TextBox
+                label="Birth Weight (grams)"
+                name="birthWeight"
+                value={form.birthWeight}
+                onChange={handleChange}
+                editable={true}
+                type="number"
+                min={500}
+                max={6000}
+                suffix="g"
+            />
 
-            <div>
-                <label className="block font-semibold mb-2">Birth Height (cm)</label>
-                <input
-                    type="number"
-                    name="birthHeight"
-                    value={form.birthHeight}
-                    onChange={handleChange}
-                    min={20}
-                    max={60}
-                    className="w-full p-4 rounded-xl border border-green-100"
-                />
-            </div>
+            <TextBox
+                label="Birth Height (cm)"
+                name="birthHeight"
+                value={form.birthHeight}
+                onChange={e => {
+                    const normalized = e.target.value.replace(",", ".").replace(/\s/g, "");
+                    setForm(prev => ({
+                        ...prev,
+                        birthHeight: normalized
+                    }));
+                }}
+                editable={true}
+                type="number"
+                min={20}
+                max={60}
+                step="0.1"
+                suffix="cm"
+            />
 
-            <div>
-                <label className="block font-semibold mb-2">Head Circumference (cm)</label>
-                <input
-                    type="number"
-                    name="headCircumference"
-                    value={form.headCircumference}
-                    onChange={e => {
-                        // Allows comma or dot as decimal separator
-                        const value = typeof e.target.value === "string"
-                            ? e.target.value.replace(",", ".").replace(/\s/g, "")
-                            : e.target.value;
-                        handleChange({ ...e, target: { ...e.target, value } });
-                    }}
-                    min={20}
-                    max={60}
-                    step="0.1"
-                    className="w-full p-4 rounded-xl border border-green-100"
-                />
-            </div>
+            <TextBox
+                label="Head Circumference (cm)"
+                name="headCircumference"
+                value={form.headCircumference}
+                onChange={e => {
+                    const normalized = e.target.value.replace(",", ".").replace(/\s/g, "");
+                    setForm(prev => ({
+                        ...prev,
+                        headCircumference: normalized
+                    }));
+                }}
+                editable={true}
+                type="number"
+                min={20}
+                max={60}
+                step="0.1"
+                suffix="cm"
+            />
 
             <div className="flex gap-4 mt-6">
                 <PrimaryButton variant="add" type="submit" className="flex-1">
@@ -174,11 +193,7 @@ const BabyForm = ({
                     type="button"
                     className="flex-1"
                     onClick={() => {
-                        // Recommended action: navigate to dashboard or clear the form
-                        // If you use react-router-dom:
                         window.location.href = "/dashboard";
-                        // Or if you have an onCancel callback:
-                        // onCancel && onCancel();
                     }}
                 >
                     Cancel
