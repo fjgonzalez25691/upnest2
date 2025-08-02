@@ -216,7 +216,10 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
             value={formData.birthHeight || ""}
             onChange={e => {
               const normalized = normalizeDecimalInput(e.target.value);
-              handleChange({ ...e, target: { ...e.target, value: normalized } });
+              setFormData(prev => ({
+                ...prev,
+                birthHeight: normalized
+              }));
             }}
             editable={isEditable}
             suffix="cm"
@@ -232,7 +235,10 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
             value={formData.headCircumference || ""}
             onChange={e => {
               const normalized = normalizeDecimalInput(e.target.value);
-              handleChange({ ...e, target: { ...e.target, value: normalized } });
+              setFormData(prev => ({
+                ...prev,
+                headCircumference: normalized
+              }));
             }}
             editable={isEditable}
             suffix="cm"

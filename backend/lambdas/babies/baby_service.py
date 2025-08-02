@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 import os
 import uuid
 import boto3
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -95,14 +96,15 @@ def normalize_baby_data(data):
 
 def normalize_numeric_fields(data):
     """
-    Convert numeric string fields to float (for birthHeight and headCircumference)
+    Convert numeric string fields to Decimal (for birthHeight and headCircumference)
     and int (for birthWeight, gestationalWeek) where appropriate.
+    DynamoDB requires Decimal for floating point numbers.
     """
-    # Convert to float for decimal fields
+    # Convert to Decimal for decimal fields (DynamoDB requirement)
     for key in ['birthHeight', 'headCircumference']:
         if key in data and data[key] not in (None, ""):
             try:
-                data[key] = float(data[key])
+                data[key] = Decimal(str(data[key]))
             except (ValueError, TypeError):
                 pass
     # Convert to int for integer fields
