@@ -6,6 +6,7 @@ import TextBox from "./TextBox";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { calculateAge } from "../utils/dateUtils.js";
+import { normalizeNumber } from "../utils/numberUtils.js";
 
 const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
   const [formData, setFormData] = useState(baby ? { ...baby } : {});
@@ -36,14 +37,6 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
   // Formats a date as YYYY-MM-DD (ISO)
   const formatDateISO = (date) =>
     date ? new Date(date).toISOString().slice(0, 10) : "";
-
-  const normalizeDecimalInput = (value) => {
-    if (typeof value === "string") {
-      // Normalizes decimal input: allows both comma and dot as decimal separator, always stores with dot
-      return value.replace(",", ".").replace(/\s/g, "");
-    }
-    return value;
-  };
 
   if (!baby) {
     return (
@@ -201,7 +194,7 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
             type="number"
             value={formData.birthHeight || ""}
             onChange={e => {
-              const normalized = normalizeDecimalInput(e.target.value);
+              const normalized = normalizeNumber(e.target.value);
               setFormData(prev => ({
                 ...prev,
                 birthHeight: normalized
@@ -220,7 +213,7 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
             type="number"
             value={formData.headCircumference || ""}
             onChange={e => {
-              const normalized = normalizeDecimalInput(e.target.value);
+              const normalized = normalizeNumber(e.target.value);
               setFormData(prev => ({
                 ...prev,
                 headCircumference: normalized

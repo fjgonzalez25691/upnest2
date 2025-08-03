@@ -3,6 +3,7 @@ import PrimaryButton from "./PrimaryButton";
 import TextBox from "./TextBox";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { normalizeNumber } from "../utils/numberUtils.js";
 
 const BabyForm = ({
     initialData = {},
@@ -30,11 +31,9 @@ const BabyForm = ({
         }));
     };
 
-    // Normaliza decimales (coma o punto) para los campos decimales
+    // Decimal input handler using the utility
     const handleDecimalChange = (name) => (e) => {
-        const value = typeof e.target.value === "string"
-            ? e.target.value.replace(",", ".").replace(/\s/g, "")
-            : e.target.value;
+        const value = normalizeNumber(e.target.value);
         setForm((prev) => ({
             ...prev,
             [name]: value,
@@ -150,13 +149,7 @@ const BabyForm = ({
                 label="Birth Height (cm)"
                 name="birthHeight"
                 value={form.birthHeight}
-                onChange={e => {
-                    const normalized = e.target.value.replace(",", ".").replace(/\s/g, "");
-                    setForm(prev => ({
-                        ...prev,
-                        birthHeight: normalized
-                    }));
-                }}
+                onChange={handleDecimalChange("birthHeight")}
                 editable={true}
                 type="number"
                 min={20}
@@ -169,13 +162,7 @@ const BabyForm = ({
                 label="Head Circumference (cm)"
                 name="headCircumference"
                 value={form.headCircumference}
-                onChange={e => {
-                    const normalized = e.target.value.replace(",", ".").replace(/\s/g, "");
-                    setForm(prev => ({
-                        ...prev,
-                        headCircumference: normalized
-                    }));
-                }}
+                onChange={handleDecimalChange("headCircumference")}
                 editable={true}
                 type="number"
                 min={20}
