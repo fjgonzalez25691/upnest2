@@ -1,95 +1,24 @@
-// src/pages/AddMeasurement.jsx
+// src/pages/measurements/AddMeasurement.jsx
 // Page for adding new growth measurements to a baby
 
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import GrowthDataForm from "../components/GrowthDataForm";
-import { getBaby } from "../services/babyApi";
-// import { createGrowthData } from "../services/growthDataApi"; // TODO: Create this service
+import React from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
+import GrowthDataForm from "../../components/measurementform/GrowthDataForm";
+import { createGrowthData } from "../../services/growthDataApi";
 
 const AddMeasurement = () => {
-    const { babyId } = useParams();
+    const location = useLocation();
+    const { baby } = location.state || {};
     const navigate = useNavigate();
-    const [baby, setBaby] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-
-    useEffect(() => {
-        fetchBaby();
-    }, [babyId]);
-
-    const fetchBaby = async () => {
-        try {
-            setLoading(true);
-            const babyData = await getBaby(babyId);
-            setBaby(babyData);
-        } catch (err) {
-            console.error("Error fetching baby:", err);
-            setError("Failed to load baby information. Please try again.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleSubmit = async (measurementData) => {
-        try {
-            console.log("Creating measurement:", measurementData);
-            
-            // TODO: Uncomment when service is created
-            // await createGrowthData(measurementData);
-            
-            // Mock success for now
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Navigate back to growth tracking page
-            navigate(`/baby/${babyId}/growth`);
-        } catch (err) {
-            console.error("Error creating measurement:", err);
-            throw new Error("Failed to save measurement. Please try again.");
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="container mx-auto px-4 py-8">
-                <div className="animate-pulse">
-                    <div className="h-8 bg-gray-200 rounded w-1/3 mb-6"></div>
-                    <div className="max-w-2xl mx-auto">
-                        <div className="h-96 bg-gray-200 rounded"></div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="container mx-auto px-4 py-8">
-                <div className="max-w-2xl mx-auto">
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-                        <div className="text-red-500 mb-4">
-                            <svg className="w-12 h-12 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                        </div>
-                        <h2 className="text-lg font-semibold text-red-900 mb-2">Error</h2>
-                        <p className="text-red-700 mb-4">{error}</p>
-                        <Link to="/dashboard">
-                            <button className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-                                Back to Dashboard
-                            </button>
-                        </Link>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     if (!baby) {
         return (
             <div className="container mx-auto px-4 py-8">
                 <div className="max-w-2xl mx-auto text-center">
                     <h2 className="text-2xl font-semibold text-gray-900 mb-4">Baby Not Found</h2>
+                    <p className="text-gray-600 mb-4">
+                        Please access this page from the baby profile.
+                    </p>
                     <Link to="/dashboard">
                         <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
                             Back to Dashboard
@@ -100,6 +29,17 @@ const AddMeasurement = () => {
         );
     }
 
+    const handleSubmit = async (measurementData) => {
+        try {
+            const dataToSave = { ...measurementData, babyId: baby.babyId };
+            await createGrowthData(dataToSave);
+            navigate(`/baby/${baby.babyId}`);
+        } catch (err) {
+            console.error("Error creating measurement:", err);
+            throw new Error("Failed to save measurement. Please try again.");
+        }
+    };
+
     return (
         <div className="container mx-auto px-4 py-8">
             {/* Header */}
@@ -107,9 +47,7 @@ const AddMeasurement = () => {
                 <div className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
                     <Link to="/dashboard" className="hover:text-gray-700">Dashboard</Link>
                     <span>/</span>
-                    <Link to={`/baby/${babyId}`} className="hover:text-gray-700">{baby.name}</Link>
-                    <span>/</span>
-                    <Link to={`/baby/${babyId}/growth`} className="hover:text-gray-700">Growth</Link>
+                    <Link to={`/baby/${baby.babyId}`} className="hover:text-gray-700">{baby.name}</Link>
                     <span>/</span>
                     <span>Add Measurement</span>
                 </div>
@@ -122,7 +60,7 @@ const AddMeasurement = () => {
                         </p>
                     </div>
                     <div className="flex space-x-3 mt-4 sm:mt-0">
-                        <Link to={`/baby/${babyId}/growth`}>
+                        <Link to={`/baby/${baby.babyId}`}>
                             <button className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">
                                 Cancel
                             </button>
@@ -159,7 +97,7 @@ const AddMeasurement = () => {
             {/* Form */}
             <GrowthDataForm
                 onSubmit={handleSubmit}
-                babyId={babyId}
+                babyId={baby.babyId}
                 heading="Record Growth Measurement"
                 submitLabel="Save Measurement"
             />

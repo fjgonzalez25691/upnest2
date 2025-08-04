@@ -2,11 +2,11 @@
 // Purpose: Form component for recording baby growth measurements (weight, height, head circumference)
 
 import React, { useState } from "react";
-import PrimaryButton from "./PrimaryButton";
-import TextBox from "./TextBox";
+import PrimaryButton from "../PrimaryButton.jsx";
+import TextBox from "../TextBox.jsx";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { normalizeNumber } from "../utils/numberUtils.js";
+import { normalizeNumber } from "../../utils/numberUtils.js";
 
 const GrowthDataForm = ({
     initialData = {},

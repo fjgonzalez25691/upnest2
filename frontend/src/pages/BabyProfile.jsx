@@ -1,7 +1,7 @@
 // src/pages/BabyProfile.jsx
 // Baby profile page showing detailed information and growth tracking
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { getBabyById } from "../services/babyApi";
 import { updateBaby } from "../services/babyApi";
 import { deleteBaby } from "../services/babyApi";
@@ -14,6 +14,7 @@ const BabyProfile = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [editMode, setEditMode] = useState(false)
+    const navigate = useNavigate();
 
     console.log("🔍 BabyProfile mounted with babyId:", babyId);
 
@@ -40,11 +41,10 @@ const BabyProfile = () => {
     const handleSave = async (updatedBabyData) => {
         try {
             setLoading(true);
-            const response = await updateBaby(babyId, updatedBabyData);
-            console.log("🔍 Baby profile updated successfully:", response);
-            
-            // Update local state with the response
-            setBaby(response);
+            await updateBaby(babyId, updatedBabyData);
+            // Siempre refresca el dato desde el backend
+            const babyData = await getBabyById(babyId);
+            setBaby(babyData);
             setEditMode(false);
         } catch (err) {
             console.error("Error updating baby profile:", err);
@@ -73,6 +73,11 @@ const BabyProfile = () => {
                 setLoading(false);
             }
         }
+    };
+
+    const handleAddMeasurement = () => {
+        // Navegar pasando el objeto baby completo
+        navigate("/add-measurement", { state: { baby: baby?.baby } });
     };
 
     if (loading) {
@@ -140,11 +145,9 @@ const BabyProfile = () => {
                         <PrimaryButton variant="edit" onClick={() => setEditMode(true)}>
                             Edit Profile
                         </PrimaryButton>
-                        <Link to={`/baby/${babyId}/add-measurement`}>
-                            <PrimaryButton variant="add" className="w-full">
-                                Add Measurement
-                            </PrimaryButton>
-                        </Link>
+                        <PrimaryButton variant="add" className="w-full" onClick={handleAddMeasurement}>
+                            Add Measurement
+                        </PrimaryButton>
                         <PrimaryButton variant="danger" onClick={handleDelete}>
                             Delete Profile
                         </PrimaryButton>
@@ -193,11 +196,9 @@ const BabyProfile = () => {
                             <p className="text-gray-600 text-sm mb-4">
                                 Record weight, height, and head circumference
                             </p>
-                            <Link to={`/baby/${babyId}/add-measurement`}>
-                                <PrimaryButton variant="add" size="sm">
-                                    Add Data
-                                </PrimaryButton>
-                            </Link>
+                            <PrimaryButton variant="add" size="sm" onClick={handleAddMeasurement}>
+                                Add Data
+                            </PrimaryButton>
                         </div>
 
                         {/* History */}
@@ -226,9 +227,9 @@ const BabyProfile = () => {
                             <p className="text-gray-600 mb-4">
                                 Add your first measurement to start tracking growth with WHO percentile charts.
                             </p>
-                            <Link to={`/baby/${babyId}/add-measurement`}>
-                                <PrimaryButton variant="add">Add First Measurement</PrimaryButton>
-                            </Link>
+                            <PrimaryButton variant="add" onClick={handleAddMeasurement}>
+                                Add First Measurement
+                            </PrimaryButton>
                         </div>
                     </div>
                 </div>

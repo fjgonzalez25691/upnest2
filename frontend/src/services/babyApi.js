@@ -105,37 +105,15 @@ export const deleteBaby = async (babyId) => {
     }
 };
 
-/**
- * Add growth data for a baby (only if baby belongs to current user)
- * @param {string} babyId - Baby ID
- * @param {Object} growthData - Growth data
- * @param {number} growthData.weight - Weight in grams
- * @param {number} growthData.height - Height in cm
- * @param {number} growthData.headCircumference - Head circumference in cm
- * @param {string} growthData.date - Date of measurement (ISO string)
- * @returns {Promise<Object>} Created growth data
- */
-export const addGrowthData = async (babyId, growthData) => {
-    try {
-        const response = await axiosClient.post(`${BASE_URL}/${babyId}/growth`, growthData);
-        return response.data;
-    } catch (error) {
-        console.error("Error adding growth data:", error);
-        throw error;
-    }
-};
+// For legacy compatibility, we can provide an alias that points to the new service
+// This way existing code won't break immediately
+export const getBaby = getBabyById; // Alias for consistency
 
-/**
- * Get growth data for a baby (only if baby belongs to current user)
- * @param {string} babyId - Baby ID
- * @returns {Promise<Array>} Array of growth data objects
- */
-export const getGrowthData = async (babyId) => {
-    try {
-        const response = await axiosClient.get(`${BASE_URL}/${babyId}/growth`);
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching growth data:", error);
-        throw error;
-    }
+export default {
+    createBaby,
+    getBabies,
+    getBabyById,
+    getBaby: getBabyById, // Alias
+    updateBaby,
+    deleteBaby
 };
