@@ -16,6 +16,7 @@ Globals:
     Environment:
       Variables:
         BABIES_TABLE: !Ref BabiesTable
+        GROWTH_DATA_TABLE: !Ref GrowthDataTable  # ← ADDED
         COGNITO_USER_POOL_ID: "eu-south-2_WInbcDDjo"
         COGNITO_CLIENT_ID: "75g0r5a7bbp1mgpmqrg3e1iibm"
         LOG_LEVEL: "INFO"
@@ -63,19 +64,27 @@ Resources:
   GrowthDataTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub "UpNest-GrowthData-${Stage}"
+      TableName: !Sub "UpNest-GrowthData2-${Stage}"
       AttributeDefinitions:
-        - AttributeName: growthDataId
+        - AttributeName: dataId          # ← CHANGED from growthDataId to dataId
           AttributeType: S
         - AttributeName: babyId
           AttributeType: S
+        - AttributeName: userId          # ← ADDED for user index
+          AttributeType: S
       KeySchema:
-        - AttributeName: growthDataId
+        - AttributeName: dataId          # ← CHANGED from growthDataId to dataId
           KeyType: HASH
       GlobalSecondaryIndexes:
         - IndexName: BabyGrowthDataIndex
           KeySchema:
             - AttributeName: babyId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: UserGrowthDataIndex  # ← ADDED index for user queries
+          KeySchema:
+            - AttributeName: userId
               KeyType: HASH
           Projection:
             ProjectionType: ALL
@@ -233,32 +242,54 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: upnest2-growth-data
-      CodeUri: backend/lambdas/growth-data/
+      CodeUri: backend/lambdas/growth_data/   
       Handler: growth_data_service.lambda_handler
       Description: UpNest2 Growth Data tracking
       Environment:
         Variables:
-          GROWTH_DATA_TABLE:
-            Ref: GrowthDataTable
+          GROWTH_DATA_TABLE: !Ref GrowthDataTable
       Policies:
         - DynamoDBCrudPolicy:
-            TableName:
-              Ref: GrowthDataTable
+            TableName: !Ref GrowthDataTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref BabiesTable
       Events:
-        GrowthDataApi:
+        GrowthDataGet:
           Type: Api
           Properties:
-            RestApiId:
-              Ref: UpNest2Api
+            RestApiId: !Ref UpNest2Api
             Path: /growth-data
-            Method: ANY
-        GrowthDataProxyApi:
+            Method: GET
+        GrowthDataPost:
           Type: Api
           Properties:
-            RestApiId:
-              Ref: UpNest2Api
-            Path: /growth-data/{proxy+}
-            Method: ANY
+            RestApiId: !Ref UpNest2Api
+            Path: /growth-data
+            Method: POST
+        GrowthDataIdGet:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UpNest2Api
+            Path: /growth-data/{dataId}
+            Method: GET
+        GrowthDataIdPut:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UpNest2Api
+            Path: /growth-data/{dataId}
+            Method: PUT
+        GrowthDataIdDelete:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UpNest2Api
+            Path: /growth-data/{dataId}
+            Method: DELETE
+        BabyGrowthGet:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UpNest2Api
+            Path: /babies/{babyId}/growth
+            Method: GET
     Metadata:
       SamResourceId: UpNest2GrowthDataFunction
 
@@ -266,7 +297,7 @@ Resources:
     Type: AWS::Serverless::LayerVersion
     Properties:
       LayerName: upnest2-percentiles-layer
-      Description: Dependencias para percentiles (pandas, scipy, openpyxl)
+      Description: Dependencies for percentiles (pandas, scipy, openpyxl)  # ← CHANGED to English
       ContentUri: backend/layers/percentiles/
       CompatibleRuntimes:
         - python3.12

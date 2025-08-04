@@ -37,35 +37,27 @@ const BabyProfile = () => {
         }
     }, [babyId]);
 
-    // Handle to save changes in edit mode
-    const handleSave = async (updatedBaby) => {
+    const handleSave = async (updatedBabyData) => {
         try {
             setLoading(true);
-            // Call API to update baby profile
-            const res = await updateBaby(babyId, updatedBaby);
-            if (res.baby) {
-                console.log("🔍 Baby profile updated successfully:", res.baby);
-                setBaby({ baby: res.baby });
-            } else {
-                const babyData = await getBabyById(babyId);
-                setBaby(babyData);
-            }
+            const response = await updateBaby(babyId, updatedBabyData);
+            console.log("🔍 Baby profile updated successfully:", response);
+            
+            // Update local state with the response
+            setBaby(response);
             setEditMode(false);
         } catch (err) {
-            console.error("Error saving baby profile:", err);
-            setError("Failed to save changes. Please try again.");
+            console.error("Error updating baby profile:", err);
+            setError("Failed to update baby profile. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
-    // Handle to cancel edit mode
     const handleCancel = () => {
         setEditMode(false);
-        setError("");
     };
 
-    // Handle to delete baby profile
     const handleDelete = async () => {
         if (window.confirm("Are you sure you want to delete this baby profile? This action cannot be undone.")) {
             try {
@@ -98,10 +90,16 @@ const BabyProfile = () => {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
                 <div className="max-w-4xl mx-auto">
-                    <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
-                        <p className="text-red-600 mb-4">{error || "Baby not found"}</p>
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+                        <div className="text-red-500 mb-4">
+                            <svg className="w-12 h-12 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <h2 className="text-lg font-semibold text-red-900 mb-2">Error Loading Profile</h2>
+                        <p className="text-red-700 mb-4">{error || "Baby profile not found"}</p>
                         <Link to="/dashboard">
-                            <PrimaryButton>Back to Dashboard</PrimaryButton>
+                            <PrimaryButton variant="primary">Back to Dashboard</PrimaryButton>
                         </Link>
                     </div>
                 </div>
@@ -112,8 +110,7 @@ const BabyProfile = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
             <div className="max-w-4xl mx-auto">
-
-                {/* Header */}
+                {/* Navigation */}
                 <div className="mb-8">
                     <Link
                         to="/dashboard"
@@ -138,37 +135,101 @@ const BabyProfile = () => {
 
                 {/* Action Buttons */}
                 <div className="bg-white rounded-3xl shadow-lg p-8 mb-8 border border-blue-100">
-                    <div className="flex gap-4">
-                        <PrimaryButton variant="edit" className="flex-1" onClick={() => setEditMode(true)}>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-6">Profile Actions</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <PrimaryButton variant="edit" onClick={() => setEditMode(true)}>
                             Edit Profile
                         </PrimaryButton>
-                        <Link to={`/add-growth-data/${baby.babyId}`} className="flex-1">
+                        <Link to={`/baby/${babyId}/add-measurement`}>
                             <PrimaryButton variant="add" className="w-full">
-                                Add Growth Data
+                                Add Measurement
                             </PrimaryButton>
                         </Link>
-                        <PrimaryButton variant="danger" className="flex-1" onClick={handleDelete}>
+                        <PrimaryButton variant="danger" onClick={handleDelete}>
                             Delete Profile
                         </PrimaryButton>
                     </div>
                 </div>
 
-                {/* Growth Data Section - Placeholder for future */}
+                {/* Growth Tracking Section */}
                 <div className="bg-white rounded-3xl shadow-lg p-8 border border-green-100">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-6">Growth Tracking</h2>
-                    <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-800 mb-3">Start Tracking Growth</h3>
-                        <p className="text-gray-600 mb-6">
-                            Add your first measurement to start tracking {baby.baby.name}'s growth with WHO percentile charts.
-                        </p>
-                        <Link to={`/add-growth-data/${baby.babyId}`}>
-                            <PrimaryButton variant="add">Add First Measurement</PrimaryButton>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                        <h2 className="text-2xl font-bold text-gray-800">Growth Tracking</h2>
+                        <Link to={`/baby/${babyId}/growth`}>
+                            <PrimaryButton variant="primary" className="mt-4 sm:mt-0">
+                                View Growth Dashboard
+                            </PrimaryButton>
                         </Link>
+                    </div>
+
+                    {/* Growth Quick Actions */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Charts */}
+                        <div className="text-center p-6 bg-blue-50 rounded-xl border border-blue-100">
+                            <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-800 mb-2">Growth Charts</h3>
+                            <p className="text-gray-600 text-sm mb-4">
+                                View WHO percentile charts and growth trends
+                            </p>
+                            <Link to={`/baby/${babyId}/growth`}>
+                                <PrimaryButton variant="primary" size="sm">
+                                    View Charts
+                                </PrimaryButton>
+                            </Link>
+                        </div>
+
+                        {/* Add Data */}
+                        <div className="text-center p-6 bg-green-50 rounded-xl border border-green-100">
+                            <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-800 mb-2">New Measurement</h3>
+                            <p className="text-gray-600 text-sm mb-4">
+                                Record weight, height, and head circumference
+                            </p>
+                            <Link to={`/baby/${babyId}/add-measurement`}>
+                                <PrimaryButton variant="add" size="sm">
+                                    Add Data
+                                </PrimaryButton>
+                            </Link>
+                        </div>
+
+                        {/* History */}
+                        <div className="text-center p-6 bg-purple-50 rounded-xl border border-purple-100">
+                            <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-800 mb-2">Measurement History</h3>
+                            <p className="text-gray-600 text-sm mb-4">
+                                Browse all recorded measurements and data
+                            </p>
+                            <Link to={`/baby/${babyId}/growth/history`}>
+                                <PrimaryButton variant="primary" size="sm">
+                                    View History
+                                </PrimaryButton>
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Get Started Message if no data */}
+                    <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
+                        <div className="text-center">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-2">Start Tracking {baby.baby.name}'s Growth</h3>
+                            <p className="text-gray-600 mb-4">
+                                Add your first measurement to start tracking growth with WHO percentile charts.
+                            </p>
+                            <Link to={`/baby/${babyId}/add-measurement`}>
+                                <PrimaryButton variant="add">Add First Measurement</PrimaryButton>
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </div>
