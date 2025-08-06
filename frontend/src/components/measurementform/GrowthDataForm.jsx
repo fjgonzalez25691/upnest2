@@ -11,6 +11,7 @@ import { normalizeNumber } from "../../utils/numberUtils.js";
 const GrowthDataForm = ({
     initialData = {},
     onSubmit,
+    onCancel,
     heading = "Record Growth Measurement",
     submitLabel = "Save Measurement",
     babyId,
@@ -204,17 +205,25 @@ const GrowthDataForm = ({
                 </div>
 
                 {/* Submit Button */}
-                <div className="flex justify-center pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 justify-center pt-4">
                     <PrimaryButton
                         type="submit"
-                        variant="success"
-                        disabled={isSubmitting}
+                        variant="primary"
                         className="w-full md:w-auto px-8"
                     >
-                        {isSubmitting ? "Saving..." : submitLabel}
+                        {submitLabel}
+                    </PrimaryButton>
+                    <PrimaryButton
+                        type="button"
+                        variant="cancel"
+                        onClick={onCancel}
+                        className="w-full md:w-auto px-8"
+
+                    >
+                        Cancel
                     </PrimaryButton>
                 </div>
-            </form>
+            </form>            
         </div>
     );
 };

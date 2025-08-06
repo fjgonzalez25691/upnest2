@@ -4,6 +4,7 @@
 import React from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import GrowthDataForm from "../../components/measurementform/GrowthDataForm";
+import PrimaryButton from "../../components/PrimaryButton";
 import { createGrowthData } from "../../services/growthDataApi";
 
 const AddMeasurement = () => {
@@ -40,6 +41,10 @@ const AddMeasurement = () => {
         }
     };
 
+    const handleCancel = () => {
+        navigate(`/baby/${baby.babyId}`);
+    };
+
     return (
         <div className="container mx-auto px-4 py-8">
             {/* Header */}
@@ -59,13 +64,7 @@ const AddMeasurement = () => {
                             Record new growth data for {baby.name}
                         </p>
                     </div>
-                    <div className="flex space-x-3 mt-4 sm:mt-0">
-                        <Link to={`/baby/${baby.babyId}`}>
-                            <button className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50">
-                                Cancel
-                            </button>
-                        </Link>
-                    </div>
+                    
                 </div>
             </div>
 
@@ -97,6 +96,7 @@ const AddMeasurement = () => {
             {/* Form */}
             <GrowthDataForm
                 onSubmit={handleSubmit}
+                onCancel={handleCancel}
                 babyId={baby.babyId}
                 heading="Record Growth Measurement"
                 submitLabel="Save Measurement"

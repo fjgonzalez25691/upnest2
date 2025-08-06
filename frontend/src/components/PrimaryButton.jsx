@@ -11,6 +11,7 @@ const variantStyles = {
   success: "btn-success",
   ai: "btn-ai",
   danger: "btn-danger",
+  logout: "btn-logout",
   default: "btn-primary",
 };
 ;

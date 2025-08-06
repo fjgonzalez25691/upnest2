@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 import { cognitoConfig } from "../auth/cognitoConfig.js";
+import PrimaryButton from "./PrimaryButton.jsx";
 
 function Header() {
   const auth = useAuth();
@@ -45,20 +46,26 @@ function Header() {
               <div className="bg-primary text-white rounded-full w-9 h-9 flex items-center justify-center font-bold text-lg">
                 {user.profile?.name?.[0]?.toUpperCase() || user.profile?.email?.[0]?.toUpperCase() || 'U'}
               </div>
-              <button
-                className="bg-gray-200 text-primary px-3 py-1 rounded hover:bg-gray-300"
-                onClick={handleLogout}
+              <PrimaryButton
+                variant="logout"
+                onClick={() => {
+                  handleLogout();
+                  setMenuOpen(false);
+                }}
               >
                 Logout
-              </button>
+              </PrimaryButton>
             </>
           ) : (
-            <button
-              className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90"
-              onClick={handleLoginClick}
+            <PrimaryButton
+              variant="login"
+              onClick={() => {
+                handleLoginClick();
+                setMenuOpen(false);
+              }}
             >
               Login
-            </button>
+            </PrimaryButton>
           )}
         </nav>
 
@@ -85,15 +92,15 @@ function Header() {
               <div className="bg-primary text-white rounded-full w-9 h-9 flex items-center justify-center font-bold text-lg">
                 {user.profile?.name?.[0]?.toUpperCase() || user.profile?.email?.[0]?.toUpperCase() || 'U'}
               </div>
-              <button
-                className="bg-gray-200 text-primary px-3 py-1 rounded hover:bg-gray-300"
+              <PrimaryButton
+                variant="logout"
                 onClick={() => {
                   handleLogout();
                   setMenuOpen(false);
                 }}
               >
                 Logout
-              </button>
+              </PrimaryButton>
             </>
           ) : (
             <button

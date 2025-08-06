@@ -23,6 +23,7 @@
   --color-gradient-danger: linear-gradient(to right, #f43f5e, #dc2626);
   --color-gradient-ai: linear-gradient(to right, #10b981, #059669);
   --color-gradient-cancel: linear-gradient(to right, #6b7280, #4b5563);
+  --color-gradient-logout: linear-gradient(to right, #d1dedb, #9ca3af);
   /* Gradients for text boxes */
   --gradient-string: linear-gradient(to right, #eff6ff, #f0f9ff);
   --gradient-number: linear-gradient(to right, #f0fdf4, #ecfdf5);

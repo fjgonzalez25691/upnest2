@@ -35,4 +35,8 @@
   .btn-ai {
     background: var(--color-gradient-ai);
   }
+  .btn-logout {
+    background: var(--color-gradient-logout);
+    @apply text-gray-900;
+  }
 }
