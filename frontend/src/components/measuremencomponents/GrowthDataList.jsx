@@ -2,8 +2,8 @@
 // Purpose: List component to display and manage multiple growth measurements
 
 import React, { useState } from "react";
-import MeasurementCard from "./MeasurementCard";
-import PrimaryButton from "./PrimaryButton";
+import MeasurementCard from "../MeasurementCard";
+import PrimaryButton from "../PrimaryButton";
 
 const GrowthDataList = ({ 
     measurements = [], 

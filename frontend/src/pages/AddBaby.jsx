@@ -16,9 +16,14 @@ const AddBaby = () => {
         }
     };
 
+    const handleCancel = () => {
+        navigate("/dashboard");
+    };
+
     return (
         <BabyForm
             onSubmit={handleCreate}
+            onCancel={handleCancel}
             heading="Add New Baby"
             submitLabel="Create Baby"
         />

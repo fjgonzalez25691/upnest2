@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import GrowthDataForm from "../../components/measurementform/GrowthDataForm";
+import GrowthDataForm from "../../components/measuremencomponents/GrowthDataForm";
 import PrimaryButton from "../../components/PrimaryButton";
 import { createGrowthData } from "../../services/growthDataApi";
 

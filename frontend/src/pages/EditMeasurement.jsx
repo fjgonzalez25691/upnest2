@@ -3,10 +3,10 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import GrowthDataForm from "../components/GrowthDataForm";
+import GrowthDataForm from "../components/measurementform/GrowthDataForm";
 import PrimaryButton from "../components/PrimaryButton";
 import { getBaby } from "../services/babyApi";
-// import { getGrowthMeasurement, updateGrowthMeasurement } from "../services/growthDataApi"; // TODO: Create this service
+import { getGrowthMeasurement, updateGrowthData, deleteGrowthData } from "../services/growthDataApi";
 
 const EditMeasurement = () => {
     const { babyId, measurementId } = useParams();
@@ -31,26 +31,9 @@ const EditMeasurement = () => {
             const babyData = await getBaby(babyId);
             setBaby(babyData);
 
-            // TODO: Uncomment when service is created
-            // const measurementData = await getGrowthMeasurement(measurementId);
-            // setMeasurement(measurementData);
-
-            // Mock data for now - simulate getting specific measurement
-            const mockMeasurement = {
-                dataId: measurementId,
-                babyId: babyId,
-                measurementDate: "2024-03-15",
-                measurements: {
-                    weight: "6.2",
-                    height: "70.5",
-                    headCircumference: "44.1"
-                },
-                notes: "2-month checkup - everything looks great!",
-                measurementSource: "doctor",
-                createdAt: "2024-03-15T09:15:00Z",
-                modifiedAt: "2024-03-15T09:15:00Z"
-            };
-            setMeasurement(mockMeasurement);
+            // Fetch measurement data
+            const measurementData = await getGrowthMeasurement(measurementId);
+            setMeasurement(measurementData);
 
         } catch (err) {
             console.error("Error fetching measurement data:", err);
@@ -61,24 +44,13 @@ const EditMeasurement = () => {
     };
 
     const handleSave = async (formData) => {
+        setSaving(true);
         try {
-            setSaving(true);
-            setError("");
-
-            console.log("Saving measurement data:", formData);
-
-            // TODO: Uncomment when service is created
-            // const updatedMeasurement = await updateGrowthMeasurement(measurementId, formData);
-            
-            // Mock success for now
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-
-            // Navigate back to growth tracking page
+            await updateGrowthData(measurementId, formData);
             navigate(`/baby/${babyId}/growth`);
-
         } catch (err) {
             console.error("Error updating measurement:", err);
-            setError("Failed to update measurement. Please try again.");
+            throw new Error("Failed to update measurement. Please try again.");
         } finally {
             setSaving(false);
         }
@@ -95,16 +67,8 @@ const EditMeasurement = () => {
 
         try {
             setSaving(true);
-            setError("");
-
-            // TODO: Uncomment when service is created
-            // await deleteGrowthMeasurement(measurementId);
-
-            // Mock success for now
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
+            await deleteGrowthData(measurementId);
             navigate(`/baby/${babyId}/growth`);
-
         } catch (err) {
             console.error("Error deleting measurement:", err);
             setError("Failed to delete measurement. Please try again.");
@@ -196,67 +160,41 @@ const EditMeasurement = () => {
                         >
                             {saving ? "Deleting..." : "Delete"}
                         </PrimaryButton>
+                        <Link to={`/baby/${babyId}/growth`}>
+                            <PrimaryButton variant="cancel">
+                                Cancel
+                            </PrimaryButton>
+                        </Link>
                     </div>
                 </div>
             </div>
 
-            {/* Error Banner */}
+            {/* Error Display */}
             {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                    <div className="flex">
-                        <div className="flex-shrink-0">
-                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                            </svg>
-                        </div>
-                        <div className="ml-3">
-                            <p className="text-sm text-red-700">{error}</p>
-                        </div>
-                    </div>
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="text-red-700">{error}</div>
                 </div>
             )}
 
-            {/* Measurement Info */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <div className="flex">
-                    <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                        </svg>
-                    </div>
-                    <div className="ml-3">
-                        <h3 className="text-sm font-medium text-blue-800">Measurement Details</h3>
-                        <div className="mt-2 text-sm text-blue-700">
-                            <p><strong>Date:</strong> {new Date(measurement.measurementDate).toLocaleDateString()}</p>
-                            <p><strong>Source:</strong> {measurement.measurementSource || "Not specified"}</p>
-                            <p><strong>Created:</strong> {new Date(measurement.createdAt).toLocaleDateString()}</p>
-                            {measurement.modifiedAt && measurement.modifiedAt !== measurement.createdAt && (
-                                <p><strong>Last Modified:</strong> {new Date(measurement.modifiedAt).toLocaleDateString()}</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Edit Form */}
-            <div className="bg-white rounded-lg shadow-md">
-                <div className="p-6">
-                    <GrowthDataForm
-                        baby={baby}
-                        onSubmit={handleSave}
-                        onCancel={handleCancel}
-                        isLoading={saving}
-                        submitButtonText={saving ? "Updating..." : "Update Measurement"}
-                        initialData={{
-                            measurementDate: measurement.measurementDate,
+            {/* Form */}
+            <div className="bg-white">
+                <GrowthDataForm
+                    onSubmit={handleSave}
+                    onCancel={handleCancel}
+                    heading="Edit Growth Measurement"
+                    submitLabel={saving ? "Saving..." : "Save Changes"}
+                    babyId={babyId}
+                    initialData={{
+                        measurementDate: measurement.measurementDate,
+                        measurements: {
                             weight: measurement.measurements?.weight || "",
                             height: measurement.measurements?.height || "",
                             headCircumference: measurement.measurements?.headCircumference || "",
-                            notes: measurement.notes || "",
-                            measurementSource: measurement.measurementSource || "home"
-                        }}
-                    />
-                </div>
+                        },
+                        notes: measurement.notes || "",
+                        measurementSource: measurement.measurementSource || "home"
+                    }}
+                />
             </div>
 
             {/* Tips Section */}
@@ -274,9 +212,9 @@ const EditMeasurement = () => {
                     <div>
                         <h4 className="font-medium text-gray-900 mb-2">Version Control</h4>
                         <ul className="space-y-1">
-                            <li>• Changes are tracked with timestamps</li>
-                            <li>• Previous values are not preserved</li>
-                            <li>• Consider adding a note about corrections</li>
+                            <li>• Changes are immediately saved</li>
+                            <li>• Previous versions are not recoverable</li>
+                            <li>• Use delete carefully - it's permanent</li>
                         </ul>
                     </div>
                 </div>

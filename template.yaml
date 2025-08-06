@@ -254,42 +254,20 @@ Resources:
         - DynamoDBReadPolicy:
             TableName: !Ref BabiesTable
       Events:
-        GrowthDataGet:
+        # Base growth-data route
+        GrowthDataApi:
           Type: Api
           Properties:
             RestApiId: !Ref UpNest2Api
             Path: /growth-data
-            Method: GET
-        GrowthDataPost:
+            Method: ANY
+        # Proxy route for all sub-paths (supports {dataId} and query params)
+        GrowthDataProxy:
           Type: Api
           Properties:
             RestApiId: !Ref UpNest2Api
-            Path: /growth-data
-            Method: POST
-        GrowthDataIdGet:
-          Type: Api
-          Properties:
-            RestApiId: !Ref UpNest2Api
-            Path: /growth-data/{dataId}
-            Method: GET
-        GrowthDataIdPut:
-          Type: Api
-          Properties:
-            RestApiId: !Ref UpNest2Api
-            Path: /growth-data/{dataId}
-            Method: PUT
-        GrowthDataIdDelete:
-          Type: Api
-          Properties:
-            RestApiId: !Ref UpNest2Api
-            Path: /growth-data/{dataId}
-            Method: DELETE
-        BabyGrowthGet:
-          Type: Api
-          Properties:
-            RestApiId: !Ref UpNest2Api
-            Path: /babies/{babyId}/growth
-            Method: GET
+            Path: /growth-data/{proxy+}
+            Method: ANY
     Metadata:
       SamResourceId: UpNest2GrowthDataFunction
 
