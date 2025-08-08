@@ -186,34 +186,17 @@ def get_growth_data_list(event, user_id):
     try:
         query_params = event.get('queryStringParameters') or {}
         limit = min(int(query_params.get('limit', 50)), 100)
-        # DEBUG: Log complete event structure
-        logger.info(f"Complete event: {json.dumps(event, default=str)}")
         baby_id = query_params.get('babyId')
         
-        # DEBUG: Logging detallado
-        logger.info(f"=== DEBUGGING GROWTH DATA QUERY ===")
-        logger.info(f"Query params received: {query_params}")
-        logger.info(f"Extracted baby_id: '{baby_id}' (type: {type(baby_id)})")
-        logger.info(f"User ID: {user_id}")
-        
         if baby_id:
-            logger.info(f"✓ Entering baby_id filter branch")
-            
             # Filter by specific baby
             if not is_valid_uuid(baby_id):
-                logger.error(f"✗ UUID validation failed for: '{baby_id}'")
                 return response(400, {"error": "Invalid baby ID format"})
-            
-            logger.info(f"✓ UUID validation passed")
             
             # Check if baby exists and belongs to user
             baby = get_baby_if_accessible(baby_id, user_id)
             if not baby:
-                logger.error(f"✗ Baby access check failed for babyId='{baby_id}', userId='{user_id}'")
                 return response(404, {"error": "Baby not found or not accessible"})
-            
-            logger.info(f"✓ Baby access validated. Baby: {baby}")
-            logger.info(f"➤ Executing GSI query for babyId: '{baby_id}'")
             
             # Use GSI for better performance
             result = growth_table.query(
@@ -224,14 +207,7 @@ def get_growth_data_list(event, user_id):
                 ScanIndexForward=False
             )
             growth_data = result.get('Items', [])
-            logger.info(f"✓ GSI query completed. Found {len(growth_data)} items")
-            
-            # Log each item for debugging
-            for i, item in enumerate(growth_data):
-                logger.info(f"  Item {i+1}: babyId='{item.get('babyId')}', dataId='{item.get('dataId')}'")
-                
         else:
-            logger.info(f"✗ No baby_id provided, fetching all user data")
             # Get all user's growth data
             result = growth_table.query(
                 IndexName='UserGrowthDataIndex',
@@ -241,12 +217,10 @@ def get_growth_data_list(event, user_id):
                 ScanIndexForward=False
             )
             growth_data = result.get('Items', [])
-            logger.info(f"User query returned {len(growth_data)} items")
         
         # Sort by measurement date for consistent ordering
         growth_data.sort(key=lambda x: x.get('measurementDate', ''), reverse=True)
         
-        logger.info(f"=== FINAL RESULT: {len(growth_data)} items ===")
         return response(200, {"data": growth_data, "count": len(growth_data)})
     except Exception as e:
         logger.error(f"Error listing growth data: {e}")

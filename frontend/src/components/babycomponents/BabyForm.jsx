@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import PrimaryButton from "./PrimaryButton";
-import TextBox from "./TextBox";
+import PrimaryButton from "../PrimaryButton.jsx";
+import TextBox from "../TextBox";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { normalizeNumber } from "../utils/numberUtils.js";
+import { normalizeNumber } from "../../utils/numberUtils.js";
 
 const BabyForm = ({
     initialData = {},

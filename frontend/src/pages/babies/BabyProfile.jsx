@@ -2,11 +2,9 @@
 // Baby profile page showing detailed information and growth tracking
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { getBabyById } from "../services/babyApi";
-import { updateBaby } from "../services/babyApi";
-import { deleteBaby } from "../services/babyApi";
-import PrimaryButton from "../components/PrimaryButton";
-import BabyProfileForm from "../components/BabyProfileForm";
+import { getBabyById, updateBaby, deleteBaby } from "../../services/babyApi";
+import PrimaryButton from "../../components/PrimaryButton";
+import BabyProfileForm from "../../components/babycomponents/BabyProfileForm";
 
 const BabyProfile = () => {
     const { babyId } = useParams();

@@ -13,9 +13,11 @@ import ProtectedRoute from "./auth/ProtectedRoute.jsx";
 // Pages
 import Landing from "./pages/Landing.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
-import BabyProfile from "./pages/BabyProfile.jsx";
-import AddBaby from "./pages/AddBaby.jsx";
+import BabyProfile from "./pages/babies/BabyProfile.jsx";
+import AddBaby from "./pages/babies/AddBaby.jsx";
 import AddMeasurement from "./pages/measurements/AddMeasurement.jsx";
+import GrowthHistory from "./pages/measurements/GrowthHistory.jsx";
+import GrowthTracking from "./pages/measurements/GrowthTracking.jsx";
 
 // Growth Tracking Pages
 /* import GrowthTracking from "./pages/GrowthTracking.jsx";
@@ -36,11 +38,11 @@ export default function App() {
         
         {/* Growth Tracking Routes */}
         <Route path="/add-measurement" element={<ProtectedRoute element={<AddMeasurement />} />} />
-       {/*  <Route path="/baby/:babyId/growth" element={<ProtectedRoute element={<GrowthTracking />} />} />
-        <Route path="/baby/:babyId/add-measurement" element={<ProtectedRoute element={<AddMeasurement />} />} />
+        <Route path="/baby/:babyId/growth/history" element={<ProtectedRoute element={<GrowthTracking />} />} />
+        {/*<Route path="/baby/:babyId/add-measurement" element={<ProtectedRoute element={<AddMeasurement />} />} />
         <Route path="/baby/:babyId/growth/history" element={<ProtectedRoute element={<GrowthHistory />} />} />
-        <Route path="/baby/:babyId/measurement/:measurementId/edit" element={<ProtectedRoute element={<EditMeasurement />} />} /> */}
-      </Routes>
+        <Route path="/baby/:babyId/measurement/:measurementId/edit" element={<ProtectedRoute element={<EditMeasurement />} />} />  */}
+        </Routes>
       <Footer />
     </>
   );

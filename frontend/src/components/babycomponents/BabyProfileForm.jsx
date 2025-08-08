@@ -1,12 +1,12 @@
 // src/components/BabyProfileForm.jsx
 // Reusable component for displaying baby profile information in a form layout
 import React, { useState } from "react";
-import PrimaryButton from "./PrimaryButton";
-import TextBox from "./TextBox";
+import PrimaryButton from "../PrimaryButton.jsx";
+import TextBox from "../TextBox.jsx";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { calculateAge } from "../utils/dateUtils.js";
-import { normalizeNumber } from "../utils/numberUtils.js";
+import { calculateAge } from "../../utils/dateUtils.js";
+import { normalizeNumber } from "../../utils/numberUtils.js";
 
 const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
   const [formData, setFormData] = useState(baby ? { ...baby } : {});

@@ -2,7 +2,7 @@
 // Purpose: Card component to display individual growth measurement data
 
 import React from "react";
-import PrimaryButton from "./PrimaryButton";
+import PrimaryButton from "../PrimaryButton";
 
 const MeasurementCard = ({ 
     measurement, 

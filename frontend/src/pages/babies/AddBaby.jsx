@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { createBaby } from "../services/babyApi";
-import BabyForm from "../components/BabyForm";
+import { createBaby } from "../../services/babyApi";
+import BabyForm from "../../components/babycomponents/BabyForm";
 
 const AddBaby = () => {
     const navigate = useNavigate();

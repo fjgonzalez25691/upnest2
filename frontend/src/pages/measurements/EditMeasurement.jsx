@@ -4,9 +4,9 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import GrowthDataForm from "../components/measurementform/GrowthDataForm";
-import PrimaryButton from "../components/PrimaryButton";
-import { getBaby } from "../services/babyApi";
-import { getGrowthMeasurement, updateGrowthData, deleteGrowthData } from "../services/growthDataApi";
+import PrimaryButton from "../../components/PrimaryButton";
+import { getBaby } from "../../services/babyApi";
+import { getGrowthMeasurement, updateGrowthData, deleteGrowthData } from "../../services/growthDataApi";
 
 const EditMeasurement = () => {
     const { babyId, measurementId } = useParams();
