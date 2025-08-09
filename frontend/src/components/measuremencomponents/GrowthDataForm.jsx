@@ -6,7 +6,7 @@ import PrimaryButton from "../PrimaryButton.jsx";
 import TextBox from "../TextBox.jsx";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { normalizeNumber } from "../../utils/numberUtils.js";
+import { normalizeNumber, formatNumberWithOptionalDecimal } from "../../utils/numberUtils.js";
 
 const GrowthDataForm = ({
     initialData = {},

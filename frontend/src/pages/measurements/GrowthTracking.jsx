@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getGrowthData } from "../../services/growthDataApi";
 import PrimaryButton from "../../components/PrimaryButton";
+import GrowthDataList from "../../components/measuremencomponents/GrowthDataList";
 
 const GrowthTracking = () => {
     const { babyId } = useParams();
@@ -43,37 +44,31 @@ const GrowthTracking = () => {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold">Growth Measurements</h1>
-                <Link to={`/baby/${babyId}`}>
-                    <PrimaryButton variant="primary">Back to Profile</PrimaryButton>
-                </Link>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+            <div className="max-w-4xl mx-auto">
+                <div className="mb-8">
+                    <Link to={`/baby/${babyId}`} className="text-blue-600 hover:text-blue-800 flex items-center mb-4 transition-colors">
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Back to Profile
+                    </Link>
+                </div>
+                <div className="bg-white rounded-3xl shadow-lg p-8 border border-blue-100">
+                    <div className="flex items-center justify-between mb-6">
+                        <h1 className="text-2xl font-bold">Growth Measurements</h1>
+                    </div>
+                    {measurements.length === 0 ? (
+                        <div className="text-center text-gray-500">No measurements found for this baby.</div>
+                    ) : (
+                        <GrowthDataList
+                            measurements={measurements}
+                            loading={loading}
+                            error={error}
+                        />
+                    )}
+                </div>
             </div>
-            {measurements.length === 0 ? (
-                <div className="text-center text-gray-500">No measurements found for this baby.</div>
-            ) : (
-                <table className="min-w-full bg-white rounded shadow">
-                    <thead>
-                        <tr>
-                            <th className="py-2 px-4 border-b">Date</th>
-                            <th className="py-2 px-4 border-b">Weight (g)</th>
-                            <th className="py-2 px-4 border-b">Height (cm)</th>
-                            <th className="py-2 px-4 border-b">Head Circumference (cm)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {measurements.map((m) => (
-                            <tr key={m.dataId}>
-                                <td className="py-2 px-4 border-b">{new Date(m.measurementDate).toLocaleDateString()}</td>
-                                <td className="py-2 px-4 border-b">{m.measurements?.weight ?? "-"}</td>
-                                <td className="py-2 px-4 border-b">{m.measurements?.height ?? "-"}</td>
-                                <td className="py-2 px-4 border-b">{m.measurements?.headCircumference ?? "-"}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
         </div>
     );
 };

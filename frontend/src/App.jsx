@@ -38,10 +38,9 @@ export default function App() {
         
         {/* Growth Tracking Routes */}
         <Route path="/add-measurement" element={<ProtectedRoute element={<AddMeasurement />} />} />
-        <Route path="/baby/:babyId/growth/history" element={<ProtectedRoute element={<GrowthTracking />} />} />
-        {/*<Route path="/baby/:babyId/add-measurement" element={<ProtectedRoute element={<AddMeasurement />} />} />
+        <Route path="/baby/:babyId/growth/tracking" element={<ProtectedRoute element={<GrowthTracking />} />} />
         <Route path="/baby/:babyId/growth/history" element={<ProtectedRoute element={<GrowthHistory />} />} />
-        <Route path="/baby/:babyId/measurement/:measurementId/edit" element={<ProtectedRoute element={<EditMeasurement />} />} />  */}
+        {/* <Route path="/baby/:babyId/measurement/:measurementId/edit" element={<ProtectedRoute element={<EditMeasurement />} />} /> */}
         </Routes>
       <Footer />
     </>

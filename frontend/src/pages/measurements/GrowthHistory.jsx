@@ -4,9 +4,10 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import GrowthDataForm from "../../components/measuremencomponents/GrowthDataForm";
+import GrowthDataList from "../../components/measuremencomponents/GrowthDataList";
 import PrimaryButton from "../../components/PrimaryButton";
 import { getBaby } from "../../services/babyApi";
-import { getGrowthMeasurement, updateGrowthData, deleteGrowthData } from "../../services/growthDataApi";
+import { getGrowthData, getGrowthMeasurement, updateGrowthData, deleteGrowthData } from "../../services/growthDataApi";
 
 const EditMeasurement = () => {
     const { babyId, measurementId } = useParams();
@@ -32,7 +33,7 @@ const EditMeasurement = () => {
             setBaby(babyData);
 
             // Fetch measurement data
-            const measurementData = await getGrowthMeasurement(measurementId);
+            const measurementData = await getGrowthData(babyId);
             setMeasurement(measurementData);
 
         } catch (err) {
@@ -194,6 +195,17 @@ const EditMeasurement = () => {
                         notes: measurement.notes || "",
                         measurementSource: measurement.measurementSource || "home"
                     }}
+                />
+            </div>
+
+            {/* Measurements List - Added Section */}
+            <div className="mt-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Previous Measurements</h3>
+                <GrowthDataList 
+                    measurements={measurement}
+                    loading={loading}
+                    error={error}
+                    showAddButton={false}
                 />
             </div>
 
