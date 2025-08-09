@@ -29,6 +29,8 @@
   --gradient-number: linear-gradient(to right, #f0fdf4, #ecfdf5);
   --gradient-date: linear-gradient(to right, #f9fafb, #f1f5f9);
   --gradient-select: linear-gradient(to right, #ede9fe, #f3e8ff);
+  /* Gradients for text areas */
+  --gradient-textarea-info: linear-gradient(to right, #f0f9ff, #f0fdf4);
 }
 
 @layer base {
@@ -77,5 +79,9 @@
 
   .shadow-card {
     @apply shadow-lg hover:shadow-xl;
+  }
+
+  .gradient-textarea-info {
+    @apply bg-gradient-to-r from-green-50 to-emerald-50;
   }
 }

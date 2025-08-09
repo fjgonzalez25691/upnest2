@@ -8,7 +8,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { calculateAge } from "../../utils/dateUtils.js";
 import { normalizeNumber } from "../../utils/numberUtils.js";
 
-const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
+const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, onDelete }) => {
   const [formData, setFormData] = useState(baby ? { ...baby } : {});
   const [errors, setErrors] = useState({});
 
@@ -237,38 +237,49 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel }) => {
       </div>
 
       {/* Action Buttons for Edit Mode */}
-      {isEditable && (
-        <div className="flex gap-4 mt-8 pt-6 border-t border-gray-200">
-          <PrimaryButton
-            variant="primary"
-            className="flex-1"
-            onClick={() => {
-              const dataToSend = {
-                ...formData,
-                birthWeight: formData.birthWeight ? Number(formData.birthWeight) : undefined,
-                birthHeight: formData.birthHeight ? Number(formData.birthHeight) : undefined,
-                headCircumference: formData.headCircumference ? Number(formData.headCircumference) : undefined,
-                gestationalWeek: formData.gestationalWeek ? Number(formData.gestationalWeek) : undefined,
-              };
-              const validationErrors = validate(dataToSend);
-              setErrors(validationErrors);
-              if (Object.keys(validationErrors).length > 0) return;
-              onSave(dataToSend);
-            }}
-            type="button"
-          >
-            Save Changes
-          </PrimaryButton>
-          <PrimaryButton
-            variant="cancel"
-            className="flex-1"
-            onClick={onCancel}
-            type="button"
-          >
-            Cancel
-          </PrimaryButton>
+      <div className="gradient-textarea-info rounded-2xl shadow p-6 mt-8 border border-blue-100">
+        <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">Profile Actions</h2>
+        <div className="grid grid-cols-1  md:grid-cols-2  justify-items-center gap-4">
+          {!isEditable && (
+            <>
+              <PrimaryButton variant="edit" className="w-60" onClick={onEdit}>
+                Edit
+              </PrimaryButton>
+              <PrimaryButton variant="danger" className="w-60" onClick={onDelete}>
+                Delete Profile
+              </PrimaryButton>
+            </>
+           
+          )}
+             
+          {isEditable && (
+            <>
+              <PrimaryButton
+                type="submit"
+                variant="primary"
+                onClick={() => {
+                  const dataToSend = {
+                    ...formData,
+                    birthWeight: formData.birthWeight ? Number(formData.birthWeight) : undefined,
+                    birthHeight: formData.birthHeight ? Number(formData.birthHeight) : undefined,
+                    headCircumference: formData.headCircumference ? Number(formData.headCircumference) : undefined,
+                    gestationalWeek: formData.gestationalWeek ? Number(formData.gestationalWeek) : undefined,
+                  };
+                  const validationErrors = validate(dataToSend);
+                  setErrors(validationErrors);
+                  if (Object.keys(validationErrors).length > 0) return;
+                  onSave(dataToSend);
+                }}
+              >
+                Save
+              </PrimaryButton>
+              <PrimaryButton type="button" variant="cancel" onClick={onCancel}>
+                Cancel
+              </PrimaryButton>
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

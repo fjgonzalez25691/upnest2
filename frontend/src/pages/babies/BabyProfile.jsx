@@ -132,7 +132,10 @@ const BabyProfile = () => {
                         baby={baby?.baby}
                         isEditable={editMode}
                         onSave={handleSave}
+                        onAdd={handleAddMeasurement}
                         onCancel={() => handleCancel()}
+                        onEdit={() => setEditMode(true)}
+                        onDelete={() => handleDelete()}
                     />
                 </div>
 
