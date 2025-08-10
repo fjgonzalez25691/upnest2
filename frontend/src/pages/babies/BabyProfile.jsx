@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getBabyById, updateBaby, deleteBaby } from "../../services/babyApi";
+import { getGrowthData } from "../../services/growthDataApi";
 import PrimaryButton from "../../components/PrimaryButton";
 import BabyProfileForm from "../../components/babycomponents/BabyProfileForm";
 
@@ -12,6 +13,7 @@ const BabyProfile = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [editMode, setEditMode] = useState(false)
+    const [measurements, setMeasurements] = useState(0);
     const navigate = useNavigate();
 
     console.log("🔍 BabyProfile mounted with babyId:", babyId);
@@ -31,8 +33,22 @@ const BabyProfile = () => {
             }
         };
 
+        const fetchMeasurements = async () => {
+            try {
+                setLoading(true);
+                const growthData = await getGrowthData(babyId);
+                console.log("🔍 Fetched growth data:", growthData);
+                setMeasurements(growthData.length);
+            } catch (err) {
+                setMeasurements(0);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         if (babyId) {
             fetchBaby();
+            fetchMeasurements();
         }
     }, [babyId]);
 
@@ -139,104 +155,92 @@ const BabyProfile = () => {
                     />
                 </div>
 
-                {/* Action Buttons */}
-                <div className="bg-white rounded-3xl shadow-lg p-8 mb-8 border border-blue-100">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-6">Profile Actions</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <PrimaryButton variant="edit" onClick={() => setEditMode(true)}>
-                            Edit Profile
-                        </PrimaryButton>
-                        <PrimaryButton variant="add" className="w-full" onClick={handleAddMeasurement}>
-                            Add Measurement
-                        </PrimaryButton>
-                        <PrimaryButton variant="danger" onClick={handleDelete}>
-                            Delete Profile
-                        </PrimaryButton>
-                    </div>
-                </div>
 
                 {/* Growth Tracking Section */}
-                <div className="bg-white rounded-3xl shadow-lg p-8 border border-green-100">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800">Growth Tracking</h2>
-                        <Link to={`/baby/${babyId}/growth/tracking`}>
-                            <PrimaryButton variant="primary" className="mt-4 sm:mt-0">
-                                View Growth Dashboard
-                            </PrimaryButton>
-                        </Link>
-                    </div>
-
-                    {/* Growth Quick Actions */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Charts */}
-                        <div className="text-center p-6 bg-blue-50 rounded-xl border border-blue-100">
-                            <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                </svg>
-                            </div>
-                            <h3 className="text-lg font-semibold text-gray-800 mb-2">Growth Charts</h3>
-                            <p className="text-gray-600 text-sm mb-4">
-                                View WHO percentile charts and growth trends
-                            </p>
+                {measurements > 0 && (
+                    <div className="bg-white rounded-3xl shadow-lg p-8 border border-green-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-gray-800">Growth Tracking</h2>
                             <Link to={`/baby/${babyId}/growth/tracking`}>
-                                <PrimaryButton variant="primary" size="sm">
-                                    View Charts
+                                <PrimaryButton variant="primary" className="mt-4 sm:mt-0">
+                                    View Growth Dashboard
                                 </PrimaryButton>
                             </Link>
                         </div>
 
-                        {/* Add Data */}
-                        <div className="text-center p-6 bg-green-50 rounded-xl border border-green-100">
-                            <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg>
+                        {/* Growth Quick Actions */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Charts */}
+                            <div className="text-center p-6 bg-blue-50 rounded-xl border border-blue-100">
+                                <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-800 mb-2">Growth Charts</h3>
+                                <p className="text-gray-600 text-sm mb-4">
+                                    View WHO percentile charts and growth trends
+                                </p>
+                                <Link to={`/baby/${babyId}/growth/tracking`}>
+                                    <PrimaryButton variant="primary" size="sm">
+                                        View Charts
+                                    </PrimaryButton>
+                                </Link>
                             </div>
-                            <h3 className="text-lg font-semibold text-gray-800 mb-2">New Measurement</h3>
-                            <p className="text-gray-600 text-sm mb-4">
-                                Record weight, height, and head circumference
-                            </p>
-                            <PrimaryButton variant="add" size="sm" onClick={handleAddMeasurement}>
-                                Add Data
-                            </PrimaryButton>
-                        </div>
 
-                        {/* History */}
-                        <div className="text-center p-6 bg-purple-50 rounded-xl border border-purple-100">
-                            <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <h3 className="text-lg font-semibold text-gray-800 mb-2">Measurement History</h3>
-                            <p className="text-gray-600 text-sm mb-4">
-                                Browse all recorded measurements and data
-                            </p>
-                            <Link to={`/baby/${babyId}/growth/history`}>
-                                <PrimaryButton variant="primary" size="sm">
-                                    View History
+                            {/* Add Data */}
+                            <div className="text-center p-6 bg-green-50 rounded-xl border border-green-100">
+                                <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-800 mb-2">New Measurement</h3>
+                                <p className="text-gray-600 text-sm mb-4">
+                                    Record weight, height, and head circumference
+                                </p>
+                                <PrimaryButton variant="add" size="sm" onClick={handleAddMeasurement}>
+                                    Add Data
                                 </PrimaryButton>
-                            </Link>
+                            </div>
+
+                            {/* History */}
+                            <div className="text-center p-6 bg-purple-50 rounded-xl border border-purple-100">
+                                <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-800 mb-2">Measurement History</h3>
+                                <p className="text-gray-600 text-sm mb-4">
+                                    Browse all recorded measurements and data
+                                </p>
+                                <Link to={`/baby/${babyId}/growth/history`}>
+                                    <PrimaryButton variant="primary" size="sm">
+                                        View History
+                                    </PrimaryButton>
+                                </Link>
+                            </div>
                         </div>
                     </div>
+                )}
 
-                    {/* Get Started Message if no data */}
+                {/* Get Started Message if no data */}
+                {measurements === 0 && (
                     <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
                         <div className="text-center">
                             <h3 className="text-lg font-semibold text-gray-800 mb-2">Start Tracking {baby.baby.name}'s Growth</h3>
                             <p className="text-gray-600 mb-4">
-                                Add your first measurement to start tracking growth with WHO percentile charts.
+                                    Add your first measurement to start tracking growth with WHO percentile charts.
                             </p>
                             <PrimaryButton variant="add" onClick={handleAddMeasurement}>
                                 Add First Measurement
                             </PrimaryButton>
                         </div>
-                    </div>
-                </div>
+                    </div>  
+                )}
             </div>
         </div>
-    );
+    )
 };
-
 export default BabyProfile;

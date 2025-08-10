@@ -52,6 +52,7 @@ function Header() {
                   handleLogout();
                   setMenuOpen(false);
                 }}
+                className="h-10 w-30 flex items-center  justify-center px-5 text-sm"
               >
                 Logout
               </PrimaryButton>
@@ -63,6 +64,7 @@ function Header() {
                 handleLoginClick();
                 setMenuOpen(false);
               }}
+              className="h-10 w-30 flex items-center justify-center px-5 text-sm"
             >
               Login
             </PrimaryButton>

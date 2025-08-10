@@ -66,75 +66,94 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, o
       </div>
 
       {/* Baby Details Form */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Left Column */}
-        <div className="space-y-6">
-          <TextBox
-            label="Name"
-            name="name"
-            value={formData.name || ""}
-            onChange={handleChange}
-            editable={isEditable}
-            required
-          />
-
-          {isEditable ? (
-            <div>
-              <label className="textbox-label" htmlFor="dateOfBirth">Date of Birth</label>
-              <DatePicker
-                id="dateOfBirth"
-                name="dateOfBirth"
-                selected={formData.dateOfBirth ? new Date(formData.dateOfBirth) : null}
-                onChange={date => handleChange({
-                  target: {
-                    name: "dateOfBirth",
-                    value: date ? date.toISOString().slice(0, 10) : ""
-                  }
-                })}
-                dateFormat="yyyy-MM-dd"
-                className="textbox-input-edit w-full"
-                placeholderText="YYYY-MM-DD"
-                required
-              />
-            </div>
-          ) : (
+      <div className="space-y-6">
+        {/* Basic Information Section */}
+        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+          <h3 className="text-lg font-medium mb-3">Basic Information</h3>
+          <div className="grid gap-4 md:grid-cols-2">
             <TextBox
-              label="Date of Birth"
-              name="dateOfBirth"
-              value={formData.dateOfBirth || ""}
-              editable={false}
-              type="date"
+              label="Name"
+              name="name"
+              value={formData.name || ""}
+              onChange={handleChange}
+              editable={isEditable}
               required
             />
-          )}
 
-          <TextBox
-            label="Gender"
-            name="gender"
-            value={formData.gender || ""}
-            onChange={handleChange}
-            editable={isEditable}
-            type="select"
-            options={[
-              { value: "male", label: "Male" },
-              { value: "female", label: "Female" }
-            ]}
-            required
-          />
-
-          {isEditable ? (
-            <div>
-              <label className="textbox-label">Birth Status</label>
-              <div className="flex items-center gap-4">
-                <input
-                  type="checkbox"
-                  id="premature"
-                  name="premature"
-                  checked={!!formData.premature}
-                  onChange={handleChange}
-                  className="mr-2"
+            {isEditable ? (
+              <div>
+                <label className="textbox-label textbox-label-required" htmlFor="dateOfBirth">
+                  Date of Birth
+                </label>
+                <DatePicker
+                  id="dateOfBirth"
+                  name="dateOfBirth"
+                  selected={formData.dateOfBirth ? new Date(formData.dateOfBirth) : null}
+                  onChange={date => handleChange({
+                    target: {
+                      name: "dateOfBirth",
+                      value: date ? date.toISOString().slice(0, 10) : ""
+                    }
+                  })}
+                  dateFormat="yyyy-MM-dd"
+                  className="textbox-input-edit w-full"
+                  placeholderText="YYYY-MM-DD"
+                  required
                 />
-                <label htmlFor="premature" className="mr-4">Premature</label>
+              </div>
+            ) : (
+              <TextBox
+                label="Date of Birth"
+                name="dateOfBirth"
+                value={formData.dateOfBirth || ""}
+                editable={false}
+                type="date"
+                required
+              />
+            )}
+
+            <TextBox
+              label="Gender"
+              name="gender"
+              value={formData.gender || ""}
+              onChange={handleChange}
+              editable={isEditable}
+              type="select"
+              options={[
+                { value: "male", label: "Male" },
+                { value: "female", label: "Female" }
+              ]}
+              required
+            />
+
+            <TextBox
+              label="Profile Created"
+              name="profileCreated"
+              value={formatDateISO(baby.createdAt)}
+              editable={false}
+              type="date"
+            />
+          </div>
+        </div>
+
+        {/* Birth Conditions Section */}
+        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+          <h3 className="text-lg font-medium mb-3">Birth Conditions</h3>
+          <div className="space-y-4">
+            {isEditable ? (
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <input
+                    type="checkbox"
+                    id="premature"
+                    name="premature"
+                    checked={!!formData.premature}
+                    onChange={handleChange}
+                    className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="premature" className="font-medium text-gray-700">Premature Birth</label>
+                </div>
+                
                 {formData.premature && (
                   <TextBox
                     label="Gestational Week"
@@ -144,7 +163,6 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, o
                     onChange={e => {
                       handleChange(e);
                       const week = Number(e.target.value);
-                      // If gestational week is greater than 37, automatically set premature to false and clear week
                       if (week > 37) {
                         setFormData(prev => ({
                           ...prev,
@@ -158,86 +176,88 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, o
                     max={37}
                     required
                     suffix="weeks"
+                    placeholder="e.g., 36"
                     error={errors.gestationalWeek}
                   />
                 )}
               </div>
-            </div>
-          ) : (
-            <TextBox
-              label="Birth Status"
-              name="birthStatus"
-              value={baby.premature ? `Premature (${baby.gestationalWeek} weeks)` : 'Full Term'}
-              editable={false}
-              type="string"
-            />
-          )}
+            ) : (
+              <TextBox
+                label="Birth Status"
+                name="birthStatus"
+                value={baby.premature ? `Premature (${baby.gestationalWeek} weeks)` : 'Full Term'}
+                editable={false}
+                type="string"
+              />
+            )}
+          </div>
         </div>
 
-        {/* Right Column */}
-        <div className="space-y-6">
-          <TextBox
-            label="Birth Weight"
-            name="birthWeight"
-            type="number"
-            value={formData.birthWeight || ""}
-            onChange={handleChange}
-            editable={isEditable}
-            suffix="g"
-            placeholder="Enter weight"
-            renderValue={v => v ? `${v} g` : "Not recorded"}
-          />
+        {/* Birth Measurements Section */}
+        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+          <h3 className="text-lg font-medium mb-3">Birth Measurements</h3>
+          <div className="grid gap-4 md:grid-cols-3">
+            <TextBox
+              label="Birth Weight"
+              name="birthWeight"
+              type="number"
+              value={formData.birthWeight || ""}
+              onChange={handleChange}
+              editable={isEditable}
+              suffix="g"
+              placeholder="e.g., 3200"
+              min={500}
+              max={6000}
+              renderValue={v => v ? `${v} g` : "Not recorded"}
+            />
 
-          <TextBox
-            label="Birth Height"
-            name="birthHeight"
-            type="number"
-            value={formData.birthHeight || ""}
-            onChange={e => {
-              const normalized = normalizeNumber(e.target.value);
-              setFormData(prev => ({
-                ...prev,
-                birthHeight: normalized
-              }));
-            }}
-            editable={isEditable}
-            suffix="cm"
-            placeholder="Enter height"
-            step="0.1"
-            renderValue={v => v ? `${v} cm` : "Not recorded"}
-          />
+            <TextBox
+              label="Birth Height"
+              name="birthHeight"
+              type="number"
+              value={formData.birthHeight || ""}
+              onChange={e => {
+                const normalized = normalizeNumber(e.target.value);
+                setFormData(prev => ({
+                  ...prev,
+                  birthHeight: normalized
+                }));
+              }}
+              editable={isEditable}
+              suffix="cm"
+              placeholder="e.g., 50.5"
+              step="0.1"
+              min={20}
+              max={60}
+              renderValue={v => v ? `${v} cm` : "Not recorded"}
+            />
 
-          <TextBox
-            label="Birth head circumference"
-            name="headCircumference"
-            type="number"
-            value={formData.headCircumference || ""}
-            onChange={e => {
-              const normalized = normalizeNumber(e.target.value);
-              setFormData(prev => ({
-                ...prev,
-                headCircumference: normalized
-              }));
-            }}
-            editable={isEditable}
-            suffix="cm"
-            placeholder="Enter head circumference"
-            step="0.1"
-            renderValue={v => v ? `${v} cm` : "Not recorded"}
-          />
-
-          <TextBox
-            label="Profile Created"
-            name="profileCreated"
-            value={formatDateISO(baby.createdAt)}
-            editable={false}
-            type="date"
-          />
+            <TextBox
+              label="Head Circumference"
+              name="headCircumference"
+              type="number"
+              value={formData.headCircumference || ""}
+              onChange={e => {
+                const normalized = normalizeNumber(e.target.value);
+                setFormData(prev => ({
+                  ...prev,
+                  headCircumference: normalized
+                }));
+              }}
+              editable={isEditable}
+              suffix="cm"
+              placeholder="e.g., 35.2"
+              step="0.1"
+              min={20}
+              max={60}
+              renderValue={v => v ? `${v} cm` : "Not recorded"}
+            />
+          </div>
         </div>
       </div>
 
       {/* Action Buttons for Edit Mode */}
-      <div className="gradient-textarea-info rounded-2xl shadow p-6 mt-8 border border-blue-100">
+      <div className="gradient-textarea-info rounded-xl shadow p-6 mt-8 border border-blue-100">
         <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">Profile Actions</h2>
         <div className="grid grid-cols-1  md:grid-cols-2  justify-items-center gap-4">
           {!isEditable && (
@@ -257,6 +277,7 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, o
               <PrimaryButton
                 type="submit"
                 variant="primary"
+                className="w-60"
                 onClick={() => {
                   const dataToSend = {
                     ...formData,
@@ -273,7 +294,7 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, o
               >
                 Save
               </PrimaryButton>
-              <PrimaryButton type="button" variant="cancel" onClick={onCancel}>
+              <PrimaryButton type="button" variant="cancel" className="w-60" onClick={onCancel}>
                 Cancel
               </PrimaryButton>
             </>

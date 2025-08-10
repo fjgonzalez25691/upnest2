@@ -37,6 +37,6 @@
   }
   .btn-logout {
     background: var(--color-gradient-logout);
-    @apply text-gray-900;
+    @apply text-gray-900 text-base;
   }
 }
