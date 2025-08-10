@@ -2,7 +2,7 @@
 // Main growth tracking page showing charts and recent measurements for a specific baby
 
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { getGrowthData } from "../../services/growthDataApi";
 import PrimaryButton from "../../components/PrimaryButton";
 import GrowthDataList from "../../components/measuremencomponents/GrowthDataList";
@@ -28,6 +28,18 @@ const GrowthTracking = () => {
         };
         if (babyId) fetchMeasurements();
     }, [babyId]);
+
+    const navigate = useNavigate();
+
+    const handleEdit = (measurement) => {
+        console.log("Edit measurement:", measurement);
+        navigate(`/edit-measurement/${measurement.dataId}`);
+    };
+
+    const handleDelete = (measurement) => {
+        console.log("Delete measurement:", measurement);
+        // Por ahora solo console.log para verificar que funciona
+    };
 
     if (loading) {
         return <div className="p-8 text-center">Loading measurements...</div>;
@@ -65,6 +77,8 @@ const GrowthTracking = () => {
                             measurements={measurements}
                             loading={loading}
                             error={error}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
                         />
                     )}
                 </div>

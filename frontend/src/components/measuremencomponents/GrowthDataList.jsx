@@ -2,6 +2,7 @@
 // Purpose: List component to display and manage multiple growth measurements
 
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import MeasurementCard from "./MeasurementCard";
 import PrimaryButton from "../PrimaryButton";
 
@@ -61,6 +62,12 @@ const GrowthDataList = ({
         } else {
             setSortBy(field);
             setSortOrder("desc");
+        }
+    };
+
+    const handleEdit = (measurement) => {
+        if (onEdit) {
+            onEdit(measurement);
         }
     };
 

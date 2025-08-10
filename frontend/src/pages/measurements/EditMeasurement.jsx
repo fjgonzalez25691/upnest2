@@ -3,51 +3,47 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import GrowthDataForm from "../components/measurementform/GrowthDataForm";
+import GrowthDataForm from "../../components/measuremencomponents/GrowthDataForm";
 import PrimaryButton from "../../components/PrimaryButton";
-import { getBaby } from "../../services/babyApi";
-import { getGrowthMeasurement, updateGrowthData, deleteGrowthData } from "../../services/growthDataApi";
+import { getGrowthMeasurement, updateGrowthData} from "../../services/growthDataApi";
 
 const EditMeasurement = () => {
-    const { babyId, measurementId } = useParams();
+    const { measurementId } = useParams();
     const navigate = useNavigate();
-    
-    const [baby, setBaby] = useState(null);
+
     const [measurement, setMeasurement] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
+        const fetchData = async () => {
+            console.log("MeasurementId from params:", measurementId); // LOG 1
+            try {
+                setLoading(true);
+                setError("");
+
+                // Fetch measurement data
+                const measurementData = await getGrowthMeasurement(measurementId);
+                console.log("Measurement data from API:", measurementData); // LOG 2
+                setMeasurement(measurementData);
+
+                
+            } catch (err) {
+                console.error("Error fetching measurement data:", err);
+                setError("Failed to load measurement data. Please try again.");
+            } finally {
+                setLoading(false);
+            }
+        };
         fetchData();
-    }, [babyId, measurementId]);
-
-    const fetchData = async () => {
-        try {
-            setLoading(true);
-            setError("");
-
-            // Fetch baby data
-            const babyData = await getBaby(babyId);
-            setBaby(babyData);
-
-            // Fetch measurement data
-            const measurementData = await getGrowthMeasurement(measurementId);
-            setMeasurement(measurementData);
-
-        } catch (err) {
-            console.error("Error fetching measurement data:", err);
-            setError("Failed to load measurement data. Please try again.");
-        } finally {
-            setLoading(false);
-        }
-    };
+    }, [measurementId]);    
 
     const handleSave = async (formData) => {
         setSaving(true);
         try {
             await updateGrowthData(measurementId, formData);
-            navigate(`/baby/${babyId}/growth`);
+            navigate(`/baby/${measurement.babyId}/growth/tracking`);
         } catch (err) {
             console.error("Error updating measurement:", err);
             throw new Error("Failed to update measurement. Please try again.");
@@ -57,7 +53,7 @@ const EditMeasurement = () => {
     };
 
     const handleCancel = () => {
-        navigate(`/baby/${babyId}/growth`);
+        navigate(`/baby/${measurement.babyId}/growth/tracking`);
     };
 
     const handleDelete = async () => {
@@ -68,7 +64,7 @@ const EditMeasurement = () => {
         try {
             setSaving(true);
             await deleteGrowthData(measurementId);
-            navigate(`/baby/${babyId}/growth`);
+            navigate(`/baby/${measurement.babyId}/growth/history`);
         } catch (err) {
             console.error("Error deleting measurement:", err);
             setError("Failed to delete measurement. Please try again.");
@@ -103,7 +99,7 @@ const EditMeasurement = () => {
                         <PrimaryButton onClick={fetchData} variant="danger">
                             Try Again
                         </PrimaryButton>
-                        <Link to={`/baby/${babyId}/growth`}>
+                        <Link to={`/baby/${measurement.babyId}/growth/history`}>
                             <PrimaryButton variant="cancel">
                                 Back to Growth
                             </PrimaryButton>
@@ -114,12 +110,12 @@ const EditMeasurement = () => {
         );
     }
 
-    if (!baby || !measurement) {
+    if (!measurement) {
         return (
             <div className="container mx-auto px-4 py-8">
                 <div className="text-center">
                     <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-                        {!baby ? "Baby Not Found" : "Measurement Not Found"}
+                        Measurement Not Found
                     </h2>
                     <Link to="/dashboard">
                         <PrimaryButton variant="primary">Back to Dashboard</PrimaryButton>
@@ -131,42 +127,15 @@ const EditMeasurement = () => {
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-4xl">
-            {/* Header */}
-            <div className="mb-8">
-                {/* Breadcrumb */}
-                <div className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
-                    <Link to="/dashboard" className="hover:text-gray-700">Dashboard</Link>
-                    <span>/</span>
-                    <Link to={`/baby/${babyId}`} className="hover:text-gray-700">{baby.name}</Link>
-                    <span>/</span>
-                    <Link to={`/baby/${babyId}/growth`} className="hover:text-gray-700">Growth</Link>
-                    <span>/</span>
-                    <span>Edit Measurement</span>
-                </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Edit Measurement</h1>
-                        <p className="text-gray-600 mt-1">
-                            Modify {baby.name}'s growth measurement from {new Date(measurement.measurementDate).toLocaleDateString()}
-                        </p>
-                    </div>
-                    <div className="flex space-x-3 mt-4 sm:mt-0">
-                        <PrimaryButton 
-                            onClick={handleDelete}
-                            variant="danger"
-                            disabled={saving}
-                            className="px-4"
-                        >
-                            {saving ? "Deleting..." : "Delete"}
-                        </PrimaryButton>
-                        <Link to={`/baby/${babyId}/growth`}>
-                            <PrimaryButton variant="cancel">
-                                Cancel
-                            </PrimaryButton>
-                        </Link>
-                    </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Edit Measurement</h1>
+                    <p className="text-gray-600 mt-1">
+                        {/* Modify {baby.name}'s growth measurement from {new Date(measurement.measurementDate).toLocaleDateString()} */}
+                    </p>
                 </div>
+                
             </div>
 
             {/* Error Display */}
@@ -183,7 +152,7 @@ const EditMeasurement = () => {
                     onCancel={handleCancel}
                     heading="Edit Growth Measurement"
                     submitLabel={saving ? "Saving..." : "Save Changes"}
-                    babyId={babyId}
+                    babyId={measurement.babyId}
                     initialData={{
                         measurementDate: measurement.measurementDate,
                         measurements: {
