@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
-import { getGrowthData } from "../../services/growthDataApi";
+import { getGrowthData, deleteGrowthData } from "../../services/growthDataApi";
 import PrimaryButton from "../../components/PrimaryButton";
 import GrowthDataList from "../../components/measuremencomponents/GrowthDataList";
 
@@ -38,9 +38,17 @@ const GrowthTracking = () => {
         navigate(`/edit-measurement/${measurement.dataId}`);
     };
 
-    const handleDelete = (measurement) => {
-        console.log("Delete measurement:", measurement);
-        // Por ahora solo console.log para verificar que funciona
+    const handleDelete = async (measurement) => {
+        if (!window.confirm("Are you sure you want to delete this measurement? This action cannot be undone.")) {
+            return;
+        }
+        try {
+            await deleteGrowthData(measurement.dataId);
+            setMeasurements((prev) => prev.filter((m) => m.dataId !== measurement.dataId));
+        } catch (err) {
+            alert("Failed to delete measurement. Please try again.");
+            console.error(err);
+        }
     };
 
     if (loading) {
