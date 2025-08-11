@@ -161,7 +161,7 @@ const BabyProfile = () => {
                     <div className="bg-white rounded-3xl shadow-lg p-8 border border-green-100">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                             <h2 className="text-2xl font-bold text-gray-800">Growth Tracking</h2>
-                            <Link to={`/baby/${babyId}/growth/tracking`}>
+                            <Link to={`/baby/${babyId}/growth/tracking`} state={{ babyName: baby.baby.name }}>
                                 <PrimaryButton variant="primary" className="mt-4 sm:mt-0">
                                     View Growth Dashboard
                                 </PrimaryButton>
@@ -181,7 +181,7 @@ const BabyProfile = () => {
                                 <p className="text-gray-600 text-sm mb-4">
                                     View WHO percentile charts and growth trends
                                 </p>
-                                <Link to={`/baby/${babyId}/growth/tracking`}>
+                                <Link to={`/baby/${babyId}/growth/tracking`} state={{ babyName: baby.baby.name }}>
                                     <PrimaryButton variant="primary" size="sm">
                                         View Charts
                                     </PrimaryButton>
@@ -215,7 +215,7 @@ const BabyProfile = () => {
                                 <p className="text-gray-600 text-sm mb-4">
                                     Browse all recorded measurements and data
                                 </p>
-                                <Link to={`/baby/${babyId}/growth/history`}>
+                                <Link to={`/baby/${babyId}/growth/tracking`}>
                                     <PrimaryButton variant="primary" size="sm">
                                         View History
                                     </PrimaryButton>

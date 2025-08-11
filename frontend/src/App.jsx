@@ -16,7 +16,6 @@ import Dashboard from "./pages/Dashboard.jsx";
 import BabyProfile from "./pages/babies/BabyProfile.jsx";
 import AddBaby from "./pages/babies/AddBaby.jsx";
 import AddMeasurement from "./pages/measurements/AddMeasurement.jsx";
-import GrowthHistory from "./pages/measurements/GrowthHistory.jsx";
 import GrowthTracking from "./pages/measurements/GrowthTracking.jsx";
 import EditMeasurement from "./pages/measurements/EditMeasurement.jsx";
 
@@ -40,7 +39,6 @@ export default function App() {
         {/* Growth Tracking Routes */}
         <Route path="/add-measurement" element={<ProtectedRoute element={<AddMeasurement />} />} />
         <Route path="/baby/:babyId/growth/tracking" element={<ProtectedRoute element={<GrowthTracking />} />} />
-        <Route path="/baby/:babyId/growth/history" element={<ProtectedRoute element={<GrowthHistory />} />} />
         <Route path="/edit-measurement/:measurementId" element={<ProtectedRoute element={<EditMeasurement />} />} />
       </Routes>
       <Footer />

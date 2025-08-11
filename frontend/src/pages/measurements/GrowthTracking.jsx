@@ -2,7 +2,7 @@
 // Main growth tracking page showing charts and recent measurements for a specific baby
 
 import React, { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { getGrowthData } from "../../services/growthDataApi";
 import PrimaryButton from "../../components/PrimaryButton";
 import GrowthDataList from "../../components/measuremencomponents/GrowthDataList";
@@ -30,6 +30,8 @@ const GrowthTracking = () => {
     }, [babyId]);
 
     const navigate = useNavigate();
+    const location = useLocation();
+    const babyName = location.state?.babyName || "Baby";
 
     const handleEdit = (measurement) => {
         console.log("Edit measurement:", measurement);
@@ -68,7 +70,7 @@ const GrowthTracking = () => {
                 </div>
                 <div className="bg-white rounded-3xl shadow-lg p-8 border border-blue-100">
                     <div className="flex items-center justify-between mb-6">
-                        <h1 className="text-2xl font-bold">Growth Measurements</h1>
+                        <h1 className="text-2xl font-bold">{babyName}'s Growth Measurements</h1>
                     </div>
                     {measurements.length === 0 ? (
                         <div className="text-center text-gray-500">No measurements found for this baby.</div>
