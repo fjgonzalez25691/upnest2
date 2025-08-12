@@ -9,6 +9,7 @@ import math
 import logging
 import pandas as pd
 from datetime import datetime
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -16,7 +17,7 @@ logger.setLevel(logging.INFO)
 # Global variables for lazy loading
 _data_cache = {}
 
-# --- Respuestas HTTP ---
+# --- HTTP Responses ---
 
 
 def success_response(data=None, message=None):
@@ -202,7 +203,7 @@ def calculate_percentile(event):
             f"Calculated {measurement_type} percentile: {percentile:.2f}%")
         return success_response({
             'measurementType': measurement_type,
-            'value': float(value),
+            'value': Decimal(value),
             'percentile': round(percentile, 2),
             'zscore': round(zscore, 4),
             'ageInDays': age_days,
@@ -228,20 +229,3 @@ def calculate_percentile(event):
         return internal_error_response("Failed to calculate percentile")
 
 
-def lambda_handler(event, context):
-    logger.info(
-        f"Percentiles Service - Event: {json.dumps(event, default=str)}")
-    http_method = event.get('httpMethod', '').upper()
-    path = event.get('path', '')
-    logger.info(f"HTTP Method: {http_method}, Path: {path}")
-    if http_method == 'OPTIONS':
-        return success_response(message="CORS preflight")
-    try:
-        if http_method == 'POST' and '/percentiles/calculate' in path:
-            return calculate_percentile(event)
-        else:
-            logger.warning(f"No handler found for {http_method} {path}")
-            return bad_request_response("Invalid endpoint or method")
-    except Exception as e:
-        logger.error(f"Error in percentiles service: {str(e)}", exc_info=True)
-        return internal_error_response("Internal server error in percentiles service")
