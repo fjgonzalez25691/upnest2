@@ -1,231 +1,176 @@
 """
-Unified Percentiles Service - Calculate growth percentiles using WHO/CDC growth charts.
-POST /percentiles/calculate - Calculate percentile for measurement
+Percentiles Service
+Computes growth percentiles from WHO tables using LMS and z-scores.
+
+HTTP (API Gateway) usage:
+  Expect JSON body with:
+    - measurementType: 'weight' | 'height' | 'headCircumference'
+    - value: number  (weight in grams; height/headCircumference in cm)
+    - dateOfBirth: 'YYYY-MM-DD'
+    - measurementDate: 'YYYY-MM-DD'
+    - sex: 'male' | 'female'
+
+Internal usage (from stream_processor):
+  - We call calculate_percentile(mock_event) exactly like HTTP; it returns {"statusCode": 200, "body": "..."}.
 """
 
 import json
 import os
 import math
 import logging
-import pandas as pd
 from datetime import datetime
 from decimal import Decimal
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Global variables for lazy loading
-_data_cache = {}
+# Simple in-memory cache for loaded XLSX data
+_DATA_CACHE: dict[str, pd.DataFrame] = {}
 
-# --- HTTP Responses ---
+# ---------- HTTP helpers ----------
+def decimal_default(obj):
+    if isinstance(obj, Decimal):
+        return float(obj)
+    raise TypeError
 
-
-def success_response(data=None, message=None):
+def _json(status, payload):
     return {
-        "statusCode": 200,
-        "body": json.dumps(data if data is not None else {"message": message}),
-        "headers": {"Content-Type": "application/json"}
+        "statusCode": status,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps(payload, default=decimal_default)
     }
 
+def _ok(data) -> dict: return _json(200, data)
+def _bad(msg: str) -> dict: return _json(400, {"error": msg})
+def _err(msg: str) -> dict: return _json(500, {"error": msg})
 
-def bad_request_response(message):
-    return {
-        "statusCode": 400,
-        "body": json.dumps({"error": message}),
-        "headers": {"Content-Type": "application/json"}
-    }
-
-
-def unauthorized_response(message):
-    return {
-        "statusCode": 401,
-        "body": json.dumps({"error": message}),
-        "headers": {"Content-Type": "application/json"}
-    }
-
-
-def internal_error_response(message):
-    return {
-        "statusCode": 500,
-        "body": json.dumps({"error": message}),
-        "headers": {"Content-Type": "application/json"}
-    }
-
-# --- Función CDF normal estándar ---
-
-
-def norm_cdf(z):
+# ---------- Math helpers ----------
+def _norm_cdf(z: float) -> float:
+    # Standard normal CDF using error function
     return (1.0 + math.erf(z / math.sqrt(2.0))) / 2.0
 
+def _zscore(value: float, L: float, M: float, S: float) -> float:
+    # LMS z-score formula (WHO)
+    if S == 0:
+        raise ValueError("Invalid S=0 in LMS parameters")
+    if L == 0:
+        return math.log(value / M) / S
+    return ((value / M) ** L - 1) / (L * S)
 
-def get_data_dir():
-    return os.path.join(os.path.dirname(__file__), 'data')
+def _z_to_percentile(z: float) -> float:
+    return _norm_cdf(z) * 100.0
 
+# ---------- Data access ----------
+def _data_dir() -> str:
+    # Excel files under ./data/<type>/<file>.xlsx
+    return os.path.join(os.path.dirname(__file__), "data")
 
-def get_table_info(measurement_type, sex):
-    sex_prefix = 'boys' if sex == 'male' else 'girls'
-    table_configs = {
-        'weight': {
-            'dir': 'weight',
-            'filename': f'wfa-{sex_prefix}-zscore-expanded-tables.xlsx'
-        },
-        'height': {
-            'dir': 'height',
-            'filename': f'lhfa-{sex_prefix}-zscore-expanded-tables.xlsx'
-        },
-        'headCircumference': {
-            'dir': 'head-circumference',
-            'filename': f'hcfa-{sex_prefix}-zscore-expanded-tables.xlsx'
-        }
+def _table_info(measurement_type: str, sex: str) -> tuple[str, str]:
+    # Map measurement type + sex to a file path
+    sex_prefix = "boys" if sex == "male" else "girls"
+    files = {
+        "weight": ("weight", f"wfa-{sex_prefix}-zscore-expanded-tables.xlsx"),
+        "height": ("height", f"lhfa-{sex_prefix}-zscore-expanded-tables.xlsx"),
+        "headCircumference": ("head-circumference", f"hcfa-{sex_prefix}-zscore-expanded-tables.xlsx"),
     }
-    if measurement_type not in table_configs:
-        raise ValueError(f"Unsupported measurement type: {measurement_type}")
-    config = table_configs[measurement_type]
-    return config['dir'], config['filename']
+    if measurement_type not in files:
+        raise ValueError(f"Unsupported measurementType: {measurement_type}")
+    return files[measurement_type]
 
+def _load_table(measurement_type: str, sex: str) -> pd.DataFrame:
+    # Lazy-load & cache the Excel growth table
+    key = f"{measurement_type}_{sex}"
+    if key not in _DATA_CACHE:
+        root = _data_dir()
+        subdir, fname = _table_info(measurement_type, sex)
+        path = os.path.join(root, subdir, fname)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Growth table not found: {path}")
+        _DATA_CACHE[key] = pd.read_excel(path)
+    return _DATA_CACHE[key]
 
-def load_table(measurement_type, sex):
-    cache_key = f"{measurement_type}_{sex}"
-    if cache_key not in _data_cache:
-        try:
-            data_dir = get_data_dir()
-            table_dir, filename = get_table_info(measurement_type, sex)
-            file_path = os.path.join(data_dir, table_dir, filename)
-            if not os.path.exists(file_path):
-                raise FileNotFoundError(f"Growth table not found: {file_path}")
-            _data_cache[cache_key] = pd.read_excel(file_path)
-            logger.info(f"Loaded growth table: {filename}")
-        except Exception as e:
-            logger.error(f"Failed to load growth table {cache_key}: {str(e)}")
-            raise
-    return _data_cache[cache_key]
-
-
-def calculate_zscore(value, L, M, S):
-    try:
-        if L == 0:
-            return math.log(value / M) / S
-        else:
-            return ((value / M) ** L - 1) / (L * S)
-    except (ValueError, ZeroDivisionError) as e:
-        logger.error(f"Z-score calculation error: {str(e)}")
-        raise ValueError(
-            f"Invalid LMS values or measurement: L={L}, M={M}, S={S}, value={value}")
-
-
-def zscore_to_percentile(z):
-    return norm_cdf(z) * 100
-
-
-def calculate_age_in_days(birth_date, measurement_date):
-    try:
-        birth = datetime.strptime(birth_date, '%Y-%m-%d')
-        measurement = datetime.strptime(measurement_date, '%Y-%m-%d')
-        if measurement < birth:
-            raise ValueError("Measurement date cannot be before birth date")
-        return (measurement - birth).days
-    except ValueError as e:
-        logger.error(f"Date parsing error: {str(e)}")
-        raise ValueError(f"Invalid date format. Use YYYY-MM-DD: {str(e)}")
-
-
-def find_lms_values(df, age_days):
-    row = df.loc[df['Day'] == age_days]
+def _find_lms_row(df: pd.DataFrame, age_days: int) -> tuple[float, float, float]:
+    # Select exact day if possible; otherwise nearest available day
+    row = df.loc[df["Day"] == age_days]
     if row.empty:
-        if age_days < df['Day'].min():
-            row = df.loc[df['Day'] == df['Day'].min()]
-            logger.warning(
-                f"Age {age_days} days is younger than available data. Using minimum age.")
-        elif age_days > df['Day'].max():
-            row = df.loc[df['Day'] == df['Day'].max()]
-            logger.warning(
-                f"Age {age_days} days is older than available data. Using maximum age.")
-        else:
-            idx = (df['Day'] - age_days).abs().idxmin()
-            row = df.loc[[idx]]
-    L = float(row['L'].iloc[0])
-    M = float(row['M'].iloc[0])
-    S = float(row['S'].iloc[0])
+        idx = (df["Day"] - age_days).abs().idxmin()
+        row = df.loc[[idx]]
+    L = float(row["L"].iloc[0]); M = float(row["M"].iloc[0]); S = float(row["S"].iloc[0])
     return L, M, S
 
+def _age_in_days(birth_date: str, measurement_date: str) -> int:
+    # Validates dates and returns (measurement - birth) in days
+    birth = datetime.strptime(birth_date, "%Y-%m-%d")
+    meas = datetime.strptime(measurement_date, "%Y-%m-%d")
+    if meas < birth:
+        raise ValueError("measurementDate cannot be before dateOfBirth")
+    return (meas - birth).days
 
-def calculate_percentile(event):
-    logger.info("Calculating growth percentile")
-    # Parse request body
+# ---------- Core endpoint ----------
+def calculate_percentile(event, _context=None):
+    """
+    Body JSON:
+      measurementType: 'weight'|'height'|'headCircumference'
+      value: number (weight in grams; height/headCircumference in cm)
+      dateOfBirth: 'YYYY-MM-DD'
+      measurementDate: 'YYYY-MM-DD'
+      sex: 'male'|'female'
+    """
     try:
-        if isinstance(event.get("body"), str):
-            body = json.loads(event["body"])
-        else:
-            body = event.get("body", {})
-        if not body:
-            logger.warning("Empty request body")
-            return bad_request_response("Request body is required")
-    except json.JSONDecodeError as e:
-        logger.warning(f"Invalid JSON in request body: {str(e)}")
-        return bad_request_response("Invalid JSON in request body")
-    # Validate required fields
+        body = event["body"] if isinstance(event.get("body"), dict) else json.loads(event.get("body", "{}"))
+    except json.JSONDecodeError:
+        return _bad("Invalid JSON in body")
+
+    mtype = body.get("measurementType")
+    value = body.get("value")
+    birth = body.get("dateOfBirth")
+    date = body.get("measurementDate")
+    sex = body.get("sex")
+
+    # Basic validation
+    if not all([mtype, value, birth, date, sex]):
+        return _bad("Missing required fields: measurementType, value, dateOfBirth, measurementDate, sex")
+    if mtype not in ("weight", "height", "headCircumference"):
+        return _bad("measurementType must be 'weight'|'height'|'headCircumference'")
+    if sex not in ("male", "female"):
+        return _bad("sex must be 'male'|'female'")
+
     try:
-        measurement_type = body.get('measurementType')
-        value = body.get('value')
-        birth_date = body.get('birthDate')
-        measurement_date = body.get('measurementDate')
-        sex = body.get('sex')
-        if not all([measurement_type, value, birth_date, measurement_date, sex]):
-            missing_fields = []
-            for field, val in [
-                ('measurementType', measurement_type),
-                ('value', value),
-                ('birthDate', birth_date),
-                ('measurementDate', measurement_date),
-                ('sex', sex)
-            ]:
-                if not val:
-                    missing_fields.append(field)
-            return bad_request_response(f"Missing required fields: {', '.join(missing_fields)}")
-        if measurement_type not in ['weight', 'height', 'headCircumference']:
-            return bad_request_response("measurementType must be 'weight', 'height', or 'headCircumference'")
-        if sex not in ['male', 'female']:
-            return bad_request_response("sex must be 'male' or 'female'")
-        try:
-            measurement_value = float(value)
-            if measurement_value <= 0:
-                return bad_request_response("Measurement value must be positive")
-        except (ValueError, TypeError):
-            return bad_request_response("Invalid measurement value")
-        if measurement_type == 'weight':
-            measurement_value = measurement_value / 1000  # Convert grams to kg
-        age_days = calculate_age_in_days(birth_date, measurement_date)
-        df = load_table(measurement_type, sex)
-        L, M, S = find_lms_values(df, age_days)
-        zscore = calculate_zscore(measurement_value, L, M, S)
-        percentile = zscore_to_percentile(zscore)
-        logger.info(
-            f"Calculated {measurement_type} percentile: {percentile:.2f}%")
-        return success_response({
-            'measurementType': measurement_type,
-            'value': Decimal(value),
-            'percentile': round(percentile, 2),
-            'zscore': round(zscore, 4),
-            'ageInDays': age_days,
-            'sex': sex,
-            'LMS': {
-                'L': round(L, 6),
-                'M': round(M, 6),
-                'S': round(S, 6)
-            },
-            'dates': {
-                'birthDate': birth_date,
-                'measurementDate': measurement_date
-            }
-        })
+        val = float(value)
+        if val <= 0:
+            return _bad("value must be > 0")
+    except (TypeError, ValueError):
+        return _bad("value must be a number")
+
+    # Convert weight grams -> kg; other measures are already in cm
+    if mtype == "weight":
+        val = val / 1000.0
+
+    try:
+        age_days = _age_in_days(birth, date)
+        df = _load_table(mtype, sex)
+        L, M, S = _find_lms_row(df, age_days)
+        z = _zscore(val, L, M, S)
+        p = _z_to_percentile(z)
+        result = {
+            "measurementType": mtype,
+            "value": Decimal(str(value)),
+            "percentile": round(p, 2),
+            "zscore": round(z, 4),
+            "ageInDays": age_days,
+            "sex": sex,
+            "LMS": {"L": round(L, 6), "M": round(M, 6), "S": round(S, 6)},
+            "dates": {"dateOfBirth": birth, "measurementDate": date},
+        }
+        return _ok(result)
     except FileNotFoundError as e:
-        logger.error(f"Growth table not found: {str(e)}")
-        return internal_error_response("Growth data not available")
-    except ValueError as e:
-        logger.warning(f"Validation error: {str(e)}")
-        return bad_request_response(str(e))
+        logger.exception("Growth data not available")
+        return _err(str(e))
     except Exception as e:
-        logger.error(f"Unexpected error in percentile calculation: {str(e)}")
-        return internal_error_response("Failed to calculate percentile")
+        logger.exception("Unexpected error in percentile calculation")
+        return _err(f"Failed to calculate percentile: {e}")
 
-
+# Alias for API Gateway
+def lambda_handler(event, context):
+    return calculate_percentile(event, context)

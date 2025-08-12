@@ -1,0 +1,16 @@
+[
+  {
+    "ResourceType": "AWS::DynamoDB::Table",
+    "LogicalResourceId": "BabiesTable",
+    "ResourceIdentifier": {
+      "TableName": "UpNest-Babies-staging"
+    }
+  },
+  {
+    "ResourceType": "AWS::DynamoDB::Table", 
+    "LogicalResourceId": "GrowthDataTable",
+    "ResourceIdentifier": {
+      "TableName": "UpNest-GrowthData2-staging"
+    }
+  }
+]

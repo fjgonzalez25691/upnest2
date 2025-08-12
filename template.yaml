@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: "UpNest2 - Baby Tracking API"
+Description: "UpNest2 - Baby Tracking API with Growth Percentiles Stream Processing"
 
 Parameters:
   Stage:
@@ -8,6 +8,18 @@ Parameters:
     Default: dev
     AllowedValues: [dev, staging, prod]
     Description: API Gateway stage name
+  ExistingBabiesTable:
+    Type: String
+    Default: ""
+    Description: Existing Babies table name (leave empty to create new)
+  ExistingGrowthDataTable:
+    Type: String
+    Default: ""
+    Description: Existing Growth Data table name (leave empty to create new)
+  ExistingGrowthDataTableStreamArn:
+    Type: String
+    Default: ""
+    Description: "If using an EXISTING GrowthData table, provide its Stream ARN (arn:aws:dynamodb:eu-south-2:568680248062:table/UpNest-GrowthData2-staging/stream/2025-08-12T10:01:03.675)"
 
 Globals:
   Function:
@@ -15,8 +27,8 @@ Globals:
     Runtime: python3.12
     Environment:
       Variables:
-        BABIES_TABLE: !Ref BabiesTable
-        GROWTH_DATA_TABLE: !Ref GrowthDataTable  # ← ADDED
+        BABIES_TABLE: !If [CreateBabiesTable, !Ref BabiesTable, !Ref ExistingBabiesTable]
+        GROWTH_DATA_TABLE: !If [CreateGrowthDataTable, !Ref GrowthDataTable, !Ref ExistingGrowthDataTable]
         COGNITO_USER_POOL_ID: "eu-south-2_WInbcDDjo"
         COGNITO_CLIENT_ID: "75g0r5a7bbp1mgpmqrg3e1iibm"
         LOG_LEVEL: "INFO"
@@ -36,10 +48,50 @@ Globals:
 Conditions:
   IsStaging: !Equals [!Ref Stage, "staging"]
   IsDev: !Equals [!Ref Stage, "dev"]
+  CreateBabiesTable: !Equals [!Ref ExistingBabiesTable, ""]
+  CreateGrowthDataTable: !Equals [!Ref ExistingGrowthDataTable, ""]
+  HasStreamArn: !Or
+    - !Condition CreateGrowthDataTable
+    - !Not [!Equals [!Ref ExistingGrowthDataTableStreamArn, ""]]
 
 Resources:
   # DynamoDB Tables
+  GrowthDataTable:
+    Condition: CreateGrowthDataTable
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "UpNest-GrowthData2-${Stage}"
+      AttributeDefinitions:
+        - AttributeName: dataId
+          AttributeType: S
+        - AttributeName: babyId
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: dataId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: BabyGrowthDataIndex
+          KeySchema:
+            - AttributeName: babyId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: UserGrowthDataIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+    Metadata:
+      SamResourceId: GrowthDataTable
+
   BabiesTable:
+    Condition: CreateBabiesTable
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: !Sub "UpNest-Babies-${Stage}"
@@ -59,36 +111,8 @@ Resources:
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
-    DeletionPolicy: Retain
-
-  GrowthDataTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: !Sub "UpNest-GrowthData2-${Stage}"
-      AttributeDefinitions:
-        - AttributeName: dataId          # ← CHANGED from growthDataId to dataId
-          AttributeType: S
-        - AttributeName: babyId
-          AttributeType: S
-        - AttributeName: userId          # ← ADDED for user index
-          AttributeType: S
-      KeySchema:
-        - AttributeName: dataId          # ← CHANGED from growthDataId to dataId
-          KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: BabyGrowthDataIndex
-          KeySchema:
-            - AttributeName: babyId
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-        - IndexName: UserGrowthDataIndex  # ← ADDED index for user queries
-          KeySchema:
-            - AttributeName: userId
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-      BillingMode: PAY_PER_REQUEST
+    Metadata:
+      SamResourceId: BabiesTable
 
   MilestonesTable:
     Type: AWS::DynamoDB::Table
@@ -156,6 +180,8 @@ Resources:
           CognitoAuthorizer:
             UserPoolArn: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/eu-south-2_WInbcDDjo"
         AddDefaultAuthorizerToCorsPreflight: false
+    Metadata:
+      SamResourceId: UpNest2Api
 
   # Lambda Functions
   UpNest2BabyFunction:
@@ -167,72 +193,122 @@ Resources:
       Description: UpNest2 Baby CRUD operations
       Policies:
         - DynamoDBCrudPolicy:
-            TableName:
-              Ref: BabiesTable
+            TableName: !If [ CreateBabiesTable, !Ref BabiesTable, !Ref ExistingBabiesTable ]
         - DynamoDBReadPolicy:
-            TableName:
-              Ref: BabiesTable
+            TableName: !If [ CreateGrowthDataTable, !Ref GrowthDataTable, !Ref ExistingGrowthDataTable ]
+
       Events:
         BabiesGet:
           Type: Api
           Properties:
-            RestApiId:
-              Ref: UpNest2Api
+            RestApiId: !Ref UpNest2Api
             Path: /babies
             Method: GET
         BabiesPost:
           Type: Api
           Properties:
-            RestApiId:
-              Ref: UpNest2Api
+            RestApiId: !Ref UpNest2Api
             Path: /babies
             Method: POST
         BabyGet:
           Type: Api
           Properties:
-            RestApiId:
-              Ref: UpNest2Api
+            RestApiId: !Ref UpNest2Api
             Path: /babies/{babyId}
             Method: GET
         BabyPut:
           Type: Api
           Properties:
-            RestApiId:
-              Ref: UpNest2Api
+            RestApiId: !Ref UpNest2Api
             Path: /babies/{babyId}
             Method: PUT
         BabyDelete:
           Type: Api
           Properties:
-            RestApiId:
-              Ref: UpNest2Api
+            RestApiId: !Ref UpNest2Api
             Path: /babies/{babyId}
             Method: DELETE
     Metadata:
-      SamResourceId: UpNest2BabyFunction
+      SamResourceId: UpNest2BabyFunction   
+
+  UpNest2BabyAdminFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: upnest2-baby-admin
+      CodeUri: backend/lambdas/babies_admin/
+      Handler: baby_service_admin.lambda_handler
+      Description: UpNest2 Baby admin operations (hard delete, list all)
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !If [ CreateBabiesTable, !Ref BabiesTable, !Ref ExistingBabiesTable ]
+      Events:
+        BabiesAll:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UpNest2Api
+            Path: /babies/all
+            Method: GET
+        BabyHardDelete:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UpNest2Api
+            Path: /babies/hard/{babyId}
+            Method: DELETE
+    Metadata:
+      SamResourceId: UpNest2BabyAdminFunction   
 
   UpNest2PercentilesFunction:
+    Condition: HasStreamArn
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: upnest2-percentiles
       CodeUri: backend/lambdas/percentiles/
-      Handler: percentiles_service.lambda_handler
-      Description: UpNest2 Growth Percentiles calculations
+      Handler: percentiles_handler.lambda_handler
+      Description: UpNest2 Growth Percentiles calculations (HTTP + Stream processing)
+      Timeout: 60
+      MemorySize: 1024
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !If [CreateBabiesTable, !Ref BabiesTable, !Ref ExistingBabiesTable]
+        - DynamoDBCrudPolicy:
+            TableName: !If [CreateGrowthDataTable, !Ref GrowthDataTable, !Ref ExistingGrowthDataTable]
+        - Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:DescribeStream
+              - dynamodb:GetRecords
+              - dynamodb:GetShardIterator
+              - dynamodb:ListStreams
+            Resource: !If
+              - CreateGrowthDataTable
+              - !GetAtt GrowthDataTable.StreamArn
+              - !Ref ExistingGrowthDataTableStreamArn
       Events:
         PercentilesApi:
           Type: Api
           Properties:
-            RestApiId:
-              Ref: UpNest2Api
+            RestApiId: !Ref UpNest2Api
             Path: /percentiles
             Method: ANY
         PercentilesProxyApi:
           Type: Api
           Properties:
-            RestApiId:
-              Ref: UpNest2Api
+            RestApiId: !Ref UpNest2Api
             Path: /percentiles/{proxy+}
             Method: ANY
+        GrowthDataStream:
+          Type: DynamoDB
+          Properties:
+            Stream: !If
+              - CreateGrowthDataTable
+              - !GetAtt GrowthDataTable.StreamArn
+              - !Ref ExistingGrowthDataTableStreamArn
+            StartingPosition: LATEST
+            BatchSize: 10
+            MaximumBatchingWindowInSeconds: 5
+            FilterCriteria:
+              Filters:
+                - Pattern: '{"eventName": ["INSERT", "MODIFY"]}'
       Layers:
         - !Ref PercentilesLayer
     Metadata:
@@ -242,26 +318,25 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: upnest2-growth-data
-      CodeUri: backend/lambdas/growth_data/   
+      CodeUri: backend/lambdas/growth_data/
       Handler: growth_data_service.lambda_handler
       Description: UpNest2 Growth Data tracking
       Environment:
         Variables:
-          GROWTH_DATA_TABLE: !Ref GrowthDataTable
+          GROWTH_DATA_TABLE: !If [ CreateGrowthDataTable, !Ref GrowthDataTable, !Ref ExistingGrowthDataTable ]
+          BABIES_TABLE:      !If [ CreateBabiesTable,  !Ref BabiesTable,     !Ref ExistingBabiesTable ]
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref GrowthDataTable
+            TableName: !If [ CreateGrowthDataTable, !Ref GrowthDataTable, !Ref ExistingGrowthDataTable ]
         - DynamoDBReadPolicy:
-            TableName: !Ref BabiesTable
+            TableName: !If [ CreateBabiesTable, !Ref BabiesTable, !Ref ExistingBabiesTable ]
       Events:
-        # Base growth-data route
         GrowthDataApi:
           Type: Api
           Properties:
             RestApiId: !Ref UpNest2Api
             Path: /growth-data
             Method: ANY
-        # Proxy route for all sub-paths (supports {dataId} and query params)
         GrowthDataProxy:
           Type: Api
           Properties:
@@ -271,43 +346,20 @@ Resources:
     Metadata:
       SamResourceId: UpNest2GrowthDataFunction
 
+
+
   PercentilesLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
       LayerName: upnest2-percentiles-layer
-      Description: Dependencies for percentiles (pandas, scipy, openpyxl)  # ← CHANGED to English
+      Description: Dependencies for percentiles (pandas, scipy, openpyxl)  
       ContentUri: backend/layers/percentiles/
       CompatibleRuntimes:
         - python3.12
-
-  UpNest2BabyAdminFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: upnest2-baby-admin
-      CodeUri: backend/lambdas/babies/
-      Handler: baby_service_admin.lambda_handler
-      Description: UpNest2 Baby admin operations (hard delete, list all)
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName:
-              Ref: BabiesTable
-      Events:
-        BabiesAll:
-          Type: Api
-          Properties:
-            RestApiId:
-              Ref: UpNest2Api
-            Path: /babies/all
-            Method: GET
-        BabyHardDelete:
-          Type: Api
-          Properties:
-            RestApiId:
-              Ref: UpNest2Api
-            Path: /babies/hard/{babyId}
-            Method: DELETE
     Metadata:
-      SamResourceId: UpNest2BabyAdminFunction
+      SamResourceId: PercentilesLayer
+
+
 
 Outputs:
   ApiUrl:
@@ -322,11 +374,20 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-BabyFunction"
 
+  UpNest2BabyAdminFunction:
+    Description: "Baby Admin Lambda function name"
+    Value: !Ref UpNest2BabyAdminFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-BabyAdminFunction"
+
   PercentilesFunctionName:
+    Condition: HasStreamArn
     Description: "Percentiles Lambda function name"
     Value: !Ref UpNest2PercentilesFunction
     Export:
       Name: !Sub "${AWS::StackName}-PercentilesFunction"
+
+
 
   GrowthDataFunctionName:
     Description: "Growth Data Lambda function name"
@@ -334,8 +395,11 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-GrowthDataFunction"
 
-  BabyAdminFunctionName:
-    Description: "Baby Admin Lambda function name"
-    Value: !Ref UpNest2BabyAdminFunction
+
+
+  GrowthDataTableStreamArn:
+    Condition: CreateGrowthDataTable
+    Description: "Growth Data Table Stream ARN"
+    Value: !GetAtt GrowthDataTable.StreamArn
     Export:
-      Name: !Sub "${AWS::StackName}-BabyAdminFunction"
+      Name: !Sub "${AWS::StackName}-GrowthDataTableStreamArn"

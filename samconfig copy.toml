@@ -21,6 +21,8 @@ confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
 parameter_overrides = [
     "Stage=staging",
-    
+    "ExistingBabiesTable=UpNest-Babies-staging",
+    "ExistingGrowthDataTable=UpNest-GrowthData2-staging",
+    "ExistingGrowthDataTableStreamArn=arn:aws:dynamodb:eu-south-2:568680248062:table/UpNest-GrowthData2-staging/stream/2025-08-12T10:01:03.675"
 ]
 image_repositories = []
