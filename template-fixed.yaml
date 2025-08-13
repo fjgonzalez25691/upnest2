@@ -269,12 +269,18 @@ Resources:
       Name: !Sub "upnest-api-${Stage}"
       StageName: !Ref Stage
       Tags:
-        awsApplication: !Ref ApplicationArn
-        Environment: !Ref Stage
-        Owner: "fran"
-        Cost-Center: "development"
-        Purpose: "baby-tracking-api"
-        ResourceType: "api"
+        - Key: awsApplication
+          Value: !Ref ApplicationArn
+        - Key: Environment
+          Value: !Ref Stage
+        - Key: Owner
+          Value: "fran"
+        - Key: Cost-Center
+          Value: "development"
+        - Key: Purpose
+          Value: "baby-tracking-api"
+        - Key: ResourceType
+          Value: "api"
       Auth:
         DefaultAuthorizer: CognitoAuthorizer
         Authorizers:
