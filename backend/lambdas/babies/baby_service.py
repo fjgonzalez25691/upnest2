@@ -11,6 +11,7 @@ import os
 import uuid
 import boto3
 from decimal import Decimal
+from boto3.dynamodb.types import TypeDeserializer
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -156,6 +157,11 @@ def process_baby_data(data):
 
 
 def lambda_handler(event, context):
+    # Check if this is a DynamoDB Stream event
+    if 'Records' in event and event.get('Records'):
+        return handle_stream_event(event, context)
+    
+    # Handle API Gateway events
     method = event['httpMethod']
     path = event['path']
     user_id = get_user_id_from_context(event)
@@ -302,3 +308,129 @@ def lambda_handler(event, context):
             return response(500, {"error": "Failed to delete baby"})
 
     return response(405, {"error": f"Method {method} not allowed for {path}"})
+
+
+# Stream processing functions (from baby_stream_processor.py)
+from boto3.dynamodb.types import TypeDeserializer
+_deser = TypeDeserializer()
+
+def _unmarshal(image):
+    """Convert DynamoDB Stream typed image to plain dict."""
+    if not image:
+        return {}
+    return {k: _deser.deserialize(v) for k, v in image.items()}
+
+def _extract_birth_measurements(baby):
+    """Extract birth measurements from baby item."""
+    m = dict(baby.get("birthMeasurements") or {})
+    candidates = {
+        "weight": baby.get("birthWeight"),
+        "height": baby.get("birthHeight"),
+        "headCircumference": baby.get("headCircumference"),
+    }
+    for k, v in candidates.items():
+        if v is not None and k not in m:
+            m[k] = v
+    return m
+
+def _normalize_measurements(measurements):
+    """Normalize numeric fields to Decimal."""
+    out = {}
+    for k, v in measurements.items():
+        if v is None:
+            out[k] = None
+            continue
+        try:
+            out[k] = Decimal(str(float(v)))
+        except (ValueError, TypeError):
+            logger.warning(f"Ignoring non-numeric {k}={v}")
+    return out
+
+def _has_any_value(measurements):
+    """True if there is at least one non-None numeric value > 0."""
+    for v in measurements.values():
+        try:
+            if v is None:
+                continue
+            if float(v) > 0:
+                return True
+        except (ValueError, TypeError):
+            continue
+    return False
+
+def handle_stream_event(event, context):
+    """Handle DynamoDB Stream events for birth measurement sync."""
+    growth_table = dynamodb.Table(os.environ['GROWTH_DATA_TABLE'])
+    processed = 0
+    
+    for rec in event.get("Records", []):
+        etype = rec.get("eventName")
+        if etype not in ("INSERT", "MODIFY"):
+            continue
+
+        new_baby = _unmarshal(rec.get("dynamodb", {}).get("NewImage"))
+        if not new_baby:
+            continue
+
+        dob = new_baby.get("dateOfBirth")
+        if not dob:
+            continue
+
+        raw = _extract_birth_measurements(new_baby)
+        normalized = _normalize_measurements(raw)
+
+        if _has_any_value(normalized):
+            _upsert_birth_growth_item(new_baby, normalized, growth_table)
+            processed += 1
+        elif new_baby.get("birthDataId"):
+            _delete_birth_growth_item(new_baby, growth_table)
+            processed += 1
+
+    return {"statusCode": 200, "body": f"processed={processed}"}
+
+def _upsert_birth_growth_item(baby, normalized, growth_table):
+    """Create or update GrowthData birth item."""
+    baby_id = baby.get("babyId")
+    user_id = baby.get("userId")
+    dob = baby.get("dateOfBirth")
+    if not all([baby_id, user_id, dob]):
+        return
+
+    birth_id = baby.get("birthDataId") or str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+
+    item = {
+        "dataId": birth_id,
+        "babyId": baby_id,
+        "userId": user_id,
+        "measurementDate": dob,
+        "measurements": normalized,
+        "measurementSource": "birth",
+        "updatedAt": now,
+        "createdAt": now
+    }
+
+    growth_table.put_item(Item=item)
+    
+    # Update baby with birth data ID
+    table.update_item(
+        Key={"babyId": baby_id},
+        UpdateExpression="SET birthDataId = if_not_exists(birthDataId, :id)",
+        ExpressionAttributeValues={":id": birth_id}
+    )
+
+def _delete_birth_growth_item(baby, growth_table):
+    """Delete GrowthData birth item and remove pointer."""
+    baby_id = baby.get("babyId")
+    birth_id = baby.get("birthDataId")
+    if not baby_id or not birth_id:
+        return
+    
+    try:
+        growth_table.delete_item(Key={"dataId": birth_id})
+        table.update_item(
+            Key={"babyId": baby_id},
+            UpdateExpression="REMOVE birthDataId"
+        )
+    except Exception as e:
+        logger.error(f"Error cleaning up birth data: {e}")

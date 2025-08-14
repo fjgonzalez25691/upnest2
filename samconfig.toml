@@ -22,7 +22,6 @@ capabilities = "CAPABILITY_IAM"
 parameter_overrides = [
     "Stage=staging",
     "ExistingBabiesTable=UpNest-Babies-staging",
-    "ExistingGrowthDataTable=UpNest-GrowthData2-staging",
-    "ApplicationArn=arn:aws:resource-groups:eu-south-2:568680248062:group/upNest-app/05nepcfiuqvfu51e1mtkuca9l5"
+    "ExistingGrowthDataTable=UpNest-GrowthData2-staging"
 ]
 image_repositories = []
