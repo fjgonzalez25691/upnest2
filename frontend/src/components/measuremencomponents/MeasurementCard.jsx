@@ -7,6 +7,7 @@ import { formatNumberWithOptionalDecimal } from "../../utils/numberUtils";
 
 const MeasurementCard = ({ 
     measurement, 
+    birthDate,
     onEdit, 
     onDelete, 
     showActions = true,
@@ -19,6 +20,8 @@ const MeasurementCard = ({
             day: 'numeric'
         });
     };
+
+    console.log("MeasurementCard rendered with measurement:", { measurement, birthDate });
 
     const formatMeasurement = (value, unit) => {
         if (!value) return "--";
@@ -46,14 +49,41 @@ const MeasurementCard = ({
         }
     };
 
-    const ActionMenu = ({ onEdit, onDelete, measurement }) => {
+    const isBirthMeasurement = measurement.measurementDate === birthDate;
+
+    const ActionMenu = ({ onEdit, onDelete, measurement, isBirthMeasurement }) => {
         const [isOpen, setIsOpen] = useState(false);
+        const [showMsg, setShowMsg] = useState(false);
+
+        const handleEditClick = (e) => {
+            e.stopPropagation();
+            if (isBirthMeasurement) {
+                setShowMsg(true);
+                setTimeout(() => setShowMsg(false), 2500); // Oculta el tooltip después de 2.5s
+                setIsOpen(false);
+            } else {
+                onEdit(measurement);
+                setIsOpen(false);
+            }
+        };
+
+        const handleDeleteClick = (e) => {
+            e.stopPropagation();
+            if (isBirthMeasurement) {
+                setShowMsg(true);
+                setTimeout(() => setShowMsg(false), 2500);
+                setIsOpen(false);
+            } else {
+                onDelete(measurement);
+                setIsOpen(false);
+            }
+        };
 
         return (
             <div className="relative">
                 <button
                     onClick={(e) => {
-                        e.stopPropagation(); // Evita que se active el click de la tarjeta
+                        e.stopPropagation();
                         setIsOpen(!isOpen);
                     }}
                     className="p-1 rounded-full hover:bg-gray-100 transition-colors"
@@ -63,45 +93,32 @@ const MeasurementCard = ({
                         <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                     </svg>
                 </button>
-                
                 {isOpen && (
-                    <>
-                        {/* Overlay invisible para cerrar el menú */}
-                        <div 
-                            className="fixed inset-0 z-10" 
-                            onClick={() => setIsOpen(false)}
-                        />
-                        
-                        {/* Menú dropdown */}
-                        <div className="absolute right-0 top-8 z-20 w-32 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onEdit(measurement);
-                                    setIsOpen(false);
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
-                            >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                                Edit
-                            </button>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDelete(measurement);
-                                    setIsOpen(false);
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
-                            >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1H8a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                                Delete
-                            </button>
-                        </div>
-                    </>
+                    <div className="absolute right-0 top-8 z-20 w-32 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                        <button
+                            onClick={handleEditClick}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+                        >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit
+                        </button>
+                        <button
+                            onClick={handleDeleteClick}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
+                        >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1H8a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                        </button>
+                    </div>
+                )}
+                {showMsg && (
+                    <div className="absolute right-0 top-12 z-30 w-64 bg-yellow-50 border border-yellow-300 rounded-lg p-2 text-sky-950 text-xs shadow">
+                        Birth measurement only can be edited or deleted from the profile page.
+                    </div>
                 )}
             </div>
         );
@@ -109,22 +126,30 @@ const MeasurementCard = ({
 
     if (compact) {
         return (
-            <div className="bg-white p-3 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+            <div className={`p-3 rounded-lg border transition-shadow
+                ${isBirthMeasurement
+                    ? 'bg-textarea-info'
+                    : 'bg-white border-gray-200 hover:shadow-md'}`}>
                 <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-gray-900">
                         {formatDate(measurement.measurementDate)}
                     </span>
                     <div className="flex items-center gap-2">
-                        {measurement.babyBirthDate && (
+                        {isBirthMeasurement ? (
+                            <span className="text-xs text-sky-950 font-semibold">Birth measurements</span>
+                        ) :  (
+                            birthDate && (
                             <span className="text-xs text-gray-500">
-                                {getAgeAtMeasurement(measurement.measurementDate, measurement.babyBirthDate)}
+                                {getAgeAtMeasurement(measurement.measurementDate, birthDate)}
                             </span>
+                            )
                         )}
                         {showActions && (
-                            <ActionMenu 
+                            <ActionMenu
                                 onEdit={onEdit}
                                 onDelete={onDelete}
                                 measurement={measurement}
+                                isBirthMeasurement={isBirthMeasurement}
                             />
                         )}
                     </div>
@@ -154,24 +179,32 @@ const MeasurementCard = ({
     }
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow">
+        <div className={`p-6 rounded-lg shadow-md border transition-shadow
+            ${isBirthMeasurement
+              ? 'bg-textarea-info'
+              : 'bg-white border-gray-200 hover:shadow-lg'}`}>
             {/* Header */}
             <div className="flex justify-between items-start mb-4">
                 <div>
                     <h3 className="text-lg font-semibold text-gray-900">
                         {formatDate(measurement.measurementDate)}
                     </h3>
-                    {measurement.babyBirthDate && (
-                        <p className="text-sm text-gray-500">
-                            Age: {getAgeAtMeasurement(measurement.measurementDate, measurement.babyBirthDate)}
-                        </p>
+                    {isBirthMeasurement ? (
+                        <p className="text-sm text-sky-950 font-semibold">Birth measurements</p>
+                    ) : (
+                        birthDate && (
+                            <p className="text-sm text-gray-500">
+                                Age: {getAgeAtMeasurement(measurement.measurementDate, birthDate)}
+                            </p>
+                        )
                     )}
                 </div>
                 {showActions && (
-                    <ActionMenu 
+                    <ActionMenu
                         onEdit={onEdit}
                         onDelete={onDelete}
                         measurement={measurement}
+                        isBirthMeasurement={isBirthMeasurement}
                     />
                 )}
             </div>

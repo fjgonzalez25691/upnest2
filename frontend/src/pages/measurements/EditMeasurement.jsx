@@ -2,7 +2,7 @@
 // Page for editing an existing growth measurement
 
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import GrowthDataForm from "../../components/measuremencomponents/GrowthDataForm";
 import PrimaryButton from "../../components/PrimaryButton";
 import { getGrowthMeasurement, updateGrowthData } from "../../services/growthDataApi";
@@ -11,12 +11,17 @@ import { getBaby } from "../../services/babyApi"; // Solo si necesitas el nombre
 const EditMeasurement = () => {
   const { measurementId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [measurement, setMeasurement] = useState(null);
   const [baby, setBaby] = useState(null); // Solo si necesitas el nombre
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+// Obtain baby name and birth date from location state
+  const babyName = location.state?.babyName || baby?.name;
+  const birthDate = location.state?.birthDate || baby?.dateOfBirth;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,12 +49,28 @@ const EditMeasurement = () => {
     setSaving(true);
     try {
       await updateGrowthData(measurementId, formData);
-      navigate(`/baby/${measurement.babyId}/growth/tracking`);
+      // Navegar de vuelta pasando el estado
+      navigate(`/baby/${measurement.babyId}/growth/tracking`, {
+        state: {
+          babyName: babyName || baby?.name,
+          birthDate: birthDate || baby?.dateOfBirth
+        }
+      });
     } catch (err) {
       setError("Error updating measurement");
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleCancel = () => {
+    // Navegar de vuelta sin guardar
+    navigate(`/baby/${measurement.babyId}/growth/tracking`, {
+      state: {
+        babyName: babyName || baby?.name,
+        birthDate: birthDate || baby?.dateOfBirth
+      }
+    });
   };
 
   if (loading) return <div>Loading...</div>;
@@ -59,14 +80,14 @@ const EditMeasurement = () => {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <h1 className="text-3xl font-bold text-gray-900 mb-4">
-        Edit measurement {baby ? `of ${baby.name}` : ""}
+        Edit measurement {baby ? `of ${babyName}` : ""}
       </h1>
       <GrowthDataForm
         mode="edit"
         babyId={measurement.babyId}
         initialData={measurement}
         onSubmit={handleSave}
-        onCancel={() => navigate(`/baby/${measurement.babyId}/growth/tracking`)}
+        onCancel={handleCancel}
         submitLabel={saving ? "Saving..." : "Save changes"}
       />
     </div>

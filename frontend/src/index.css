@@ -81,7 +81,7 @@
     @apply shadow-lg hover:shadow-xl;
   }
 
-  .gradient-textarea-info {
-    @apply bg-gradient-to-r from-green-50 to-emerald-50;
+  .bg-textarea-info {
+    @apply bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200 border;
   }
 }

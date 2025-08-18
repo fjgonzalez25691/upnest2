@@ -161,7 +161,13 @@ const BabyProfile = () => {
                     <div className="bg-white rounded-3xl shadow-lg p-8 border border-green-100">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                             <h2 className="text-2xl font-bold text-gray-800">Growth Tracking</h2>
-                            <Link to={`/baby/${babyId}/growth/tracking`} state={{ babyName: baby.baby.name }}>
+                            <Link
+                                to={`/baby/${babyId}/growth/tracking`}
+                                state={{
+                                    babyName: baby.baby.name,
+                                    birthDate: baby.baby.dateOfBirth 
+                                }}
+                            >
                                 <PrimaryButton variant="primary" className="mt-4 sm:mt-0">
                                     View Growth Dashboard
                                 </PrimaryButton>

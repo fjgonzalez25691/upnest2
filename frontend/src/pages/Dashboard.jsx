@@ -246,7 +246,7 @@ const Dashboard = () => {
         </div>
 
         {/* Help Section */}
-        <div className="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 rounded-3xl p-8 border border-amber-200">
+        <div className="mt-8 bg-textarea-info rounded-3xl border p-8">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">
               Need Help Getting Started?

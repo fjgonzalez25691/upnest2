@@ -31,11 +31,17 @@ const GrowthTracking = () => {
 
     const navigate = useNavigate();
     const location = useLocation();
+
     const babyName = location.state?.babyName || "Baby";
+    const birthDate = location.state?.birthDate || "Unknown";
 
     const handleEdit = (measurement) => {
-        console.log("Edit measurement:", measurement);
-        navigate(`/edit-measurement/${measurement.dataId}`);
+        navigate(`/edit-measurement/${measurement.dataId}`, {
+            state: {
+                babyName,
+                birthDate
+            }
+        });
     };
 
     const handleDelete = async (measurement) => {
@@ -85,6 +91,7 @@ const GrowthTracking = () => {
                     ) : (
                         <GrowthDataList
                             measurements={measurements}
+                            birthDate={birthDate}
                             loading={loading}
                             error={error}
                             onEdit={handleEdit}

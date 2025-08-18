@@ -7,7 +7,8 @@ import MeasurementCard from "./MeasurementCard";
 import PrimaryButton from "../PrimaryButton";
 
 const GrowthDataList = ({ 
-    measurements = [], 
+    measurements = [],
+    birthDate, // Added to pass baby's birth date 
     onEdit, 
     onDelete, 
     onAdd,
@@ -55,6 +56,7 @@ const GrowthDataList = ({
         
         return sorted;
     }, [measurements, sortBy, sortOrder]);
+    console.log("Baby birth date:", birthDate);
 
     const handleSort = (field) => {
         if (sortBy === field) {
@@ -225,6 +227,7 @@ const GrowthDataList = ({
                                         <MeasurementCard
                                             key={measurement.dataId}
                                             measurement={measurement}
+                                            birthDate={birthDate}
                                             onEdit={onEdit}
                                             onDelete={onDelete}
                                             compact={viewMode === "compact"}
