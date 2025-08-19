@@ -6,7 +6,7 @@ import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import GrowthDataForm from "../../components/measuremencomponents/GrowthDataForm";
 import PrimaryButton from "../../components/PrimaryButton";
 import { getGrowthMeasurement, updateGrowthData } from "../../services/growthDataApi";
-import { getBaby } from "../../services/babyApi"; // Solo si necesitas el nombre
+import { getBaby } from "../../services/babyApi"; // Only if you need the name
 
 const EditMeasurement = () => {
   const { measurementId } = useParams();
@@ -14,7 +14,7 @@ const EditMeasurement = () => {
   const location = useLocation();
 
   const [measurement, setMeasurement] = useState(null);
-  const [baby, setBaby] = useState(null); // Solo si necesitas el nombre
+  const [baby, setBaby] = useState(null); // Only if you need the name
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -31,7 +31,7 @@ const EditMeasurement = () => {
         const measurementData = await getGrowthMeasurement(measurementId);
         setMeasurement(measurementData);
 
-        // Si necesitas el nombre del bebé
+        // If you need the baby's name
         if (measurementData?.babyId) {
           const babyData = await getBaby(measurementData.babyId);
           setBaby(babyData);
@@ -48,23 +48,49 @@ const EditMeasurement = () => {
   const handleSave = async (formData) => {
     setSaving(true);
     try {
-      await updateGrowthData(measurementId, formData);
-      // Navegar de vuelta pasando el estado
-      navigate(`/baby/${measurement.babyId}/growth/tracking`, {
-        state: {
-          babyName: babyName || baby?.name,
-          birthDate: birthDate || baby?.dateOfBirth
+        // Save current percentiles BEFORE editing
+        const prevPercentiles = measurement.percentiles || {};
+        await updateGrowthData(measurementId, formData);
+
+        // Poll until percentiles change
+        const startTime = Date.now();
+        let updated = false;
+        let retries = 0;
+        while (!updated && retries < 40) {
+            const fresh = await getGrowthMeasurement(measurementId);
+            
+            // Have the percentiles changed?
+            if (fresh.percentiles && (
+                fresh.percentiles.weight !== prevPercentiles.weight ||
+                fresh.percentiles.height !== prevPercentiles.height ||
+                fresh.percentiles.headCircumference !== prevPercentiles.headCircumference
+            )) {
+                updated = true;
+            } else {
+                await new Promise(res => setTimeout(res, 200)); // Wait 0.2s
+                retries++;
+            }
         }
-      });
+        const elapsed = Date.now() - startTime;
+        console.log(`Polling took ${elapsed}ms`);
+
+        // Navigate only when they are updated
+        navigate(`/baby/${measurement.babyId}/growth/tracking`, {
+            state: {
+                babyName: babyName || baby?.name,
+                birthDate: birthDate || baby?.dateOfBirth,
+                refresh: Date.now()
+            }
+        });
     } catch (err) {
-      setError("Error updating measurement");
+        setError("Error updating measurement");
     } finally {
-      setSaving(false);
+        setSaving(false);
     }
   };
 
   const handleCancel = () => {
-    // Navegar de vuelta sin guardar
+    // Navigate back without saving
     navigate(`/baby/${measurement.babyId}/growth/tracking`, {
       state: {
         babyName: babyName || baby?.name,

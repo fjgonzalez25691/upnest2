@@ -160,17 +160,28 @@ const MeasurementCard = ({
                         <div className="font-medium">
                             {formatNumberWithOptionalDecimal(measurement.measurements?.weight, "g")}
                         </div>
+                        <div className="text-xs text-blue-600 bg-blue-100 px-1 rounded mt-1">
+                          P{measurement.percentiles?.weight ? Math.round(measurement.percentiles.weight) : '--'}
+                        </div>
                     </div>
+                    
                     <div className="text-center">
                         <div className="text-xs text-gray-500">Height</div>
                         <div className="font-medium">
                             {formatNumberWithOptionalDecimal(measurement.measurements?.height, "cm")}
                         </div>
+                        <div className="text-xs text-green-600 bg-green-100 px-1 rounded mt-1">
+                          P{measurement.percentiles?.height ? Math.round(measurement.percentiles.height) : '--'}
+                        </div>
                     </div>
+                    
                     <div className="text-center">
                         <div className="text-xs text-gray-500">Head</div>
                         <div className="font-medium">
                             {formatNumberWithOptionalDecimal(measurement.measurements?.headCircumference, "cm")}
+                        </div>
+                        <div className="text-xs text-purple-600 bg-purple-100 px-1 rounded mt-1">
+                          P{measurement.percentiles?.headCircumference ? Math.round(measurement.percentiles.headCircumference) : '--'}
                         </div>
                     </div>
                 </div>
@@ -211,24 +222,41 @@ const MeasurementCard = ({
 
             {/* Measurements Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg">
-                    <p className="text-sm text-blue-600 font-medium">Weight</p>
-                    <p className="text-2xl font-bold text-blue-900">
-                        {formatNumberWithOptionalDecimal(measurement.measurements?.weight, "g")}
-                    </p>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg">
+                <p className="text-sm text-blue-600 font-medium">Weight</p>
+                <div className="flex items-baseline space-x-2">
+                  <p className="text-2xl font-bold text-blue-900">
+                    {formatNumberWithOptionalDecimal(measurement.measurements?.weight, "g")}
+                  </p>
+                  <span className="text-sm text-blue-600 bg-blue-200/50 px-2 py-1 rounded-full">
+                    P{measurement.percentiles?.weight ? Math.round(measurement.percentiles.weight) : '--'}
+                  </span>
                 </div>
-                <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg">
-                    <p className="text-sm text-green-600 font-medium">Height</p>
-                    <p className="text-2xl font-bold text-green-900">
-                        {formatNumberWithOptionalDecimal(measurement.measurements?.height, "cm")}
-                    </p>
+              </div>
+              
+              <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg">
+                <p className="text-sm text-green-600 font-medium">Height</p>
+                <div className="flex items-baseline space-x-2">
+                  <p className="text-2xl font-bold text-green-900">
+                    {formatNumberWithOptionalDecimal(measurement.measurements?.height, "cm")}
+                  </p>
+                  <span className="text-sm text-green-600 bg-green-200/50 px-2 py-1 rounded-full">
+                    P{measurement.percentiles?.height ? Math.round(measurement.percentiles.height) : '--'}
+                  </span>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg">
-                    <p className="text-sm text-purple-600 font-medium">Head Circumference</p>
-                    <p className="text-2xl font-bold text-purple-900">
-                        {formatNumberWithOptionalDecimal(measurement.measurements?.headCircumference, "cm")}
-                    </p>
+              </div>
+              
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg">
+                <p className="text-sm text-purple-600 font-medium">Head Circumference</p>
+                <div className="flex items-baseline space-x-2">
+                  <p className="text-2xl font-bold text-purple-900">
+                    {formatNumberWithOptionalDecimal(measurement.measurements?.headCircumference, "cm")}
+                  </p>
+                  <span className="text-sm text-purple-600 bg-purple-200/50 px-2 py-1 rounded-full">
+                    P{measurement.percentiles?.headCircumference ? Math.round(measurement.percentiles.headCircumference) : '--'}
+                  </span>
                 </div>
+              </div>
             </div>
 
             {/* Additional Info */}

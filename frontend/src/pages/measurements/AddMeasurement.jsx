@@ -5,7 +5,7 @@ import React from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import GrowthDataForm from "../../components/measuremencomponents/GrowthDataForm";
 import PrimaryButton from "../../components/PrimaryButton";
-import { createGrowthData } from "../../services/growthDataApi";
+import { createGrowthData, getGrowthMeasurement } from "../../services/growthDataApi";
 
 const AddMeasurement = () => {
     const location = useLocation();
@@ -33,8 +33,45 @@ const AddMeasurement = () => {
     const handleSubmit = async (measurementData) => {
         try {
             const dataToSave = { ...measurementData, babyId: baby.babyId };
-            await createGrowthData(dataToSave);
+            
+            // Create the measurement
+            const response = await createGrowthData(dataToSave);
+            const measurementId = response.data.dataId;
+            console.log("Created measurement with ID:", measurementId);
+
+            // Determine which fields were provided
+            const hasWeight = dataToSave.weight !== undefined && dataToSave.weight !== null;
+            const hasHeight = dataToSave.height !== undefined && dataToSave.height !== null;
+            const hasHeadCircumference = dataToSave.headCircumference !== undefined && dataToSave.headCircumference !== null;
+
+            // Poll until percentiles are calculated for the provided fields
+            const startTime = Date.now();
+            let updated = false;
+            let retries = 0;
+            
+            while (!updated && retries < 40) {
+                const fresh = await getGrowthMeasurement(measurementId);
+                
+                // Check if percentiles exist for the fields we provided
+                if (fresh.percentiles) {
+                    updated = 
+                        (!hasWeight || (fresh.percentiles.weight !== null && fresh.percentiles.weight !== undefined)) &&
+                        (!hasHeight || (fresh.percentiles.height !== null && fresh.percentiles.height !== undefined)) &&
+                        (!hasHeadCircumference || (fresh.percentiles.headCircumference !== null && fresh.percentiles.headCircumference !== undefined));
+                }
+                
+                if (!updated) {
+                    await new Promise(res => setTimeout(res, 200)); // Wait 0.2s
+                    retries++;
+                }
+            }
+            
+            const elapsed = Date.now() - startTime;
+            console.log(`Polling took ${elapsed}ms`);
+
+            // Navigate only when percentiles are ready
             navigate(`/baby/${baby.babyId}`);
+            
         } catch (err) {
             console.error("Error creating measurement:", err);
             throw new Error("Failed to save measurement. Please try again.");

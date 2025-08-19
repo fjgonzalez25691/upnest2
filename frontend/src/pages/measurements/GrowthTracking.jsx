@@ -13,6 +13,10 @@ const GrowthTracking = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
+    const location = useLocation();
+
+    const refreshFlag = location.state?.refresh; // Use a refresh flag to force re-fetch
+
     useEffect(() => {
         const fetchMeasurements = async () => {
             setLoading(true);
@@ -27,10 +31,10 @@ const GrowthTracking = () => {
             }
         };
         if (babyId) fetchMeasurements();
-    }, [babyId]);
+    }, [babyId, refreshFlag]); // Refresh when coming back from edit
 
     const navigate = useNavigate();
-    const location = useLocation();
+    
 
     const babyName = location.state?.babyName || "Baby";
     const birthDate = location.state?.birthDate || "Unknown";

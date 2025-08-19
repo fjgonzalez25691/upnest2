@@ -69,7 +69,7 @@ const GrowthDataForm = ({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         const validationError = validateForm();
         if (validationError) {
             setError(validationError);
@@ -93,7 +93,7 @@ const GrowthDataForm = ({
                 measurementSource: form.measurementSource,
             };
 
-            await onSubmit(submissionData);
+            await onSubmit(submissionData); // La página gestiona la navegación
         } catch (err) {
             setError(err.message || "Failed to save measurement");
         } finally {
@@ -210,15 +210,25 @@ const GrowthDataForm = ({
                         type="submit"
                         variant="primary"
                         className="w-full md:w-auto px-8"
+                        disabled={isSubmitting}
                     >
-                        {submitLabel}
+                        {isSubmitting ? (
+                            <span className="flex items-center gap-2">
+                            <svg className="animate-spin h-5 w-5 text-blue-600" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                            </svg>
+                            Saving...
+                        </span>
+                        ) : (
+                            submitLabel
+                        )}
                     </PrimaryButton>
                     <PrimaryButton
                         type="button"
                         variant="cancel"
                         onClick={onCancel}
                         className="w-full md:w-auto px-8"
-
                     >
                         Cancel
                     </PrimaryButton>
