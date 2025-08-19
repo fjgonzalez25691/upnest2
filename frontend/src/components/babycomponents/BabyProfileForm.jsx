@@ -6,7 +6,7 @@ import TextBox from "../TextBox.jsx";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { calculateAge } from "../../utils/dateUtils.js";
-import { normalizeNumber } from "../../utils/numberUtils.js";
+import { normalizeNumber, formatNumberWithOptionalDecimal, validateRange, FIELD_RANGES} from "../../utils/numberUtils.js";
 
 const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, onDelete }) => {
   const [formData, setFormData] = useState(baby ? { ...baby } : {});
@@ -20,17 +20,54 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, o
     }));
   };
 
-  // Validates the form data
+  // Validates the form data using centralized validation
   const validate = (data) => {
     const errs = {};
-    if (data.premature) {
-      if (!data.gestationalWeek) {
-        errs.gestationalWeek = "Required";
-      } else if (data.gestationalWeek < 20 || data.gestationalWeek > 37) {
-        errs.gestationalWeek = "Must be between 20 and 37";
+    
+    // Validate gestational week if premature
+    if (data.premature && data.gestationalWeek) {
+      const gestationalError = validateRange(data.gestationalWeek, {
+        ...FIELD_RANGES.gestationalWeek,
+        field: "Gestational week"
+      });
+      if (gestationalError) errs.gestationalWeek = gestationalError;
+      
+      // Special case: if gestational week > 37, it's not premature
+      const normalizedWeek = normalizeNumber(data.gestationalWeek, FIELD_RANGES.gestationalWeek.decimals);
+      if (normalizedWeek >= 37) {
+        errs.gestationalWeek = "Gestational week must be less than 37 for premature birth";
       }
     }
-    // Add more validation rules as needed
+    
+    if (data.premature && !data.gestationalWeek) {
+      errs.gestationalWeek = "Required for premature birth";
+    }
+
+    // Validate birth measurements
+    if (data.birthWeight) {
+      const weightError = validateRange(data.birthWeight, {
+        ...FIELD_RANGES.birthWeight,
+        field: "Birth weight"
+      });
+      if (weightError) errs.birthWeight = weightError;
+    }
+
+    if (data.birthHeight) {
+      const heightError = validateRange(data.birthHeight, {
+        ...FIELD_RANGES.birthHeight,
+        field: "Birth height"
+      });
+      if (heightError) errs.birthHeight = heightError;
+    }
+
+    if (data.headCircumference) {
+      const headError = validateRange(data.headCircumference, {
+        ...FIELD_RANGES.headCircumference,
+        field: "Head circumference"
+      });
+      if (headError) errs.headCircumference = headError;
+    }
+
     return errs;
   };
 
@@ -162,8 +199,9 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, o
                     value={formData.gestationalWeek || ""}
                     onChange={e => {
                       handleChange(e);
-                      const week = Number(e.target.value);
-                      if (week > 37) {
+                      // Auto-uncheck premature if week >= 37
+                      const normalizedWeek = normalizeNumber(e.target.value, FIELD_RANGES.gestationalWeek.decimals);
+                      if (normalizedWeek >= 37) {
                         setFormData(prev => ({
                           ...prev,
                           premature: false,
@@ -172,11 +210,12 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, o
                       }
                     }}
                     editable={isEditable}
-                    min={20}
-                    max={37}
+                    min={FIELD_RANGES.gestationalWeek.min}
+                    max={FIELD_RANGES.gestationalWeek.max}
                     required
                     suffix="weeks"
                     placeholder="e.g., 36"
+                    renderValue={v => v ? formatNumberWithOptionalDecimal(v, "weeks", FIELD_RANGES.gestationalWeek.decimals) : "Not specified"}
                     error={errors.gestationalWeek}
                   />
                 )}
@@ -185,7 +224,7 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, o
               <TextBox
                 label="Birth Status"
                 name="birthStatus"
-                value={baby.premature ? `Premature (${baby.gestationalWeek} weeks)` : 'Full Term'}
+                value={baby.premature ? `Premature (${formatNumberWithOptionalDecimal(baby.gestationalWeek, "weeks", FIELD_RANGES.gestationalWeek.decimals)})` : 'Full Term'}
                 editable={false}
                 type="string"
               />
@@ -206,9 +245,10 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, o
               editable={isEditable}
               suffix="g"
               placeholder="e.g., 3200"
-              min={500}
-              max={6000}
-              renderValue={v => v ? `${v} g` : "Not recorded"}
+              min={FIELD_RANGES.birthWeight.min}
+              max={FIELD_RANGES.birthWeight.max}
+              renderValue={v => v ? formatNumberWithOptionalDecimal(v, "g", FIELD_RANGES.birthWeight.decimals) : "Not recorded"}
+              error={errors.birthWeight}
             />
 
             <TextBox
@@ -216,20 +256,15 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, o
               name="birthHeight"
               type="number"
               value={formData.birthHeight || ""}
-              onChange={e => {
-                const normalized = normalizeNumber(e.target.value);
-                setFormData(prev => ({
-                  ...prev,
-                  birthHeight: normalized
-                }));
-              }}
+              onChange={handleChange}
               editable={isEditable}
               suffix="cm"
               placeholder="e.g., 50.5"
               step="0.1"
-              min={20}
-              max={60}
-              renderValue={v => v ? `${v} cm` : "Not recorded"}
+              min={FIELD_RANGES.birthHeight.min}
+              max={FIELD_RANGES.birthHeight.max}
+              renderValue={v => v ? formatNumberWithOptionalDecimal(v, "cm", FIELD_RANGES.birthHeight.decimals) : "Not recorded"}
+              error={errors.birthHeight}
             />
 
             <TextBox
@@ -237,20 +272,15 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, o
               name="headCircumference"
               type="number"
               value={formData.headCircumference || ""}
-              onChange={e => {
-                const normalized = normalizeNumber(e.target.value);
-                setFormData(prev => ({
-                  ...prev,
-                  headCircumference: normalized
-                }));
-              }}
+              onChange={handleChange}
               editable={isEditable}
               suffix="cm"
               placeholder="e.g., 35.2"
               step="0.1"
-              min={20}
-              max={60}
-              renderValue={v => v ? `${v} cm` : "Not recorded"}
+              min={FIELD_RANGES.headCircumference.min}
+              max={FIELD_RANGES.headCircumference.max}
+              renderValue={v => v ? formatNumberWithOptionalDecimal(v, "cm", FIELD_RANGES.headCircumference.decimals) : "Not recorded"}
+              error={errors.headCircumference}
             />
           </div>
         </div>
@@ -281,10 +311,11 @@ const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, o
                 onClick={() => {
                   const dataToSend = {
                     ...formData,
-                    birthWeight: formData.birthWeight ? Number(formData.birthWeight) : undefined,
-                    birthHeight: formData.birthHeight ? Number(formData.birthHeight) : undefined,
-                    headCircumference: formData.headCircumference ? Number(formData.headCircumference) : undefined,
-                    gestationalWeek: formData.gestationalWeek ? Number(formData.gestationalWeek) : undefined,
+                    // Normalize all numeric fields using the centralized utility
+                    birthWeight: formData.birthWeight ? normalizeNumber(formData.birthWeight, FIELD_RANGES.birthWeight.decimals) : undefined,
+                    birthHeight: formData.birthHeight ? normalizeNumber(formData.birthHeight, FIELD_RANGES.birthHeight.decimals) : undefined,
+                    headCircumference: formData.headCircumference ? normalizeNumber(formData.headCircumference, FIELD_RANGES.headCircumference.decimals) : undefined,
+                    gestationalWeek: formData.gestationalWeek ? normalizeNumber(formData.gestationalWeek, FIELD_RANGES.gestationalWeek.decimals) : undefined,
                   };
                   const validationErrors = validate(dataToSend);
                   setErrors(validationErrors);

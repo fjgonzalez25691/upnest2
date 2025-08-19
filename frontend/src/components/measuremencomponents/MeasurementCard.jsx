@@ -3,7 +3,7 @@
 
 import React, { useState } from "react";
 import PrimaryButton from "../PrimaryButton";
-import { formatNumberWithOptionalDecimal } from "../../utils/numberUtils";
+import { formatNumberWithOptionalDecimal, FIELD_RANGES } from "../../utils/numberUtils";
 
 const MeasurementCard = ({ 
     measurement, 
@@ -22,11 +22,6 @@ const MeasurementCard = ({
     };
 
     console.log("MeasurementCard rendered with measurement:", { measurement, birthDate });
-
-    const formatMeasurement = (value, unit) => {
-        if (!value) return "--";
-        return `${parseFloat(value).toFixed(1)} ${unit}`;
-    };
 
     const getAgeAtMeasurement = (measurementDate, birthDate) => {
         if (!birthDate) return null;
@@ -158,7 +153,7 @@ const MeasurementCard = ({
                     <div className="text-center">
                         <div className="text-xs text-gray-500">Weight</div>
                         <div className="font-medium">
-                            {formatNumberWithOptionalDecimal(measurement.measurements?.weight, "g")}
+                            {formatNumberWithOptionalDecimal(measurement.measurements?.weight, "g", FIELD_RANGES.weight.decimals)}
                         </div>
                         <div className="text-xs text-blue-600 bg-blue-100 px-1 rounded mt-1">
                           P{measurement.percentiles?.weight ? Math.round(measurement.percentiles.weight) : '--'}
@@ -168,7 +163,7 @@ const MeasurementCard = ({
                     <div className="text-center">
                         <div className="text-xs text-gray-500">Height</div>
                         <div className="font-medium">
-                            {formatNumberWithOptionalDecimal(measurement.measurements?.height, "cm")}
+                            {formatNumberWithOptionalDecimal(measurement.measurements?.height, "cm", FIELD_RANGES.height.decimals)}
                         </div>
                         <div className="text-xs text-green-600 bg-green-100 px-1 rounded mt-1">
                           P{measurement.percentiles?.height ? Math.round(measurement.percentiles.height) : '--'}
@@ -178,7 +173,7 @@ const MeasurementCard = ({
                     <div className="text-center">
                         <div className="text-xs text-gray-500">Head</div>
                         <div className="font-medium">
-                            {formatNumberWithOptionalDecimal(measurement.measurements?.headCircumference, "cm")}
+                            {formatNumberWithOptionalDecimal(measurement.measurements?.headCircumference, "cm", FIELD_RANGES.headCircumference.decimals)}
                         </div>
                         <div className="text-xs text-purple-600 bg-purple-100 px-1 rounded mt-1">
                           P{measurement.percentiles?.headCircumference ? Math.round(measurement.percentiles.headCircumference) : '--'}
@@ -226,7 +221,7 @@ const MeasurementCard = ({
                 <p className="text-sm text-blue-600 font-medium">Weight</p>
                 <div className="flex items-baseline space-x-2">
                   <p className="text-2xl font-bold text-blue-900">
-                    {formatNumberWithOptionalDecimal(measurement.measurements?.weight, "g")}
+                    {formatNumberWithOptionalDecimal(measurement.measurements?.weight, "g", FIELD_RANGES.weight.decimals)}
                   </p>
                   <span className="text-sm text-blue-600 bg-blue-200/50 px-2 py-1 rounded-full">
                     P{measurement.percentiles?.weight ? Math.round(measurement.percentiles.weight) : '--'}
@@ -238,7 +233,7 @@ const MeasurementCard = ({
                 <p className="text-sm text-green-600 font-medium">Height</p>
                 <div className="flex items-baseline space-x-2">
                   <p className="text-2xl font-bold text-green-900">
-                    {formatNumberWithOptionalDecimal(measurement.measurements?.height, "cm")}
+                    {formatNumberWithOptionalDecimal(measurement.measurements?.height, "cm", FIELD_RANGES.height.decimals)}
                   </p>
                   <span className="text-sm text-green-600 bg-green-200/50 px-2 py-1 rounded-full">
                     P{measurement.percentiles?.height ? Math.round(measurement.percentiles.height) : '--'}
@@ -250,7 +245,7 @@ const MeasurementCard = ({
                 <p className="text-sm text-purple-600 font-medium">Head Circumference</p>
                 <div className="flex items-baseline space-x-2">
                   <p className="text-2xl font-bold text-purple-900">
-                    {formatNumberWithOptionalDecimal(measurement.measurements?.headCircumference, "cm")}
+                    {formatNumberWithOptionalDecimal(measurement.measurements?.headCircumference, "cm", FIELD_RANGES.headCircumference.decimals)}
                   </p>
                   <span className="text-sm text-purple-600 bg-purple-200/50 px-2 py-1 rounded-full">
                     P{measurement.percentiles?.headCircumference ? Math.round(measurement.percentiles.headCircumference) : '--'}

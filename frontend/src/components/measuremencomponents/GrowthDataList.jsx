@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MeasurementCard from "./MeasurementCard";
 import PrimaryButton from "../PrimaryButton";
+import { normalizeNumber, FIELD_RANGES } from "../../utils/numberUtils.js";
 
 const GrowthDataList = ({ 
     measurements = [],
@@ -32,16 +33,17 @@ const GrowthDataList = ({
                     bValue = new Date(b.measurementDate);
                     break;
                 case "weight":
-                    aValue = parseFloat(a.measurements?.weight || 0);
-                    bValue = parseFloat(b.measurements?.weight || 0);
+                    // Use normalizeNumber for consistent parsing with proper decimals
+                    aValue = normalizeNumber(a.measurements?.weight || 0, FIELD_RANGES.weight.decimals) || 0;
+                    bValue = normalizeNumber(b.measurements?.weight || 0, FIELD_RANGES.weight.decimals) || 0;
                     break;
                 case "height":
-                    aValue = parseFloat(a.measurements?.height || 0);
-                    bValue = parseFloat(b.measurements?.height || 0);
+                    aValue = normalizeNumber(a.measurements?.height || 0, FIELD_RANGES.height.decimals) || 0;
+                    bValue = normalizeNumber(b.measurements?.height || 0, FIELD_RANGES.height.decimals) || 0;
                     break;
                 case "headCircumference":
-                    aValue = parseFloat(a.measurements?.headCircumference || 0);
-                    bValue = parseFloat(b.measurements?.headCircumference || 0);
+                    aValue = normalizeNumber(a.measurements?.headCircumference || 0, FIELD_RANGES.headCircumference.decimals) || 0;
+                    bValue = normalizeNumber(b.measurements?.headCircumference || 0, FIELD_RANGES.headCircumference.decimals) || 0;
                     break;
                 default:
                     return 0;
@@ -56,6 +58,7 @@ const GrowthDataList = ({
         
         return sorted;
     }, [measurements, sortBy, sortOrder]);
+    
     console.log("Baby birth date:", birthDate);
 
     const handleSort = (field) => {
@@ -201,44 +204,44 @@ const GrowthDataList = ({
             </div>
 
             {/* Content */}
-                        <div className="p-6">
-                            {measurements.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <div className="text-gray-400 mb-4">
-                                        <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                        </svg>
-                                    </div>
-                                    <h3 className="text-lg font-medium text-gray-900 mb-2">No measurements yet</h3>
-                                    <p className="text-gray-500 mb-4">Start tracking your baby's growth by adding the first measurement.</p>
-                                    {showAddButton && onAdd && (
-                                        <PrimaryButton
-                                            variant="primary"
-                                            onClick={onAdd}
-                                            className="px-6 py-2"
-                                        >
-                                            Add First Measurement
-                                        </PrimaryButton>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="flex flex-col space-y-4">
-                                    {sortedMeasurements.map((measurement) => (
-                                        <MeasurementCard
-                                            key={measurement.dataId}
-                                            measurement={measurement}
-                                            birthDate={birthDate}
-                                            onEdit={onEdit}
-                                            onDelete={onDelete}
-                                            compact={viewMode === "compact"}
-                                            showActions={!!onEdit && !!onDelete}
-                                        />
-                                    ))}
-                                </div>
-                            )}
+            <div className="p-6">
+                {measurements.length === 0 ? (
+                    <div className="text-center py-12">
+                        <div className="text-gray-400 mb-4">
+                            <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
                         </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No measurements yet</h3>
+                        <p className="text-gray-500 mb-4">Start tracking your baby's growth by adding the first measurement.</p>
+                        {showAddButton && onAdd && (
+                            <PrimaryButton
+                                variant="primary"
+                                onClick={onAdd}
+                                className="px-6 py-2"
+                            >
+                                Add First Measurement
+                            </PrimaryButton>
+                        )}
+                    </div>
+                ) : (
+                    <div className="flex flex-col space-y-4">
+                        {sortedMeasurements.map((measurement) => (
+                            <MeasurementCard
+                                key={measurement.dataId}
+                                measurement={measurement}
+                                birthDate={birthDate}
+                                onEdit={onEdit}
+                                onDelete={onDelete}
+                                compact={viewMode === "compact"}
+                                showActions={!!onEdit && !!onDelete}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
 
-                        {/* Footer */}
+            {/* Footer */}
             {measurements.length > 0 && (
                 <div className="px-6 py-3 border-t border-gray-200 text-sm text-gray-500">
                     Showing {measurements.length} measurement{measurements.length !== 1 ? 's' : ''}

@@ -6,7 +6,7 @@ import PrimaryButton from "../PrimaryButton.jsx";
 import TextBox from "../TextBox.jsx";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { normalizeNumber, formatNumberWithOptionalDecimal } from "../../utils/numberUtils.js";
+import { normalizeNumber, formatNumberWithOptionalDecimal, validateRange, FIELD_RANGES } from "../../utils/numberUtils.js";
 
 const GrowthDataForm = ({
     initialData = {},
@@ -24,7 +24,7 @@ const GrowthDataForm = ({
         notes: initialData.notes || "",
         measurementSource: initialData.measurementSource || "manual",
     });
-    const [error, setError] = useState("");
+    const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleChange = (e) => {
@@ -33,7 +33,14 @@ const GrowthDataForm = ({
             ...prev,
             [name]: value,
         }));
-        if (error) setError("");
+        
+        // Clear specific field error when user types
+        if (errors[name]) {
+            setErrors(prev => ({
+                ...prev,
+                [name]: ""
+            }));
+        }
     };
 
     const handleDateChange = (date) => {
@@ -41,49 +48,76 @@ const GrowthDataForm = ({
             ...prev,
             measurementDate: date,
         }));
-        if (error) setError("");
+        
+        // Clear date error
+        if (errors.measurementDate) {
+            setErrors(prev => ({
+                ...prev,
+                measurementDate: ""
+            }));
+        }
     };
 
-    const validateForm = () => {
-        if (!form.measurementDate) {
-            return "Measurement date is required";
+    // Centralized validation using numberUtils
+    const validateForm = (data) => {
+        const errs = {};
+        
+        // Required date validation
+        if (!data.measurementDate) {
+            errs.measurementDate = "Measurement date is required";
         }
         
-        if (!form.weight && !form.height && !form.headCircumference) {
-            return "At least one measurement (weight, height, or head circumference) is required";
+        // At least one measurement required
+        if (!data.weight && !data.height && !data.headCircumference) {
+            errs.general = "At least one measurement (weight, height, or head circumference) is required";
         }
 
-        // Validate numeric fields
-        if (form.weight && (isNaN(form.weight) || parseFloat(form.weight) <= 0)) {
-            return "Weight must be a positive number";
-        }
-        if (form.height && (isNaN(form.height) || parseFloat(form.height) <= 0)) {
-            return "Height must be a positive number";
-        }
-        if (form.headCircumference && (isNaN(form.headCircumference) || parseFloat(form.headCircumference) <= 0)) {
-            return "Head circumference must be a positive number";
+        // Validate individual measurements using FIELD_RANGES
+        if (data.weight) {
+            const weightError = validateRange(data.weight, {
+                ...FIELD_RANGES.weight,
+                field: "Weight"
+            });
+            if (weightError) errs.weight = weightError;
         }
 
-        return null;
+        if (data.height) {
+            const heightError = validateRange(data.height, {
+                ...FIELD_RANGES.height,
+                field: "Height"
+            });
+            if (heightError) errs.height = heightError;
+        }
+
+        if (data.headCircumference) {
+            const headError = validateRange(data.headCircumference, {
+                ...FIELD_RANGES.headCircumference,
+                field: "Head circumference"
+            });
+            if (headError) errs.headCircumference = headError;
+        }
+
+        return errs;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const validationError = validateForm();
-        if (validationError) {
-            setError(validationError);
+        const validationErrors = validateForm(form);
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
             return;
         }
 
         setIsSubmitting(true);
-        setError("");
+        setErrors({});
 
         try {
             const measurements = {};
-            if (form.weight) measurements.weight = normalizeNumber(form.weight);
-            if (form.height) measurements.height = normalizeNumber(form.height);
-            if (form.headCircumference) measurements.headCircumference = normalizeNumber(form.headCircumference);
+            // Normalize using FIELD_RANGES decimals
+            if (form.weight) measurements.weight = normalizeNumber(form.weight, FIELD_RANGES.weight.decimals);
+            if (form.height) measurements.height = normalizeNumber(form.height, FIELD_RANGES.height.decimals);
+            if (form.headCircumference) measurements.headCircumference = normalizeNumber(form.headCircumference, FIELD_RANGES.headCircumference.decimals);
 
             const submissionData = {
                 babyId,
@@ -95,7 +129,7 @@ const GrowthDataForm = ({
 
             await onSubmit(submissionData); // La página gestiona la navegación
         } catch (err) {
-            setError(err.message || "Failed to save measurement");
+            setErrors({ submit: err.message || "Failed to save measurement" });
         } finally {
             setIsSubmitting(false);
         }
@@ -105,9 +139,10 @@ const GrowthDataForm = ({
         <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
             <h2 className="text-2xl font-semibold mb-6 text-center">{heading}</h2>
             
-            {error && (
+            {/* General errors */}
+            {(errors.general || errors.submit) && (
                 <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                    {error}
+                    {errors.general || errors.submit}
                 </div>
             )}
 
@@ -127,6 +162,9 @@ const GrowthDataForm = ({
                             className="textbox-input-edit w-full"
                             required
                         />
+                        {errors.measurementDate && (
+                            <p className="textbox-error">{errors.measurementDate}</p>
+                        )}
                     </div>
                 </div>
 
@@ -141,10 +179,12 @@ const GrowthDataForm = ({
                             onChange={handleChange}
                             editable={true}
                             type="number"
-                            placeholder="e.g., 5.2"
-                            suffix="kg"
-                            step="0.1"
-                            min="0"
+                            placeholder="e.g., 5200"
+                            suffix="g"
+                            min={FIELD_RANGES.weight.min}
+                            max={FIELD_RANGES.weight.max}
+                            renderValue={v => v ? formatNumberWithOptionalDecimal(v, "g", FIELD_RANGES.weight.decimals) : "Not recorded"}
+                            error={errors.weight}
                         />
                         <TextBox
                             label="Height"
@@ -156,7 +196,10 @@ const GrowthDataForm = ({
                             placeholder="e.g., 65.5"
                             suffix="cm"
                             step="0.1"
-                            min="0"
+                            min={FIELD_RANGES.height.min}
+                            max={FIELD_RANGES.height.max}
+                            renderValue={v => v ? formatNumberWithOptionalDecimal(v, "cm", FIELD_RANGES.height.decimals) : "Not recorded"}
+                            error={errors.height}
                         />
                         <TextBox
                             label="Head Circumference"
@@ -168,7 +211,10 @@ const GrowthDataForm = ({
                             placeholder="e.g., 42.1"
                             suffix="cm"
                             step="0.1"
-                            min="0"
+                            min={FIELD_RANGES.headCircumference.min}
+                            max={FIELD_RANGES.headCircumference.max}
+                            renderValue={v => v ? formatNumberWithOptionalDecimal(v, "cm", FIELD_RANGES.headCircumference.decimals) : "Not recorded"}
+                            error={errors.headCircumference}
                         />
                     </div>
                 </div>

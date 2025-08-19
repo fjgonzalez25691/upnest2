@@ -3,7 +3,7 @@ import PrimaryButton from "../PrimaryButton.jsx";
 import TextBox from "../TextBox.jsx";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { normalizeNumber } from "../../utils/numberUtils.js";
+import { normalizeNumber, formatNumberWithOptionalDecimal, FIELD_RANGES, validateRange } from "../../utils/numberUtils";
 
 const BabyForm = ({
     initialData = {},
@@ -22,7 +22,7 @@ const BabyForm = ({
         birthHeight: initialData.birthHeight || "",
         headCircumference: initialData.headCircumference || "",
     });
-    const [error, setError] = useState("");
+    const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleChange = (e) => {
@@ -31,17 +31,14 @@ const BabyForm = ({
             ...prev,
             [name]: type === "checkbox" ? checked : value,
         }));
-        if (error) setError("");
-    };
-
-    // Decimal input handler using the utility
-    const handleDecimalChange = (name) => (e) => {
-        const value = normalizeNumber(e.target.value);
-        setForm((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-        if (error) setError("");
+        
+        // Clear errors when user types
+        if (errors[name]) {
+            setErrors(prev => ({
+                ...prev,
+                [name]: ""
+            }));
+        }
     };
 
     const handleDateChange = (date) => {
@@ -49,49 +46,104 @@ const BabyForm = ({
             ...prev,
             dateOfBirth: date ? date.toISOString().slice(0, 10) : ""
         }));
-        if (error) setError("");
+        
+        // Clear date error
+        if (errors.dateOfBirth) {
+            setErrors(prev => ({
+                ...prev,
+                dateOfBirth: ""
+            }));
+        }
     };
 
-    const validateForm = () => {
-        if (!form.name.trim()) {
-            return "Baby name is required";
+    // Centralized validation using numberUtils
+    const validateForm = (data) => {
+        const errs = {};
+        
+        // Required field validation
+        if (!data.name.trim()) {
+            errs.name = "Baby name is required";
         }
-        if (!form.dateOfBirth) {
-            return "Date of birth is required";
+        if (!data.dateOfBirth) {
+            errs.dateOfBirth = "Date of birth is required";
         }
-        if (!form.gender) {
-            return "Gender is required";
+        if (!data.gender) {
+            errs.gender = "Gender is required";
         }
-        if (form.premature && (!form.gestationalWeek || form.gestationalWeek < 20 || form.gestationalWeek > 42)) {
-            return "Gestational week must be between 20 and 42 for premature babies";
+        
+        // Premature birth validation
+        if (data.premature) {
+            if (!data.gestationalWeek) {
+                errs.gestationalWeek = "Gestational week is required for premature birth";
+            } else {
+                const gestationalError = validateRange(data.gestationalWeek, {
+                    ...FIELD_RANGES.gestationalWeek,
+                    field: "Gestational week"
+                });
+                if (gestationalError) {
+                    errs.gestationalWeek = gestationalError;
+                } else {
+                    // Special case: if gestational week >= 37, it's not premature
+                    const normalizedWeek = normalizeNumber(data.gestationalWeek, FIELD_RANGES.gestationalWeek.decimals);
+                    if (normalizedWeek >= 37) {
+                        errs.gestationalWeek = "Gestational week must be less than 37 for premature birth";
+                    }
+                }
+            }
         }
-        return null;
+        
+        // Birth measurements validation (optional but must be in range if provided)
+        if (data.birthWeight) {
+            const weightError = validateRange(data.birthWeight, {
+                ...FIELD_RANGES.birthWeight,
+                field: "Birth weight"
+            });
+            if (weightError) errs.birthWeight = weightError;
+        }
+        
+        if (data.birthHeight) {
+            const heightError = validateRange(data.birthHeight, {
+                ...FIELD_RANGES.birthHeight,
+                field: "Birth height"
+            });
+            if (heightError) errs.birthHeight = heightError;
+        }
+        
+        if (data.headCircumference) {
+            const headError = validateRange(data.headCircumference, {
+                ...FIELD_RANGES.headCircumference,
+                field: "Head circumference"
+            });
+            if (headError) errs.headCircumference = headError;
+        }
+        
+        return errs;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        const validationError = validateForm();
-        if (validationError) {
-            setError(validationError);
+        const validationErrors = validateForm(form);
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
             return;
         }
 
         setIsSubmitting(true);
-        setError("");
+        setErrors({});
 
         try {
-            // Convert numeric fields to Number before sending
+            // Normalize numeric fields using centralized utility
             const dataToSend = {
                 ...form,
-                birthWeight: form.birthWeight ? Number(form.birthWeight) : undefined,
-                birthHeight: form.birthHeight ? Number(form.birthHeight) : undefined,
-                headCircumference: form.headCircumference ? Number(form.headCircumference) : undefined,
-                gestationalWeek: form.gestationalWeek ? Number(form.gestationalWeek) : undefined,
+                birthWeight: form.birthWeight ? normalizeNumber(form.birthWeight, FIELD_RANGES.birthWeight.decimals) : undefined,
+                birthHeight: form.birthHeight ? normalizeNumber(form.birthHeight, FIELD_RANGES.birthHeight.decimals) : undefined,
+                headCircumference: form.headCircumference ? normalizeNumber(form.headCircumference, FIELD_RANGES.headCircumference.decimals) : undefined,
+                gestationalWeek: form.gestationalWeek ? normalizeNumber(form.gestationalWeek, FIELD_RANGES.gestationalWeek.decimals) : undefined,
             };
             await onSubmit(dataToSend);
         } catch (err) {
-            setError(err.message || "Failed to save baby profile");
+            setErrors({ submit: err.message || "Failed to save baby profile" });
         } finally {
             setIsSubmitting(false);
         }
@@ -115,11 +167,12 @@ const BabyForm = ({
             <div className="max-w-4xl mx-auto">
                 <h2 className="text-2xl font-semibold mb-6 text-center">{heading}</h2>
             
-                {error && (
+                {errors.submit && (
                     <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                        {error}
+                        {errors.submit}
                     </div>
                 )}
+                
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Basic Information Section */}
                     <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
@@ -132,6 +185,7 @@ const BabyForm = ({
                                 onChange={handleChange}
                                 editable={true}
                                 required
+                                error={errors.name}
                             />
             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -148,6 +202,9 @@ const BabyForm = ({
                                         placeholderText="YYYY-MM-DD"
                                         required
                                     />
+                                    {errors.dateOfBirth && (
+                                        <p className="textbox-error">{errors.dateOfBirth}</p>
+                                    )}
                                 </div>
             
                                 <TextBox
@@ -163,10 +220,12 @@ const BabyForm = ({
                                         { value: "female", label: "Female" }
                                     ]}
                                     required
+                                    error={errors.gender}
                                 />
                             </div>
                         </div>
                     </div>
+                    
                     {/* Birth Conditions Section */}
                     <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
                         <h3 className="text-lg font-medium mb-3">Birth Conditions</h3>
@@ -189,15 +248,18 @@ const BabyForm = ({
                                     onChange={handleChange}
                                     editable={true}
                                     type="number"
-                                    min={20}
-                                    max={42}
+                                    min={FIELD_RANGES.gestationalWeek.min}
+                                    max={FIELD_RANGES.gestationalWeek.max}
                                     placeholder="e.g., 36"
                                     suffix="weeks"
+                                    renderValue={v => v ? formatNumberWithOptionalDecimal(v, "weeks", FIELD_RANGES.gestationalWeek.decimals) : "Not recorded"}
                                     required
+                                    error={errors.gestationalWeek}
                                 />
                             )}
                         </div>
                     </div>
+                    
                     {/* Birth Measurements Section */}
                     <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
                         <h3 className="text-lg font-medium mb-3">Birth Measurements</h3>
@@ -209,41 +271,48 @@ const BabyForm = ({
                                 onChange={handleChange}
                                 editable={true}
                                 type="number"
-                                min={500}
-                                max={6000}
+                                min={FIELD_RANGES.birthWeight.min}
+                                max={FIELD_RANGES.birthWeight.max}
                                 placeholder="e.g., 3200"
                                 suffix="g"
+                                renderValue={v => v ? formatNumberWithOptionalDecimal(v, "g", FIELD_RANGES.birthWeight.decimals) : "Not recorded"}
+                                error={errors.birthWeight}
                             />
             
                             <TextBox
                                 label="Birth Height"
                                 name="birthHeight"
                                 value={form.birthHeight}
-                                onChange={handleDecimalChange("birthHeight")}
+                                onChange={handleChange}
                                 editable={true}
                                 type="number"
-                                min={20}
-                                max={60}
+                                min={FIELD_RANGES.birthHeight.min}
+                                max={FIELD_RANGES.birthHeight.max}
                                 step="0.1"
                                 placeholder="e.g., 50.5"
                                 suffix="cm"
+                                renderValue={v => v ? formatNumberWithOptionalDecimal(v, "cm", FIELD_RANGES.birthHeight.decimals) : "Not recorded"}
+                                error={errors.birthHeight}
                             />
             
                             <TextBox
                                 label="Head Circumference"
                                 name="headCircumference"
                                 value={form.headCircumference}
-                                onChange={handleDecimalChange("headCircumference")}
+                                onChange={handleChange}
                                 editable={true}
                                 type="number"
-                                min={20}
-                                max={60}
+                                min={FIELD_RANGES.headCircumference.min}
+                                max={FIELD_RANGES.headCircumference.max}
                                 step="0.1"
                                 placeholder="e.g., 35.2"
                                 suffix="cm"
+                                renderValue={v => v ? formatNumberWithOptionalDecimal(v, "cm", FIELD_RANGES.headCircumference.decimals) : "Not recorded"}
+                                error={errors.headCircumference}
                             />
                         </div>
                     </div>
+                    
                     {/* Submit Buttons */}
                     <div className="gradient-textarea-info rounded-xl shadow p-6 mt-8 border border-blue-100">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 justify-center pt-4">
