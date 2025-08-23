@@ -30,7 +30,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 import boto3
-from boto3.dynamodb.types import TypeDeserializer
+from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -38,6 +38,7 @@ logger.setLevel(logging.INFO)
 dynamodb = boto3.resource("dynamodb")
 ddb_client = boto3.client("dynamodb")
 _deser = TypeDeserializer()
+_ser = TypeSerializer()
 
 BABIES_TABLE = os.environ.get("BABIES_TABLE", "upnest-babies")
 GROWTH_DATA_TABLE = os.environ.get("GROWTH_DATA_TABLE", "upnest-growth-data")
@@ -108,10 +109,18 @@ def _iso_now() -> str:
 
 # ---------- Core upsert/delete ----------
 
+def _serialize(item: dict) -> dict:
+    """Helper to convert a Python dict into DynamoDB's attribute-value format."""
+    return {k: _ser.serialize(v) for k, v in item.items()}
+
+
 def _upsert_birth_growth_item(baby: dict, normalized: dict) -> None:
     """
-    Create or update the GrowthData item for birth, and ensure Babies.birthDataId is set.
-    After upsert, remove 'percentiles' to force recomputation on the GrowthData stream.
+    Create or update the GrowthData item for birth and link it from Babies.
+    Both writes occur inside a single transaction so they either succeed or
+    fail together.  The written GrowthData item does not include a
+    ``percentiles`` attribute which forces the downstream stream processor to
+    recompute percentiles using the updated baby details.
     """
     baby_id = baby.get("babyId")
     user_id = baby.get("userId")
@@ -144,26 +153,27 @@ def _upsert_birth_growth_item(baby: dict, normalized: dict) -> None:
     except Exception:
         item["createdAt"] = now
 
-    growth_table.put_item(Item=item)
-
-    # Link pointer back to Babies (only set if not exists)
     try:
-        babies_table.update_item(
-            Key={"babyId": baby_id},
-            UpdateExpression="SET birthDataId = if_not_exists(birthDataId, :id)",
-            ExpressionAttributeValues={":id": birth_id},
+        ddb_client.transact_write_items(
+            TransactItems=[
+                {
+                    "Put": {
+                        "TableName": GROWTH_DATA_TABLE,
+                        "Item": _serialize(item),
+                    }
+                },
+                {
+                    "Update": {
+                        "TableName": BABIES_TABLE,
+                        "Key": _serialize({"babyId": baby_id}),
+                        "UpdateExpression": "SET birthDataId = if_not_exists(birthDataId, :id)",
+                        "ExpressionAttributeValues": {":id": _ser.serialize(birth_id)},
+                    }
+                },
+            ]
         )
     except Exception:
-        logger.exception("[babies] Failed to set birthDataId")
-
-    # Force percentile recompute (if it existed already)
-    try:
-        growth_table.update_item(
-            Key={"dataId": birth_id},
-            UpdateExpression="REMOVE percentiles"
-        )
-    except Exception:
-        logger.exception("[growth] Failed to REMOVE percentiles (force recompute)")
+        logger.exception("[txn] Failed to upsert birth growth item and link baby")
 
 def _delete_birth_growth_item_and_pointer(baby: dict) -> None:
     """Delete the GrowthData birth item (if any) and remove Babies.birthDataId."""
@@ -172,16 +182,80 @@ def _delete_birth_growth_item_and_pointer(baby: dict) -> None:
     if not baby_id or not birth_id:
         return
     try:
-        growth_table.delete_item(Key={"dataId": birth_id})
-    except Exception:
-        logger.exception(f"[growth] Failed to delete birth item {birth_id}")
-    try:
-        babies_table.update_item(
-            Key={"babyId": baby_id},
-            UpdateExpression="REMOVE birthDataId",
+        ddb_client.transact_write_items(
+            TransactItems=[
+                {
+                    "Delete": {
+                        "TableName": GROWTH_DATA_TABLE,
+                        "Key": _serialize({"dataId": birth_id}),
+                    }
+                },
+                {
+                    "Update": {
+                        "TableName": BABIES_TABLE,
+                        "Key": _serialize({"babyId": baby_id}),
+                        "UpdateExpression": "REMOVE birthDataId",
+                    }
+                },
+            ]
         )
     except Exception:
-        logger.exception(f"[babies] Failed to REMOVE birthDataId for baby {baby_id}")
+        logger.exception(f"[txn] Failed to delete birth item {birth_id} and pointer for baby {baby_id}")
+
+def _remove_percentiles_for_baby(baby_id: str) -> None:
+    """Remove stored percentiles for all growth data items of the given baby.
+
+    This function queries the growth data table using the global secondary
+    index on ``babyId`` and issues an ``UPDATE`` removing the ``percentiles``
+    attribute from each item.  The GrowthData stream processor will later
+    recompute them using the updated baby information (gender or date of birth).
+    """
+    if not baby_id:
+        return
+
+    last_key = None
+    while True:
+        try:
+            query_kwargs = {
+                "IndexName": "BabyGrowthDataIndex",
+                "KeyConditionExpression": "babyId = :b",
+                "ExpressionAttributeValues": {":b": baby_id},
+            }
+            if last_key:
+                query_kwargs["ExclusiveStartKey"] = last_key
+
+            resp = growth_table.query(**query_kwargs)
+            items = resp.get("Items", [])
+
+            writes: list[dict] = []
+            for item in items:
+                data_id = item.get("dataId")
+                if not data_id:
+                    continue
+                writes.append(
+                    {
+                        "Update": {
+                            "TableName": GROWTH_DATA_TABLE,
+                            "Key": _serialize({"dataId": data_id}),
+                            "UpdateExpression": "REMOVE percentiles",
+                        }
+                    }
+                )
+                if len(writes) == 25:
+                    ddb_client.transact_write_items(TransactItems=writes)
+                    writes = []
+
+            if writes:
+                ddb_client.transact_write_items(TransactItems=writes)
+
+            last_key = resp.get("LastEvaluatedKey")
+            if not last_key:
+                break
+        except Exception:
+            logger.exception(
+                f"[growth] Query failed when scanning items for baby {baby_id}"
+            )
+            break
 
 # ---------- Lambda entry ----------
 
@@ -198,8 +272,18 @@ def lambda_handler(event, _ctx):
             continue
 
         new_baby = _unmarshal(rec.get("dynamodb", {}).get("NewImage"))
+        old_baby = _unmarshal(rec.get("dynamodb", {}).get("OldImage"))
         if not new_baby:
             continue
+
+        baby_id = new_baby.get("babyId")
+        gender_changed = old_baby.get("gender") != new_baby.get("gender")
+        dob_changed = old_baby.get("dateOfBirth") != new_baby.get("dateOfBirth")
+        if baby_id and (gender_changed or dob_changed):
+            # Remove existing percentiles so the GrowthData stream processor
+            # recalculates them with the updated baby details.
+            _remove_percentiles_for_baby(baby_id)
+            processed += 1
 
         dob = new_baby.get("dateOfBirth")
         if not dob:
