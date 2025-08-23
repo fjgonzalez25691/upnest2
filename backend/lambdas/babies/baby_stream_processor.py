@@ -117,7 +117,7 @@ def _serialize(item: dict) -> dict:
     """Helper to convert a Python dict into DynamoDB's attribute-value format."""
     return {k: _ser.serialize(v) for k, v in item.items()}
 
-
+  
 def _upsert_birth_growth_item(baby: dict, normalized: dict) -> None:
     """
     Create or update the GrowthData item for birth and link it from Babies.
@@ -225,7 +225,7 @@ def _remove_percentiles_for_baby(baby_id: str) -> None:
         try:
             query_kwargs = {
                 "IndexName": "BabyGrowthDataIndex",
-                "KeyConditionExpression": Key("babyId").eq(baby_id),
+                "KeyConditionExpression": Key("babyId").eq(baby_id)
             }
             if last_key:
                 query_kwargs["ExclusiveStartKey"] = last_key
