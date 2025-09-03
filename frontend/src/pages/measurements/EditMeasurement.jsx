@@ -48,34 +48,8 @@ const EditMeasurement = () => {
   const handleSave = async (formData) => {
     setSaving(true);
     try {
-        // Save current percentiles BEFORE editing
-        const prevPercentiles = measurement.percentiles || {};
-        await updateGrowthData(measurementId, formData);
-
-        // Poll until percentiles change
-        const startTime = Date.now();
-        let updated = false;
-        let retries = 0;
-        while (!updated && retries < 40) {
-            const fresh = await getGrowthMeasurement(measurementId);
-            
-            // Have the percentiles changed?
-            if (fresh.percentiles && (
-                fresh.percentiles.weight !== prevPercentiles.weight ||
-                fresh.percentiles.height !== prevPercentiles.height ||
-                fresh.percentiles.headCircumference !== prevPercentiles.headCircumference
-            )) {
-                updated = true;
-            } else {
-                await new Promise(res => setTimeout(res, 200)); // Wait 0.2s
-                retries++;
-            }
-        }
-        const elapsed = Date.now() - startTime;
-        console.log(`Polling took ${elapsed}ms`);
-
-        // Navigate only when they are updated
-        navigate(`/baby/${measurement.babyId}/growth/tracking`, {
+        const updated = await updateGrowthData(measurementId, formData);
+        navigate(`/baby/${updated.babyId}/growth/tracking`, {
             state: {
                 babyName: babyName || baby?.name,
                 birthDate: birthDate || baby?.dateOfBirth,

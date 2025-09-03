@@ -174,3 +174,48 @@ def calculate_percentile(event, _context=None):
 # Alias for API Gateway
 def lambda_handler(event, context):
     return calculate_percentile(event, context)
+
+
+def compute_percentiles(baby: dict, measurement_date: str, measurements: dict) -> dict:
+    """Pure helper used by other Lambdas to compute percentiles.
+
+    Parameters
+    ----------
+    baby: dict
+        Must contain ``gender`` ('male'|'female') and ``dateOfBirth``.
+    measurement_date: str
+        ISO date string for the measurement.
+    measurements: dict
+        Raw measurements in the same units expected by the API
+        (weight in grams; height and head circumference in cm).
+
+    Returns
+    -------
+    dict
+        Mapping of measurement type to percentile value. Keys are limited to
+        ``weight``, ``height`` and ``headCircumference``.
+    """
+
+    percentiles: dict[str, float] = {}
+    for mtype, value in (measurements or {}).items():
+        if value is None or value <= 0:
+            continue
+        event = {
+            "body": json.dumps(
+                {
+                    "measurementType": mtype,
+                    "value": value,
+                    "dateOfBirth": baby.get("dateOfBirth"),
+                    "measurementDate": measurement_date,
+                    "sex": baby.get("gender"),
+                }
+            )
+        }
+        res = calculate_percentile(event, None)
+        if isinstance(res, dict) and res.get("statusCode") == 200:
+            body = json.loads(res["body"])
+            p = body.get("percentile")
+            if p is not None:
+                percentiles[mtype] = float(p)
+    return percentiles
+

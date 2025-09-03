@@ -16,6 +16,7 @@ import os
 import uuid
 import boto3
 from decimal import Decimal
+from percentiles.percentiles_service import compute_percentiles
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -296,35 +297,53 @@ def update_growth_data(event, data_id, user_id):
                 return response(404, {"error": "Baby not found or not accessible"})
 
         data = normalize_numeric_fields(data)
-        
-        # Prepare update fields
-        update_fields = {}
-        for key in ['measurementDate', 'measurements', 'notes', 'measurementSource', 'babyId']:
+
+        # Determine final values used for percentile calculation
+        combined = existing_data.get('measurements', {}).copy()
+        if 'measurements' in data:
+            combined.update(data['measurements'])
+            update_measurements = combined
+        else:
+            update_measurements = combined
+
+        measurement_date = data.get('measurementDate', existing_data.get('measurementDate'))
+        baby_id = data.get('babyId', existing_data.get('babyId'))
+
+        # Fetch baby to compute percentiles
+        baby = get_baby_if_accessible(baby_id, user_id)
+        if not baby:
+            return response(404, {"error": "Baby not found or not accessible"})
+
+        pct = compute_percentiles(
+            {"gender": baby['gender'], "dateOfBirth": baby['dateOfBirth']},
+            measurement_date,
+            {k: float(v) if v is not None else None for k, v in update_measurements.items()},
+        )
+
+        update_fields = {'measurements': update_measurements, 'percentiles': {k: Decimal(str(v)) for k, v in pct.items()}, 'updatedAt': datetime.now(timezone.utc).isoformat()}
+        for key in ['measurementDate', 'notes', 'measurementSource', 'babyId']:
             if key in data:
                 update_fields[key] = data[key]
-        
-        if not update_fields:
-            return response(400, {"error": "No valid fields to update"})
-        
-        update_fields['updatedAt'] = datetime.now(timezone.utc).isoformat()
-        
-        # Build update expression
-        update_expr_parts = []
-        expr_values = {}
-        
-        for k, v in update_fields.items():
-            update_expr_parts.append(f"{k} = :{k}")
-            expr_values[f":{k}"] = v
-        
+
+        update_expr_parts = [f"{k} = :{k}" for k in update_fields]
+        expr_values = {f":{k}": v for k, v in update_fields.items()}
         update_expr = "SET " + ", ".join(update_expr_parts)
-        
-        growth_table.update_item(
+
+        updated = growth_table.update_item(
             Key={'dataId': data_id},
             UpdateExpression=update_expr,
-            ExpressionAttributeValues=expr_values
+            ExpressionAttributeValues=expr_values,
+            ReturnValues='ALL_NEW'
         )
-        
-        return response(200, {"message": "Growth data updated", "dataId": data_id})
+
+        attrs = updated.get('Attributes', {})
+        return response(200, {
+            "babyId": attrs.get('babyId'),
+            "dataId": attrs.get('dataId'),
+            "measurements": attrs.get('measurements'),
+            "percentiles": attrs.get('percentiles'),
+            "updatedAt": attrs.get('updatedAt')
+        })
     except Exception as e:
         logger.error(f"Error updating growth data: {e}")
         return response(500, {"error": "Failed to update growth data"})

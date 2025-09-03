@@ -21,6 +21,10 @@ Notes:
 - Measurements units expected: weight in grams; height/headCircumference in cm.
 - Percentiles are computed downstream by the GrowthData stream processor, which
   recalculates on INSERT, when measurements change, or when 'percentiles' is missing.
+
+Note: Synchronous HTTP recomputation via ``PATCH /babies/{id}?syncRecalc=1`` is now the
+recommended path. This stream processor remains as a best-effort fallback for legacy
+flows.
 """
 
 import os

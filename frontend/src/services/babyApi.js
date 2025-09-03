@@ -81,9 +81,10 @@ export const getBabyById = async (babyId) => {
  * @param {Object} updateData - Updated baby data
  * @returns {Promise<Object>} Updated baby data
  */
-export const updateBaby = async (babyId, updateData) => {
+export const updateBaby = async (babyId, updateData, options = {}) => {
     try {
-        const response = await axiosClient.put(`${BASE_URL}/${babyId}`, updateData);
+        const query = options.syncRecalc ? "?syncRecalc=1" : "";
+        const response = await axiosClient.patch(`${BASE_URL}/${babyId}${query}`, updateData);
         return response.data;
     } catch (error) {
         console.error("Error updating baby:", error);

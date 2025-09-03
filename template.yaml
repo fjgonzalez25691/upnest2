@@ -449,6 +449,12 @@ Resources:
               RestApiId: !Ref UpNest2Api
               Path: /babies/{babyId}
               Method: PUT
+          BabyPatch:
+            Type: Api
+            Properties:
+              RestApiId: !Ref UpNest2Api
+              Path: /babies/{babyId}
+              Method: PATCH
           BabyDelete:
             Type: Api
             Properties:
