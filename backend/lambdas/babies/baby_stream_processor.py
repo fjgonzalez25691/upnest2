@@ -72,7 +72,7 @@ def _extract_birth_measurements(baby: dict) -> dict:
     candidates = {
         "weight": baby.get("birthWeight"),
         "height": baby.get("birthHeight"),
-        "headCircumference": baby.get("birthHeadCircumference"),
+        "headCircumference": baby.get("headCircumference"),
     }
     for k, v in candidates.items():
         if v is not None and k not in m:
@@ -285,7 +285,7 @@ def _remove_percentiles_for_baby(baby_id: str) -> None:
 
 # ---------- Lambda entry ----------
 
-def lambda_handler(event, _ctx):
+def handle_stream_event(event, _ctx):
     """
     Handle INSERT/MODIFY from Babies stream:
       - If at least one birth measurement exists and DOB exists: upsert GrowthData (birth).

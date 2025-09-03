@@ -8,10 +8,9 @@ import "react-datepicker/dist/react-datepicker.css";
 import { calculateAge } from "../../utils/dateUtils.js";
 import { normalizeNumber, formatNumberWithOptionalDecimal, validateRange, FIELD_RANGES} from "../../utils/numberUtils.js";
 
-const BabyProfileForm = ({ baby, isEditable = false, isRecalculating = false, recalcError = "", onSave, onCancel, onEdit, onDelete }) => {
+const BabyProfileForm = ({ baby, isEditable = false, onSave, onCancel, onEdit, onDelete }) => {
   const [formData, setFormData] = useState(baby ? { ...baby } : {});
   const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -287,21 +286,6 @@ const BabyProfileForm = ({ baby, isEditable = false, isRecalculating = false, re
         </div>
       </div>
 
-
-      {/* Recalculating percentiles notifications - only show in edit mode */}
-      {isEditable && isRecalculating && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg">
-          <div className="flex items-center">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-            Recalculating percentiles... this may take a few seconds.
-          </div>
-        </div>
-      )}
-      {isEditable && recalcError && (
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg">
-          {recalcError}
-        </div>
-      )}
       {/* Action Buttons for Edit Mode */}
       <div className="gradient-textarea-info rounded-xl shadow p-6 mt-8 border border-blue-100">
         <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">Profile Actions</h2>
@@ -324,9 +308,7 @@ const BabyProfileForm = ({ baby, isEditable = false, isRecalculating = false, re
                 type="submit"
                 variant="primary"
                 className="w-60"
-                disabled={isRecalculating || saving}
-                onClick={async () => {
-                  if (isRecalculating || saving) return; // Prevent double submits
+                onClick={() => {
                   const dataToSend = {
                     ...formData,
                     // Normalize all numeric fields using the centralized utility
@@ -338,24 +320,12 @@ const BabyProfileForm = ({ baby, isEditable = false, isRecalculating = false, re
                   const validationErrors = validate(dataToSend);
                   setErrors(validationErrors);
                   if (Object.keys(validationErrors).length > 0) return;
-                  try {
-                    setSaving(true);
-                    await onSave(dataToSend);
-                  } finally {
-                    setSaving(false);
-                  }
+                  onSave(dataToSend);
                 }}
               >
-                {(isRecalculating || saving) ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Saving...
-                  </div>
-                ) : (
-                  "Save"
-                )}
+                Save
               </PrimaryButton>
-              <PrimaryButton type="button" variant="cancel" className="w-60" disabled={isRecalculating || saving} onClick={onCancel}>
+              <PrimaryButton type="button" variant="cancel" className="w-60" onClick={onCancel}>
                 Cancel
               </PrimaryButton>
             </>

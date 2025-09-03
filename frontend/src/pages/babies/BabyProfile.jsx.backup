@@ -54,23 +54,6 @@ const BabyProfile = () => {
         });
     }, []);
 
-    // Helper: Determine if the update affects percentile calculations
-    const isRecalcRelevantChange = useCallback((updated, current) => {
-        if (!current || !updated) return true;
-        const normalize = (v) => {
-            if (v === undefined || v === null || v === "") return undefined;
-            // Convert numeric-like strings to numbers for fair comparison
-            const n = Number(v);
-            return Number.isNaN(n) ? v : n;
-        };
-        const fields = [
-            'dateOfBirth', 'gender',
-            'birthWeight', 'birthHeight', 'headCircumference',
-            'premature', 'gestationalWeek'
-        ];
-        return fields.some((f) => normalize(updated[f]) !== normalize(current[f]));
-    }, []);
-
     // Unified data loading function
     const loadData = useCallback(async (showLoading = true) => {
         try {
@@ -103,20 +86,16 @@ const BabyProfile = () => {
 
         const maxRetries = Math.floor(MAX_POLLING_TIME / POLLING_INTERVAL);
         let retries = 0;
-        const prevHadMissing = hasMissingPercentiles(previousItems || []);
 
         while (retries < maxRetries) {
-            const loaded = await loadData(false);
-            const currentItems = loaded?.measurements || [];
+            const { measurements: currentItems } = await loadData(false) || { measurements: [] };
             
             // Check if polling should stop
             const stillMissing = hasMissingPercentiles(currentItems);
-            const hasChanged = percentilesChanged(previousItems || [], currentItems);
-
-            // Never stop while there are missing percentiles.
-            // As soon as there are no missing percentiles, we can stop regardless of value equality.
-            if (!stillMissing) {
-                console.log(`🔍 Polling completed after ${retries * POLLING_INTERVAL}ms (changed=${hasChanged})`);
+            const hasChanged = percentilesChanged(previousItems, currentItems);
+            
+            if (!stillMissing || hasChanged) {
+                console.log(`🔍 Polling completed after ${retries * POLLING_INTERVAL}ms`);
                 setRecalculating(false);
                 return true;
             }
@@ -154,7 +133,6 @@ const BabyProfile = () => {
 
             // Capture current state before making changes
             const previousItems = [...measurements];
-            const recalcNeeded = isRecalcRelevantChange(updatedBabyData, baby?.baby);
 
             // Save baby data
             await updateBaby(babyId, updatedBabyData);
@@ -164,9 +142,12 @@ const BabyProfile = () => {
             const updatedData = await loadData(false);
             if (!updatedData) return;
 
-            // Always poll if relevant fields changed; this ensures we wait for backend recalculation
-            if (recalcNeeded) {
-                console.log("🔍 Relevant changes detected, starting percentiles polling...");
+            // Check if polling is needed
+            const needsPolling = hasMissingPercentiles(updatedData.measurements) || 
+                                percentilesChanged(previousItems, updatedData.measurements);
+
+            if (needsPolling) {
+                console.log("🔍 Changes detected, starting percentiles polling...");
                 await pollForPercentiles(previousItems);
             }
 
@@ -269,8 +250,6 @@ const BabyProfile = () => {
                     <BabyProfileForm
                         baby={baby?.baby}
                         isEditable={editMode}
-                        isRecalculating={recalculating}
-                        recalcError={recalcError}
                         onSave={handleSave}
                         onAdd={handleAddMeasurement}
                         onCancel={() => handleCancel()}
