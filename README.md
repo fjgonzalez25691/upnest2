@@ -84,6 +84,18 @@ npm install
 npm run dev
 ```
 
+## 🔄 Synchronous percentile recalculation
+
+The client no longer polls for percentile updates. Instead:
+
+- **PATCH `/babies/{id}?syncRecalc=1`** updates a baby and recomputes all its
+  measurements before responding.
+- **PUT `/growth-data/{dataId}`** returns the updated measurement including
+  freshly calculated percentiles.
+
+Both endpoints respond only when data is consistent, letting the UI perform a
+single HTTP call per action.
+
 ### Backend
 
 ```bash

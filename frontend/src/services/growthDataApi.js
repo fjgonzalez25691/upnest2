@@ -84,7 +84,7 @@ export const createGrowthData = async (growthData) => {
  * Update existing growth data
  * @param {string} dataId - Growth data ID
  * @param {Object} updateData - Updated growth data
- * @returns {Promise<Object>} Updated growth data
+ * @returns {Promise<Object>} Updated growth data including percentiles
  */
 export const updateGrowthData = async (dataId, updateData) => {
     try {

@@ -12,6 +12,10 @@ import uuid
 import boto3
 from decimal import Decimal
 from boto3.dynamodb.types import TypeDeserializer
+from boto3.dynamodb.conditions import Key
+import time
+
+from percentiles.percentiles_service import compute_percentiles
 
 from baby_stream_processor import handle_stream_event  # Import stream handler
 logger = logging.getLogger(__name__)
@@ -19,6 +23,7 @@ logger.setLevel(logging.INFO)
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['BABIES_TABLE'])
+growth_table = dynamodb.Table(os.environ.get('GROWTH_DATA_TABLE', 'upnest-growth-data'))
 
 
 def get_user_id_from_context(event):
@@ -287,6 +292,78 @@ def lambda_handler(event, context):
                 except Exception as e:
                     logger.error(f"Error updating baby: {e}")
                     return response(500, {"error": "Failed to update baby"})
+
+            # PATCH /babies/{babyId}?syncRecalc=1
+            if method == 'PATCH' and path.startswith('/babies/'):
+                baby_id = extract_baby_id(event)
+                if not baby_id:
+                    return response(400, {"error": "Baby ID is required"})
+
+                params = event.get('queryStringParameters') or {}
+                sync = str(params.get('syncRecalc', '')).lower() in ('1', 'true', 'yes')
+
+                data = parse_body(event)
+                valid, msg = validate_baby_data(data, require_all=False)
+                if not valid:
+                    return response(400, {"error": msg})
+
+                try:
+                    data = process_baby_data(data)
+                except ValueError as ve:
+                    return response(400, {"error": str(ve)})
+
+                try:
+                    baby = get_baby_if_accessible(baby_id, user_id)
+                    if not baby:
+                        return response(404, {"error": "Baby not found"})
+
+                    update_fields = {k: v for k, v in data.items() if k in [
+                        'name', 'dateOfBirth', 'gender', 'premature', 'gestationalWeek', 'birthWeight', 'birthHeight', 'headCircumference']}
+                    if not update_fields:
+                        return response(400, {"error": "No valid fields to update"})
+
+                    update_fields['modifiedAt'] = datetime.now(timezone.utc).isoformat()
+                    update_expr, expr_values, attribute_names = build_update_expression(update_fields)
+
+                    updated = table.update_item(
+                        Key={'babyId': baby_id},
+                        UpdateExpression=update_expr,
+                        ExpressionAttributeValues=expr_values,
+                        ExpressionAttributeNames=attribute_names,
+                        ReturnValues='ALL_NEW'
+                    )
+                    baby = updated.get('Attributes', {})
+
+                    if sync:
+                        start = time.time()
+                        resp = growth_table.query(IndexName='BabyGrowthDataIndex', KeyConditionExpression=Key('babyId').eq(baby_id))
+                        items = resp.get('Items', [])
+                        updated_count = 0
+                        for item in items:
+                            meas = {k: float(v) if v is not None else None for k, v in (item.get('measurements') or {}).items()}
+                            pct = compute_percentiles(
+                                {"gender": baby.get('gender'), "dateOfBirth": baby.get('dateOfBirth')},
+                                item.get('measurementDate'),
+                                meas
+                            )
+                            if pct:
+                                growth_table.update_item(
+                                    Key={'dataId': item['dataId']},
+                                    UpdateExpression='SET percentiles = :p, updatedAt = :u',
+                                    ExpressionAttributeValues={
+                                        ':p': {k: Decimal(str(v)) for k, v in pct.items()},
+                                        ':u': datetime.now(timezone.utc).isoformat(),
+                                    }
+                                )
+                                updated_count += 1
+                        duration_ms = int((time.time() - start) * 1000)
+                        logger.info(f"sync recalc for {baby_id}: {updated_count} items in {duration_ms}ms")
+                        return response(200, {"baby": baby, "updatedCount": updated_count, "durationMs": duration_ms})
+
+                    return response(200, {"baby": baby})
+                except Exception as e:
+                    logger.error(f"Error patching baby: {e}")
+                    return response(500, {"error": "Failed to patch baby"})
 
             # DELETE /babies/{babyId}
             if method == 'DELETE' and path.startswith('/babies/'):
