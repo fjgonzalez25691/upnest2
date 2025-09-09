@@ -7,6 +7,9 @@ import { getGrowthData } from "../../services/growthDataApi";
 import PrimaryButton from "../../components/PrimaryButton";
 import BabyProfileForm from "../../components/babycomponents/BabyProfileForm";
 
+// Move constants outside component to avoid dependency issues
+const MEASUREMENT_KEYS = ['weight', 'height', 'headCircumference'];
+
 const BabyProfile = () => {
     const { babyId } = useParams();
     const [baby, setBaby] = useState(null);
@@ -14,45 +17,10 @@ const BabyProfile = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [editMode, setEditMode] = useState(false);
-    const [recalculating, setRecalculating] = useState(false);
-    const [recalcError, setRecalcError] = useState("");
+    const [saving, setSaving] = useState(false);  // Renamed from recalculating
     const navigate = useNavigate();
 
     console.log("🔍 BabyProfile mounted with babyId:", babyId);
-
-    // Constants and helpers
-    const MEASUREMENT_KEYS = ['weight', 'height', 'headCircumference'];
-    const POLLING_INTERVAL = 200;
-    const MAX_POLLING_TIME = 12000; // 12 seconds
-
-    // Helper: Check if any measurements are missing percentiles
-    const hasMissingPercentiles = useCallback((items) => {
-        return items.some((item) => {
-            const measurements = item?.measurements || {};
-            const percentiles = item?.percentiles || {};
-            
-            return MEASUREMENT_KEYS.some((key) => {
-                const hasMeasurement = measurements[key] != null && measurements[key] !== 0;
-                const hasPercentile = percentiles[key] != null;
-                return hasMeasurement && !hasPercentile;
-            });
-        });
-    }, []);
-
-    // Helper: Check if percentiles have changed from previous values
-    const percentilesChanged = useCallback((previousItems, currentItems) => {
-        return currentItems.some((currentItem) => {
-            const previousItem = previousItems.find(prev => prev.dataId === currentItem.dataId);
-            if (!previousItem) return true; // New item
-
-            const currentPercentiles = currentItem.percentiles || {};
-            const previousPercentiles = previousItem.percentiles || {};
-
-            return MEASUREMENT_KEYS.some(key => 
-                currentPercentiles[key] !== previousPercentiles[key]
-            );
-        });
-    }, []);
 
     // Unified data loading function
     const loadData = useCallback(async (showLoading = true) => {
@@ -72,92 +40,64 @@ const BabyProfile = () => {
             return { baby: babyData, measurements: growthData };
         } catch (err) {
             console.error("Error loading data:", err);
-            setError("Failed to load baby profile. Please try again.");
+            setError(err.message || "Failed to load baby profile");
             return null;
         } finally {
             if (showLoading) setLoading(false);
         }
     }, [babyId]);
 
-    // Polling function for percentiles
-    const pollForPercentiles = useCallback(async (previousItems) => {
-        setRecalculating(true);
-        setRecalcError("");
-
-        const maxRetries = Math.floor(MAX_POLLING_TIME / POLLING_INTERVAL);
-        let retries = 0;
-
-        while (retries < maxRetries) {
-            const { measurements: currentItems } = await loadData(false) || { measurements: [] };
-            
-            // Check if polling should stop
-            const stillMissing = hasMissingPercentiles(currentItems);
-            const hasChanged = percentilesChanged(previousItems, currentItems);
-            
-            if (!stillMissing || hasChanged) {
-                console.log(`🔍 Polling completed after ${retries * POLLING_INTERVAL}ms`);
-                setRecalculating(false);
-                return true;
-            }
-
-            retries++;
-            await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
-        }
-
-        // Timeout reached
-        console.log(`🔍 Polling timeout after ${MAX_POLLING_TIME}ms`);
-        setRecalcError("Percentiles are taking longer than expected. They will be updated shortly.");
-        setRecalculating(false);
-        return false;
-    }, [loadData, hasMissingPercentiles, percentilesChanged]);
-
-    // Initial data load with percentiles check
+    // Initial data load
     useEffect(() => {
-        const initializeData = async () => {
-            const data = await loadData();
-            if (data?.measurements && hasMissingPercentiles(data.measurements)) {
-                console.log("🔍 Missing percentiles detected on load, starting polling...");
-                await pollForPercentiles(data.measurements);
-            }
-        };
-
         if (babyId) {
-            initializeData();
+            loadData();
         }
-    }, [babyId, loadData, hasMissingPercentiles, pollForPercentiles]);
+    }, [babyId, loadData]);
 
     const handleSave = async (updatedBabyData) => {
         try {
+            setSaving(true);
             setError("");
-            setRecalcError("");
-
-            // Capture current state before making changes
-            const previousItems = [...measurements];
 
             // Decide if backend must sync-recalc (gender or dateOfBirth changed)
             const original = baby?.baby || {};
             const needsSync = ['gender', 'dateOfBirth'].some(
                 (k) => k in updatedBabyData && updatedBabyData[k] !== original[k]
             );
+
+            console.log("🔍 Saving baby data with syncRecalc:", needsSync);
+
             // Save baby data (send ?syncRecalc=1 if needed)
-            const patchResp = await updateBaby(babyId, updatedBabyData, { syncRecalc: needsSync });
-            console.log("🔍 Baby data updated successfully");
-
-            // Reload data to get the updated state (including any new birth measurements)
-            const updatedData = await loadData(false);
-           
-
-            // If backend already did sync recalc, skip polling
-            const backendDidRecalc = !!(patchResp && typeof patchResp.updatedCount === 'number');
-            const needsPolling =
-                  !backendDidRecalc &&
-                  (hasMissingPercentiles(updatedData.measurements) ||
-                  percentilesChanged(previousItems, updatedData.measurements));
-
+            const response = await updateBaby(babyId, updatedBabyData, { syncRecalc: needsSync });
+            
+            // If backend did sync recalc, use the returned data instead of reloading
+            if (response?.updatedCount !== undefined) {
+                console.log(`🔍 Backend recalculated ${response.updatedCount} percentiles in ${response.durationMs}ms`);
+                
+                // Use the measurements returned by the backend
+                if (response.measurements) {
+                    setMeasurements(response.measurements);
+                    console.log(`🔍 Using ${response.measurements} measurements from backend response`);
+                }
+                
+                // Update baby data with the returned data
+                if (response.baby) {
+                    setBaby({ baby: response.baby });
+                    console.log("🔍 Updated baby data from backend response");
+                }
+            } else {
+                // Only reload if sync recalc was not performed
+                await loadData(false);
+            }
             setEditMode(false);
+
+            console.log("🔍 Baby profile updated successfully");
+
         } catch (err) {
             console.error("Error updating baby profile:", err);
             setError("Failed to update baby profile. Please try again.");
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -168,15 +108,11 @@ const BabyProfile = () => {
     const handleDelete = async () => {
         if (window.confirm("Are you sure you want to delete this baby profile? This action cannot be undone.")) {
             try {
-                setLoading(true);
                 await deleteBaby(babyId);
-                console.log("🔍 Baby profile deleted successfully");
-                window.location.href = "/dashboard";
+                navigate("/dashboard");
             } catch (err) {
-                console.error("Error deleting baby profile:", err);
+                console.error("Error deleting baby:", err);
                 setError("Failed to delete baby profile. Please try again.");
-            } finally {
-                setLoading(false);
             }
         }
     };
@@ -185,6 +121,7 @@ const BabyProfile = () => {
         navigate("/add-measurement", { state: { baby: baby?.baby } });
     };
 
+    // Loading state
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6 flex items-center justify-center">
@@ -196,6 +133,7 @@ const BabyProfile = () => {
         );
     }
 
+    // Error state
     if (error || !baby) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
@@ -233,34 +171,19 @@ const BabyProfile = () => {
                     </Link>
                 </div>
 
-                {/* Recalculating percentiles notification */}
-                {recalculating && (
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg">
-                        <div className="flex items-center">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                            Recalculating percentiles... this may take a few seconds.
-                        </div>
-                    </div>
-                )}
-                {recalcError && (
-                    <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg">
-                        {recalcError}
-                    </div>
-                )}
-
                 {/* Baby Profile Form Component */}
                 <div className="mb-8">
                     <BabyProfileForm
                         baby={baby?.baby}
                         isEditable={editMode}
+                        isRecalculating={saving}  // Pass saving state
                         onSave={handleSave}
                         onAdd={handleAddMeasurement}
-                        onCancel={() => handleCancel()}
+                        onCancel={handleCancel}
                         onEdit={() => setEditMode(true)}
-                        onDelete={() => handleDelete()}
+                        onDelete={handleDelete}
                     />
                 </div>
-
 
                 {/* Growth Tracking Section */}
                 {measurements.length > 0 && (

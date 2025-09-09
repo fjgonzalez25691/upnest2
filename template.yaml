@@ -58,7 +58,7 @@ Globals:
 
   Api:
     Cors:
-      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowMethods: "'GET,POST,PUT,DELETE,PATCH,OPTIONS'"
       AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
       AllowOrigin: !If
         - IsStaging

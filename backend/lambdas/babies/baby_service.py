@@ -365,7 +365,31 @@ def lambda_handler(event, context):
                                 updated_count += 1
                         duration_ms = int((time.time() - start) * 1000)
                         logger.info(f"sync recalc for {baby_id}: {updated_count} items in {duration_ms}ms")
-                        return response(200, {"baby": baby, "updatedCount": updated_count, "durationMs": duration_ms})
+                        
+                        # Get updated measurements after recalculation
+                        updated_measurements_resp = growth_table.query(
+                            IndexName='BabyGrowthDataIndex', 
+                            KeyConditionExpression=Key('babyId').eq(baby_id)
+                        )
+                        updated_measurements = updated_measurements_resp.get('Items', [])
+                        
+                        # Convert Decimals to float for JSON serialization
+                        for item in updated_measurements:
+                            if 'measurements' in item and item['measurements']:
+                                for key, value in item['measurements'].items():
+                                    if isinstance(value, Decimal):
+                                        item['measurements'][key] = float(value)
+                            if 'percentiles' in item and item['percentiles']:
+                                for key, value in item['percentiles'].items():
+                                    if isinstance(value, Decimal):
+                                        item['percentiles'][key] = float(value)
+                        
+                        return response(200, {
+                            "baby": baby, 
+                            "measurements": updated_measurements,
+                            "updatedCount": updated_count, 
+                            "durationMs": duration_ms
+                        })
 
                     return response(200, {"baby": baby})
                 except Exception as e:
