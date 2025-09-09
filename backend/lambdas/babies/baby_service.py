@@ -15,7 +15,10 @@ from boto3.dynamodb.types import TypeDeserializer
 from boto3.dynamodb.conditions import Key
 import time
 
-from percentiles.percentiles_service import compute_percentiles
+try:
+    from percentiles_cal.percentiles_service_layer import compute_percentiles  # Import from percentiles_cal layer
+except ImportError:
+    from ..percentiles.percentiles_service import compute_percentiles  # Fallback if running locally
 
 from baby_stream_processor import handle_stream_event  # Import stream handler
 logger = logging.getLogger(__name__)
@@ -36,11 +39,15 @@ def get_user_id_from_context(event):
 
 
 def response(status, body):
+    origin = os.environ.get('CORS_ORIGIN', 'http://localhost:5173')
     return {
         "statusCode": status,
         "headers": {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*"
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+            "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT,DELETE,PATCH"
         },
         "body": json.dumps(body, default=str)
     }

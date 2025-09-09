@@ -16,7 +16,12 @@ import os
 import uuid
 import boto3
 from decimal import Decimal
-from percentiles.percentiles_service import compute_percentiles
+
+try:
+    # Import for aws lambda layer
+    from percentiles_cal.percentiles_service_layer import compute_percentiles
+except (ImportError, ModuleNotFoundError):
+    from ..percentiles.percentiles_service import compute_percentiles  # Fallback if running locally
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

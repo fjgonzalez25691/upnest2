@@ -13,6 +13,7 @@ backend/*.pyc
 backend/.env*
 backend/*.log
 backend/layers/percentiles/python
+backend/.venv/
 
 
 # --- Logs ---

@@ -1,6 +1,4 @@
-// src/pages/BabyProfile.jsx
-// Baby profile page showing detailed information and growth tracking
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getBabyById, updateBaby, deleteBaby } from "../../services/babyApi";
 import { getGrowthData } from "../../services/growthDataApi";
@@ -8,348 +6,93 @@ import PrimaryButton from "../../components/PrimaryButton";
 import BabyProfileForm from "../../components/babycomponents/BabyProfileForm";
 
 const BabyProfile = () => {
-    const { babyId } = useParams();
-    const [baby, setBaby] = useState(null);
-    const [measurements, setMeasurements] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [editMode, setEditMode] = useState(false);
-    const [recalculating, setRecalculating] = useState(false);
-    const [recalcError, setRecalcError] = useState("");
-    const navigate = useNavigate();
+  const { babyId } = useParams();
+  const [baby, setBaby] = useState(null);
+  const [measurements, setMeasurements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [editMode, setEditMode] = useState(false);
+  const navigate = useNavigate();
 
-    console.log("🔍 BabyProfile mounted with babyId:", babyId);
-
-    // Constants and helpers
-    const MEASUREMENT_KEYS = ['weight', 'height', 'headCircumference'];
-    const POLLING_INTERVAL = 200;
-    const MAX_POLLING_TIME = 12000; // 12 seconds
-
-    // Helper: Check if any measurements are missing percentiles
-    const hasMissingPercentiles = useCallback((items) => {
-        return items.some((item) => {
-            const measurements = item?.measurements || {};
-            const percentiles = item?.percentiles || {};
-            
-            return MEASUREMENT_KEYS.some((key) => {
-                const hasMeasurement = measurements[key] != null && measurements[key] !== 0;
-                const hasPercentile = percentiles[key] != null;
-                return hasMeasurement && !hasPercentile;
-            });
-        });
-    }, []);
-
-    // Helper: Check if percentiles have changed from previous values
-    const percentilesChanged = useCallback((previousItems, currentItems) => {
-        return currentItems.some((currentItem) => {
-            const previousItem = previousItems.find(prev => prev.dataId === currentItem.dataId);
-            if (!previousItem) return true; // New item
-
-            const currentPercentiles = currentItem.percentiles || {};
-            const previousPercentiles = previousItem.percentiles || {};
-
-            return MEASUREMENT_KEYS.some(key => 
-                currentPercentiles[key] !== previousPercentiles[key]
-            );
-        });
-    }, []);
-
-    // Unified data loading function
-    const loadData = useCallback(async (showLoading = true) => {
-        try {
-            if (showLoading) setLoading(true);
-            setError("");
-
-            const [babyData, growthData] = await Promise.all([
-                getBabyById(babyId),
-                getGrowthData(babyId)
-            ]);
-
-            console.log("🔍 Loaded data:", { baby: babyData, measurements: growthData });
-            setBaby(babyData);
-            setMeasurements(growthData);
-
-            return { baby: babyData, measurements: growthData };
-        } catch (err) {
-            console.error("Error loading data:", err);
-            setError("Failed to load baby profile. Please try again.");
-            return null;
-        } finally {
-            if (showLoading) setLoading(false);
-        }
-    }, [babyId]);
-
-    // Polling function for percentiles
-    const pollForPercentiles = useCallback(async (previousItems) => {
-        setRecalculating(true);
-        setRecalcError("");
-
-        const maxRetries = Math.floor(MAX_POLLING_TIME / POLLING_INTERVAL);
-        let retries = 0;
-
-        while (retries < maxRetries) {
-            const { measurements: currentItems } = await loadData(false) || { measurements: [] };
-            
-            // Check if polling should stop
-            const stillMissing = hasMissingPercentiles(currentItems);
-            const hasChanged = percentilesChanged(previousItems, currentItems);
-            
-            if (!stillMissing || hasChanged) {
-                console.log(`🔍 Polling completed after ${retries * POLLING_INTERVAL}ms`);
-                setRecalculating(false);
-                return true;
-            }
-
-            retries++;
-            await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
-        }
-
-        // Timeout reached
-        console.log(`🔍 Polling timeout after ${MAX_POLLING_TIME}ms`);
-        setRecalcError("Percentiles are taking longer than expected. They will be updated shortly.");
-        setRecalculating(false);
-        return false;
-    }, [loadData, hasMissingPercentiles, percentilesChanged]);
-
-    // Initial data load with percentiles check
-    useEffect(() => {
-        const initializeData = async () => {
-            const data = await loadData();
-            if (data?.measurements && hasMissingPercentiles(data.measurements)) {
-                console.log("🔍 Missing percentiles detected on load, starting polling...");
-                await pollForPercentiles(data.measurements);
-            }
-        };
-
-        if (babyId) {
-            initializeData();
-        }
-    }, [babyId, loadData, hasMissingPercentiles, pollForPercentiles]);
-
-    const handleSave = async (updatedBabyData) => {
-        try {
-            setError("");
-            setRecalcError("");
-
-            // Capture current state before making changes
-            const previousItems = [...measurements];
-
-            // Save baby data
-            await updateBaby(babyId, updatedBabyData);
-            console.log("🔍 Baby data updated successfully");
-
-            // Reload data to get the updated state (including any new birth measurements)
-            const updatedData = await loadData(false);
-            if (!updatedData) return;
-
-            // Check if polling is needed
-            const needsPolling = hasMissingPercentiles(updatedData.measurements) || 
-                                percentilesChanged(previousItems, updatedData.measurements);
-
-            if (needsPolling) {
-                console.log("🔍 Changes detected, starting percentiles polling...");
-                await pollForPercentiles(previousItems);
-            }
-
-            setEditMode(false);
-        } catch (err) {
-            console.error("Error updating baby profile:", err);
-            setError("Failed to update baby profile. Please try again.");
-        }
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [b, g] = await Promise.all([
+          getBabyById(babyId),
+          getGrowthData(babyId)
+        ]);
+        setBaby(b);
+        setMeasurements(g);
+      } catch (e) {
+        setError("Failed to load baby profile. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     };
+    load();
+  }, [babyId]);
 
-    const handleCancel = () => {
-        setEditMode(false);
-    };
-
-    const handleDelete = async () => {
-        if (window.confirm("Are you sure you want to delete this baby profile? This action cannot be undone.")) {
-            try {
-                setLoading(true);
-                await deleteBaby(babyId);
-                console.log("🔍 Baby profile deleted successfully");
-                window.location.href = "/dashboard";
-            } catch (err) {
-                console.error("Error deleting baby profile:", err);
-                setError("Failed to delete baby profile. Please try again.");
-            } finally {
-                setLoading(false);
-            }
-        }
-    };
-
-    const handleAddMeasurement = () => {
-        navigate("/add-measurement", { state: { baby: baby?.baby } });
-    };
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading baby profile...</p>
-                </div>
-            </div>
-        );
+  const handleSave = async (updatedData) => {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await updateBaby(babyId, updatedData, { syncRecalc: true });
+      setBaby(res.baby);
+      const fresh = await getGrowthData(babyId);
+      setMeasurements(fresh);
+      setEditMode(false);
+    } catch (e) {
+      setError("Failed to update baby profile. Please try again.");
+    } finally {
+      setSaving(false);
     }
+  };
 
-    if (error || !baby) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
-                <div className="max-w-4xl mx-auto">
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-                        <div className="text-red-500 mb-4">
-                            <svg className="w-12 h-12 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                        </div>
-                        <h2 className="text-lg font-semibold text-red-900 mb-2">Error Loading Profile</h2>
-                        <p className="text-red-700 mb-4">{error || "Baby profile not found"}</p>
-                        <Link to="/dashboard">
-                            <PrimaryButton variant="primary">Back to Dashboard</PrimaryButton>
-                        </Link>
-                    </div>
-                </div>
-            </div>
-        );
+  const handleCancel = () => setEditMode(false);
+
+  const handleDelete = async () => {
+    if (window.confirm("Are you sure you want to delete this baby profile? This action cannot be undone.")) {
+      try {
+        setLoading(true);
+        await deleteBaby(babyId);
+        navigate("/dashboard");
+      } catch (e) {
+        setError("Failed to delete baby profile. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     }
+  };
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
-            <div className="max-w-4xl mx-auto">
-                {/* Navigation */}
-                <div className="mb-8">
-                    <Link
-                        to="/dashboard"
-                        className="text-blue-600 hover:text-blue-800 flex items-center mb-4 transition-colors"
-                    >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Back to Dashboard
-                    </Link>
-                </div>
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>{error}</div>;
+  if (!baby) return <div>Baby not found</div>;
 
-                {/* Recalculating percentiles notification */}
-                {recalculating && (
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg">
-                        <div className="flex items-center">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                            Recalculating percentiles... this may take a few seconds.
-                        </div>
-                    </div>
-                )}
-                {recalcError && (
-                    <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg">
-                        {recalcError}
-                    </div>
-                )}
-
-                {/* Baby Profile Form Component */}
-                <div className="mb-8">
-                    <BabyProfileForm
-                        baby={baby?.baby}
-                        isEditable={editMode}
-                        onSave={handleSave}
-                        onAdd={handleAddMeasurement}
-                        onCancel={() => handleCancel()}
-                        onEdit={() => setEditMode(true)}
-                        onDelete={() => handleDelete()}
-                    />
-                </div>
-
-
-                {/* Growth Tracking Section */}
-                {measurements.length > 0 && (
-                    <div className="bg-white rounded-3xl shadow-lg p-8 border border-green-100">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-                            <h2 className="text-2xl font-bold text-gray-800">Growth Tracking</h2>
-                            <Link
-                                to={`/baby/${babyId}/growth/tracking`}
-                                state={{
-                                    babyName: baby.baby.name,
-                                    birthDate: baby.baby.dateOfBirth 
-                                }}
-                            >
-                                <PrimaryButton variant="primary" className="mt-4 sm:mt-0">
-                                    View Growth Dashboard
-                                </PrimaryButton>
-                            </Link>
-                        </div>
-
-                        {/* Growth Quick Actions */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {/* Charts */}
-                            <div className="text-center p-6 bg-blue-50 rounded-xl border border-blue-100">
-                                <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                    </svg>
-                                </div>
-                                <h3 className="text-lg font-semibold text-gray-800 mb-2">Growth Charts</h3>
-                                <p className="text-gray-600 text-sm mb-4">
-                                    View WHO percentile charts and growth trends
-                                </p>
-                                <Link to={`/baby/${babyId}/growth/tracking`} state={{ babyName: baby.baby.name }}>
-                                    <PrimaryButton variant="primary" size="sm">
-                                        View Charts
-                                    </PrimaryButton>
-                                </Link>
-                            </div>
-
-                            {/* Add Data */}
-                            <div className="text-center p-6 bg-green-50 rounded-xl border border-green-100">
-                                <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
-                                </div>
-                                <h3 className="text-lg font-semibold text-gray-800 mb-2">New Measurement</h3>
-                                <p className="text-gray-600 text-sm mb-4">
-                                    Record weight, height, and head circumference
-                                </p>
-                                <PrimaryButton variant="add" size="sm" onClick={handleAddMeasurement}>
-                                    Add Data
-                                </PrimaryButton>
-                            </div>
-
-                            {/* History */}
-                            <div className="text-center p-6 bg-purple-50 rounded-xl border border-purple-100">
-                                <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <h3 className="text-lg font-semibold text-gray-800 mb-2">Measurement History</h3>
-                                <p className="text-gray-600 text-sm mb-4">
-                                    Browse all recorded measurements and data
-                                </p>
-                                <Link to={`/baby/${babyId}/growth/tracking`}>
-                                    <PrimaryButton variant="primary" size="sm">
-                                        View History
-                                    </PrimaryButton>
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Get Started Message if no data */}
-                {measurements.length === 0 && (
-                    <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
-                        <div className="text-center">
-                            <h3 className="text-lg font-semibold text-gray-800 mb-2">Start Tracking {baby.baby.name}'s Growth</h3>
-                            <p className="text-gray-600 mb-4">
-                                    Add your first measurement to start tracking growth with WHO percentile charts.
-                            </p>
-                            <PrimaryButton variant="add" onClick={handleAddMeasurement}>
-                                Add First Measurement
-                            </PrimaryButton>
-                        </div>
-                    </div>  
-                )}
-            </div>
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <h1 className="text-3xl font-bold text-gray-900 mb-4">{baby.name}</h1>
+      {editMode ? (
+        <BabyProfileForm
+          initialData={baby}
+          onSubmit={handleSave}
+          onCancel={handleCancel}
+          submitLabel={saving ? "Saving..." : "Save"}
+        />
+      ) : (
+        <div>
+          <p>Date of birth: {baby.dateOfBirth}</p>
+          <p>Sex: {baby.gender}</p>
+          <p>Measurements: {measurements.length}</p>
+          <div className="mt-4 flex gap-4">
+            <PrimaryButton onClick={() => setEditMode(true)}>Edit</PrimaryButton>
+            <Link to={`/baby/${babyId}/growth/tracking`}>View growth</Link>
+            <button className="text-red-500" onClick={handleDelete}>Delete</button>
+          </div>
         </div>
-    );
+      )}
+    </div>
+  );
 };
+
 export default BabyProfile;

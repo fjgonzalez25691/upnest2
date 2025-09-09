@@ -475,6 +475,8 @@ Resources:
               FilterCriteria:
                 Filters:
                   - Pattern: '{"eventName": ["INSERT", "MODIFY"]}'
+        Layers:
+          - !Ref PercentilesCalLayer
 
     UpNest2BabyAdminFunction:
       Type: AWS::Serverless::Function
@@ -544,6 +546,9 @@ Resources:
               RestApiId: !Ref UpNest2Api
               Path: /growth-data/{proxy+}
               Method: ANY
+
+        Layers:
+          - !Ref PercentilesCalLayer
 
     UpNest2PercentilesFunction:
       Condition: HasGrowthDataStreamSource
@@ -616,6 +621,15 @@ Resources:
         ContentUri: backend/layers/percentiles/
         CompatibleRuntimes:
           - python3.12
+
+    PercentilesCalLayer:
+        Type: AWS::Serverless::LayerVersion
+        Properties:
+          LayerName: upnest2-percentiles-cal-layer
+          Description: Percentiles calculation logic and data files
+          ContentUri: backend/layers/percentiles_cal/
+          CompatibleRuntimes:
+            - python3.12
 
 Outputs:
   ApiUrl:
