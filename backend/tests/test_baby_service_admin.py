@@ -1,9 +1,15 @@
-import os
+import os, sys
 os.environ['BABIES_TABLE'] = 'dummy-table-for-test'
 
 import unittest
 import json
-from babies_admin import baby_service_admin
+
+CURRENT_DIR = os.path.dirname(__file__)
+BACKEND_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, '..'))
+if BACKEND_ROOT not in sys.path:
+    sys.path.insert(0, BACKEND_ROOT)
+
+from lambdas.babies_admin import baby_service_admin
 
 class TableSpy:
     def __init__(self):

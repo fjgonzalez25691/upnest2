@@ -1,7 +1,10 @@
 """
-Unified Baby Service Handler - SIMPLIFIED
-Handles ALL CRUD operations for babies in ONE function
-POST /babies, GET /babies, GET /babies/{id}, PUT /babies/{id}, DELETE /babies/{id}
+Unified Baby Service Handler
+Includes differentiated synchronous percentile recalculation logic in PATCH:
+ - FULL (mode = full): if dateOfBirth or gender change => recalculates all growth-data percentiles + birthPercentiles
+ - BIRTH ONLY (mode = birth-only): if ONLY birthWeight|birthHeight|headCircumference change => recalculates only birthPercentiles
+ - NONE (mode = none): if no relevant fields change => no recalculation
+Always returns recalculated percentiles (no polling)
 """
 
 import json
@@ -11,16 +14,19 @@ import os
 import uuid
 import boto3
 from decimal import Decimal
-from boto3.dynamodb.types import TypeDeserializer
 from boto3.dynamodb.conditions import Key
 import time
 
 try:
-    from percentiles_cal.percentiles_service_layer import compute_percentiles  # Import from percentiles_cal layer
+    from percentiles_cal.percentiles_service_layer import compute_percentiles  # Layer on AWS
 except ImportError:
-    from ..percentiles.percentiles_service import compute_percentiles  # Fallback if running locally
+    from ..percentiles.percentiles_service import compute_percentiles  # Local fallback
 
-from baby_stream_processor import handle_stream_event  # Import stream handler
+try:
+    from baby_stream_processor import handle_stream_event
+except ImportError:
+    from .baby_stream_processor import handle_stream_event
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -31,8 +37,7 @@ growth_table = dynamodb.Table(os.environ.get('GROWTH_DATA_TABLE', 'upnest-growth
 
 def get_user_id_from_context(event):
     try:
-        claims = event.get('requestContext', {}).get(
-            'authorizer', {}).get('claims', {})
+        claims = event.get('requestContext', {}).get('authorizer', {}).get('claims', {})
         return claims.get('sub') or "test-user-123"
     except Exception:
         return "test-user-123"
@@ -77,12 +82,6 @@ def validate_baby_data(data, require_all=True):
 
 
 def normalize_baby_data(data):
-    """
-    Ensures consistency between 'premature' and 'gestationalWeek' fields.
-    - If not premature, gestationalWeek is set to 40.
-    - If gestationalWeek >= 38, premature is set to False and gestationalWeek to 40.
-    - If premature, gestationalWeek must be between 20 and 37.
-    """
     gestational_week = data.get("gestationalWeek")
     premature = data.get("premature")
 
@@ -109,19 +108,12 @@ def normalize_baby_data(data):
 
 
 def normalize_numeric_fields(data):
-    """
-    Convert numeric string fields to Decimal (for birthHeight and headCircumference)
-    and int (for birthWeight, gestationalWeek) where appropriate.
-    DynamoDB requires Decimal for floating point numbers.
-    """
-    # Convert to Decimal for decimal fields (DynamoDB requirement)
     for key in ['birthHeight', 'headCircumference']:
         if key in data and data[key] not in (None, ""):
             try:
                 data[key] = Decimal(str(data[key]))
             except (ValueError, TypeError):
                 pass
-    # Convert to int for integer fields
     for key in ['birthWeight', 'gestationalWeek']:
         if key in data and data[key] not in (None, ""):
             try:
@@ -132,7 +124,6 @@ def normalize_numeric_fields(data):
 
 
 def get_baby_if_accessible(baby_id, user_id):
-    """Get baby if it exists and is accessible to the user."""
     result = table.get_item(Key={'babyId': baby_id})
     baby = result.get('Item')
     if not baby or baby.get('userId') != user_id or not baby.get('isActive', True):
@@ -141,219 +132,243 @@ def get_baby_if_accessible(baby_id, user_id):
 
 
 def build_update_expression(update_fields):
-    """Build DynamoDB update expression handling reserved keywords."""
     attribute_names = {}
     update_expr_parts = []
-    
     for k in update_fields:
-        if k == "name":  # Reserved keyword
+        if k == "name":
             attribute_names["#name"] = "name"
             update_expr_parts.append("#name = :name")
         else:
             update_expr_parts.append(f"{k} = :{k}")
-    
     update_expr = "SET " + ", ".join(update_expr_parts)
     expr_values = {f":{k}": v for k, v in update_fields.items()}
-    
     return update_expr, expr_values, attribute_names if attribute_names else None
 
 
 def process_baby_data(data):
-    """Process and normalize baby data for create/update operations."""
     try:
         data = normalize_baby_data(data)
     except ValueError as ve:
         raise ValueError(str(ve))
-    
     data = normalize_numeric_fields(data)
     return data
 
 
+def _compute_birth_percentiles(baby_obj: dict) -> dict:
+    """Generate birth measurements payload and call compute_percentiles.
+    Returns empty dict if no measurements. Converts Decimals/int to float for calculations.
+    """
+    measures = {}
+    if baby_obj.get('birthWeight') is not None:
+        try:
+            measures['weight'] = float(baby_obj['birthWeight'])
+        except Exception:
+            pass
+    if baby_obj.get('birthHeight') is not None:
+        try:
+            measures['height'] = float(baby_obj['birthHeight'])
+        except Exception:
+            pass
+    if baby_obj.get('headCircumference') is not None:
+        try:
+            measures['headCircumference'] = float(baby_obj['headCircumference'])
+        except Exception:
+            pass
+    if not measures:
+        return {}
+    logger.info(f"[PATCH:BIRTH_PCT:INPUT] babyId={baby_obj.get('babyId')} measures={measures}")
+    pct = compute_percentiles(
+        {"gender": baby_obj.get('gender'), "dateOfBirth": baby_obj.get('dateOfBirth')},
+        baby_obj.get('dateOfBirth'),
+        measures
+    ) or {}
+    logger.info(f"[PATCH:BIRTH_PCT:OUTPUT] babyId={baby_obj.get('babyId')} pct={pct}")
+    return pct
+
+
 def lambda_handler(event, context):
     try:
-        # Check if this is a DynamoDB Stream event
+        # Stream events (DynamoDB) delegated to existing processor
         if isinstance(event, dict) and "Records" in event:
-            logger.info(f"====== DynamoDB stream with {len(event['Records'])} records  =====")
+            logger.info(f"====== DynamoDB stream with {len(event['Records'])} records =====")
             logger.info(f"Stream event: {json.dumps(event)}")
             return handle_stream_event(event, context)
-        else:
-            logger.info("============ HTTP event detected=========")
-            # Handle API Gateway events
-            method = event['httpMethod']
-            path = event['path']
-            user_id = get_user_id_from_context(event)
 
-            logger.info(f"Baby service called: {method} {path} by user {user_id}")
+        # HTTP Event
+        method = event['httpMethod']
+        path = event['path']
+        user_id = get_user_id_from_context(event)
+        logger.info(f"Baby service called: {method} {path} by user {user_id}")
 
-            if method == 'OPTIONS':
-                return response(200, {"message": "CORS preflight"})
+        if method == 'OPTIONS':
+            return response(200, {"message": "CORS preflight"})
 
-            # POST /babies
-            if method == 'POST' and path == '/babies':
-                data = parse_body(event)
-                valid, msg = validate_baby_data(data)
-                if not valid:
-                    return response(400, {"error": msg})
+        # POST Create
+        if method == 'POST' and path == '/babies':
+            data = parse_body(event)
+            valid, msg = validate_baby_data(data)
+            if not valid:
+                return response(400, {"error": msg})
+            try:
+                data = process_baby_data(data)
+            except ValueError as ve:
+                return response(400, {"error": str(ve)})
+            baby_id = str(uuid.uuid4())
+            now = datetime.now(timezone.utc).isoformat()
+            baby_item = {
+                'babyId': baby_id,
+                'userId': user_id,
+                'name': data['name'],
+                'dateOfBirth': data['dateOfBirth'],
+                'gender': data['gender'],
+                'premature': data.get('premature', False),
+                'gestationalWeek': data.get('gestationalWeek'),
+                'birthWeight': data.get('birthWeight'),
+                'birthHeight': data.get('birthHeight'),
+                'headCircumference': data.get('headCircumference'),
+                'isActive': True,
+                'createdAt': now,
+                'modifiedAt': now
+            }
+            logger.info(f"[POST] Data before save: {data}")
+            logger.info(f"[POST] Baby item to save: {baby_item}")
+            try:
+                table.put_item(Item=baby_item)
+                return response(201, {"message": "Baby profile created", "baby": baby_item})
+            except Exception as e:
+                logger.error(f"Error creating baby: {e}")
+                return response(500, {"error": "Failed to create baby"})
 
-                try:
-                    data = process_baby_data(data)
-                except ValueError as ve:
-                    return response(400, {"error": str(ve)})
+        # GET List
+        if method == 'GET' and path == '/babies':
+            try:
+                result = table.scan(
+                    FilterExpression="userId = :uid AND isActive = :active",
+                    ExpressionAttributeValues={":uid": user_id, ":active": True}
+                )
+                babies = result.get('Items', [])
+                babies.sort(key=lambda x: x.get('name', ''))
+                return response(200, {"babies": babies, "count": len(babies)})
+            except Exception as e:
+                logger.error(f"Error listing babies: {e}")
+                return response(500, {"error": "Failed to list babies"})
 
-                baby_id = str(uuid.uuid4())
-                now = datetime.now(timezone.utc).isoformat()
-                baby_item = {
-                    'babyId': baby_id,
-                    'userId': user_id,
-                    'name': data['name'],
-                    'dateOfBirth': data['dateOfBirth'],
-                    'gender': data['gender'],
-                    'premature': data.get('premature', False),
-                    'gestationalWeek': data.get('gestationalWeek'),
-                    'birthWeight': data.get('birthWeight'),
-                    'birthHeight': data.get('birthHeight'),
-                    'headCircumference': data.get('headCircumference'),  # Added
-                    'isActive': True,
-                    'createdAt': now,
-                    'modifiedAt': now
-                }
-                # In POST /babies (right before table.put_item)
-                logger.info(f"[POST] Data before save: {data} (types: { {k: type(v).__name__ for k,v in data.items()} })")
-                logger.info(f"[POST] Baby item to save: {baby_item} (types: { {k: type(v).__name__ for k,v in baby_item.items()} })")
-                try:
-                    table.put_item(Item=baby_item)
-                    return response(201, {"message": "Baby profile created", "baby": baby_item})
-                except Exception as e:
-                    logger.error(f"Error creating baby: {e}")
-                    return response(500, {"error": "Failed to create baby"})
+        # GET One
+        if method == 'GET' and path.startswith('/babies/'):
+            baby_id = extract_baby_id(event)
+            if not baby_id:
+                return response(400, {"error": "Baby ID is required"})
+            try:
+                baby = get_baby_if_accessible(baby_id, user_id)
+                if not baby:
+                    return response(404, {"error": "Baby not found"})
+                return response(200, {"baby": baby})
+            except Exception as e:
+                logger.error(f"Error getting baby: {e}")
+                return response(500, {"error": "Failed to get baby"})
 
-            # GET /babies
-            if method == 'GET' and path == '/babies':
-                try:
-                    result = table.scan(
-                        FilterExpression="userId = :uid AND isActive = :active",
-                        ExpressionAttributeValues={":uid": user_id, ":active": True}
-                    )
-                    babies = result.get('Items', [])
-                    babies.sort(key=lambda x: x.get('name', ''))
-                    return response(200, {"babies": babies, "count": len(babies)})
-                except Exception as e:
-                    logger.error(f"Error listing babies: {e}")
-                    return response(500, {"error": "Failed to list babies"})
+        # PUT Update (complete replacement)
+        if method == 'PUT' and path.startswith('/babies/'):
+            baby_id = extract_baby_id(event)
+            if not baby_id:
+                return response(400, {"error": "Baby ID is required"})
+            data = parse_body(event)
+            valid, msg = validate_baby_data(data, require_all=False)
+            if not valid:
+                return response(400, {"error": msg})
+            try:
+                data = process_baby_data(data)
+            except ValueError as ve:
+                return response(400, {"error": str(ve)})
+            try:
+                baby = get_baby_if_accessible(baby_id, user_id)
+                if not baby:
+                    return response(404, {"error": "Baby not found"})
+                update_fields = {k: v for k, v in data.items() if k in ['name', 'dateOfBirth', 'gender', 'premature', 'gestationalWeek', 'birthWeight', 'birthHeight', 'headCircumference']}
+                if not update_fields:
+                    return response(400, {"error": "No valid fields to update"})
+                update_fields['modifiedAt'] = datetime.now(timezone.utc).isoformat()
+                update_expr, expr_values, attribute_names = build_update_expression(update_fields)
+                logger.info(f"[PUT] Update fields: {update_fields}")
+                table.update_item(
+                    Key={'babyId': baby_id},
+                    UpdateExpression=update_expr,
+                    ExpressionAttributeValues=expr_values,
+                    ExpressionAttributeNames=attribute_names
+                )
+                return response(200, {"message": "Baby updated", "babyId": baby_id})
+            except Exception as e:
+                logger.error(f"Error updating baby: {e}")
+                return response(500, {"error": "Failed to update baby"})
 
-            # GET /babies/{babyId}
-            if method == 'GET' and path.startswith('/babies/'):
-                baby_id = extract_baby_id(event)
-                if not baby_id:
-                    return response(400, {"error": "Baby ID is required"})
-                
-                try:
-                    baby = get_baby_if_accessible(baby_id, user_id)
-                    if not baby:
-                        return response(404, {"error": "Baby not found"})
-                    return response(200, {"baby": baby})
-                except Exception as e:
-                    logger.error(f"Error getting baby: {e}")
-                    return response(500, {"error": "Failed to get baby"})
+        # PATCH with differentiated logic
+        if method == 'PATCH' and path.startswith('/babies/'):
+            baby_id = extract_baby_id(event)
+            if not baby_id:
+                return response(400, {"error": "Baby ID is required"})
 
-            # PUT /babies/{babyId}
-            if method == 'PUT' and path.startswith('/babies/'):
-                baby_id = extract_baby_id(event)
-                if not baby_id:
-                    return response(400, {"error": "Baby ID is required"})
-                
-                data = parse_body(event)
-                valid, msg = validate_baby_data(data, require_all=False)
-                if not valid:
-                    return response(400, {"error": msg})
+            params = event.get('queryStringParameters') or {}
+            sync = str(params.get('syncRecalc', '')).lower() in ('1', 'true', 'yes')
 
-                try:
-                    data = process_baby_data(data)
-                except ValueError as ve:
-                    return response(400, {"error": str(ve)})
+            data = parse_body(event)
+            valid, msg = validate_baby_data(data, require_all=False)
+            if not valid:
+                return response(400, {"error": msg})
+            try:
+                data = process_baby_data(data)
+            except ValueError as ve:
+                return response(400, {"error": str(ve)})
 
-                try:
-                    baby = get_baby_if_accessible(baby_id, user_id)
-                    if not baby:
-                        return response(404, {"error": "Baby not found"})
+            try:
+                baby = get_baby_if_accessible(baby_id, user_id)
+                if not baby:
+                    return response(404, {"error": "Baby not found"})
 
-                    update_fields = {k: v for k, v in data.items() if k in [
-                        'name', 'dateOfBirth', 'gender', 'premature', 'gestationalWeek', 'birthWeight', 'birthHeight', 'headCircumference']}
-                    if not update_fields:
-                        return response(400, {"error": "No valid fields to update"})
-                    
-                    update_fields['modifiedAt'] = datetime.now(timezone.utc).isoformat()
-                    update_expr, expr_values, attribute_names = build_update_expression(update_fields)
+                update_fields = {k: v for k, v in data.items() if k in ['name', 'dateOfBirth', 'gender', 'premature', 'gestationalWeek', 'birthWeight', 'birthHeight', 'headCircumference']}
+                if not update_fields:
+                    return response(400, {"error": "No valid fields to update"})
 
-                    # In PUT /babies/{babyId} (right before table.update_item)
-                    logger.info(f"[PUT] Data before update: {data} (types: { {k: type(v).__name__ for k,v in data.items()} })")
-                    logger.info(f"[PUT] Update fields: {update_fields} (types: { {k: type(v).__name__ for k,v in update_fields.items()} })")
+                changed_keys = set(update_fields.keys())
+                update_fields['modifiedAt'] = datetime.now(timezone.utc).isoformat()
+                update_expr, expr_values, attribute_names = build_update_expression(update_fields)
 
-                    table.update_item(
-                        Key={'babyId': baby_id},
-                        UpdateExpression=update_expr,
-                        ExpressionAttributeValues=expr_values,
-                        ExpressionAttributeNames=attribute_names
-                    )
-                    return response(200, {"message": "Baby updated", "babyId": baby_id})
-                except Exception as e:
-                    logger.error(f"Error updating baby: {e}")
-                    return response(500, {"error": "Failed to update baby"})
+                updated = table.update_item(
+                    Key={'babyId': baby_id},
+                    UpdateExpression=update_expr,
+                    ExpressionAttributeValues=expr_values,
+                    ExpressionAttributeNames=attribute_names,
+                    ReturnValues='ALL_NEW'
+                )
+                baby = updated.get('Attributes', {})
 
-            # PATCH /babies/{babyId}?syncRecalc=1
-            if method == 'PATCH' and path.startswith('/babies/'):
-                baby_id = extract_baby_id(event)
-                if not baby_id:
-                    return response(400, {"error": "Baby ID is required"})
+                if not sync:
+                    return response(200, {"baby": baby, "mode": "none"})
 
-                params = event.get('queryStringParameters') or {}
-                sync = str(params.get('syncRecalc', '')).lower() in ('1', 'true', 'yes')
+                structural_fields = {"dateOfBirth", "gender"}
+                birth_measure_fields = {"birthWeight", "birthHeight", "headCircumference"}
+                trigger_full = len(changed_keys & structural_fields) > 0
+                trigger_birth_only = (not trigger_full) and len(changed_keys & birth_measure_fields) > 0
 
-                data = parse_body(event)
-                valid, msg = validate_baby_data(data, require_all=False)
-                if not valid:
-                    return response(400, {"error": msg})
-
-                try:
-                    data = process_baby_data(data)
-                except ValueError as ve:
-                    return response(400, {"error": str(ve)})
-
-                try:
-                    baby = get_baby_if_accessible(baby_id, user_id)
-                    if not baby:
-                        return response(404, {"error": "Baby not found"})
-
-                    update_fields = {k: v for k, v in data.items() if k in [
-                        'name', 'dateOfBirth', 'gender', 'premature', 'gestationalWeek', 'birthWeight', 'birthHeight', 'headCircumference']}
-                    if not update_fields:
-                        return response(400, {"error": "No valid fields to update"})
-
-                    update_fields['modifiedAt'] = datetime.now(timezone.utc).isoformat()
-                    update_expr, expr_values, attribute_names = build_update_expression(update_fields)
-
-                    updated = table.update_item(
-                        Key={'babyId': baby_id},
-                        UpdateExpression=update_expr,
-                        ExpressionAttributeValues=expr_values,
-                        ExpressionAttributeNames=attribute_names,
-                        ReturnValues='ALL_NEW'
-                    )
-                    baby = updated.get('Attributes', {})
-
-                    if sync:
-                        start = time.time()
-                        resp = growth_table.query(IndexName='BabyGrowthDataIndex', KeyConditionExpression=Key('babyId').eq(baby_id))
-                        items = resp.get('Items', [])
-                        updated_count = 0
-                        for item in items:
-                            meas = {k: float(v) if v is not None else None for k, v in (item.get('measurements') or {}).items()}
-                            pct = compute_percentiles(
-                                {"gender": baby.get('gender'), "dateOfBirth": baby.get('dateOfBirth')},
-                                item.get('measurementDate'),
-                                meas
-                            )
-                            if pct:
+                # FULL RECALC
+                if trigger_full:
+                    logger.info(f"[PATCH:FULL:START] babyId={baby_id} changed={list(changed_keys)}")
+                    start = time.time()
+                    resp = growth_table.query(IndexName='BabyGrowthDataIndex', KeyConditionExpression=Key('babyId').eq(baby_id))
+                    items = resp.get('Items', [])
+                    updated_count = 0
+                    metrics_union = set()
+                    for item in items:
+                        raw_meas = item.get('measurements') or {}
+                        meas = {k: (float(v) if v is not None else None) for k, v in raw_meas.items()}
+                        logger.info("[PCT_PATCH:INPUT] dataId=%s date=%s meas=%s", item.get('dataId'), item.get('measurementDate'), json.dumps(meas))
+                        pct = {}
+                        try:
+                            pct = compute_percentiles({"gender": baby.get('gender'), "dateOfBirth": baby.get('dateOfBirth')}, item.get('measurementDate'), meas) or {}
+                        except Exception as e:
+                            logger.error(f"[PCT_PATCH:ERROR] dataId={item.get('dataId')} err={e}")
+                        if pct:
+                            metrics_union.update(pct.keys())
+                            try:
                                 growth_table.update_item(
                                     Key={'dataId': item['dataId']},
                                     UpdateExpression='SET percentiles = :p, updatedAt = :u',
@@ -363,67 +378,109 @@ def lambda_handler(event, context):
                                     }
                                 )
                                 updated_count += 1
-                        duration_ms = int((time.time() - start) * 1000)
-                        logger.info(f"sync recalc for {baby_id}: {updated_count} items in {duration_ms}ms")
-                        
-                        # Get updated measurements after recalculation
-                        updated_measurements_resp = growth_table.query(
-                            IndexName='BabyGrowthDataIndex', 
-                            KeyConditionExpression=Key('babyId').eq(baby_id)
+                            except Exception as e:
+                                logger.error(f"[PCT_PATCH:ERROR_UPDATE] dataId={item.get('dataId')} err={e}")
+                            logger.info("[PCT_PATCH:OUTPUT] dataId=%s pct=%s", item.get('dataId'), json.dumps(pct))
+                        else:
+                            logger.info("[PCT_PATCH:SKIP] dataId=%s reason=empty_result", item.get('dataId'))
+
+                    birth_pct = _compute_birth_percentiles(baby)
+                    if birth_pct:
+                        try:
+                            table.update_item(
+                                Key={'babyId': baby_id},
+                                UpdateExpression='SET birthPercentiles = :bp',
+                                ExpressionAttributeValues={':bp': {k: Decimal(str(v)) for k, v in birth_pct.items()}},
+                            )
+                            baby['birthPercentiles'] = {k: float(v) for k, v in birth_pct.items()}
+                        except Exception as e:
+                            logger.error(f"[PATCH:BIRTH_PCT:ERROR_UPDATE] babyId={baby_id} err={e}")
+
+                    duration_ms = int((time.time() - start) * 1000)
+                    logger.info(f"[PATCH:FULL:END] babyId={baby_id} updatedCount={updated_count} durationMs={duration_ms}")
+
+                    updated_measurements_resp = growth_table.query(IndexName='BabyGrowthDataIndex', KeyConditionExpression=Key('babyId').eq(baby_id))
+                    updated_measurements = updated_measurements_resp.get('Items', [])
+                    updated_measurements.sort(key=lambda x: x.get('measurementDate', ''), reverse=True)
+                    for itm in updated_measurements:
+                        if 'measurements' in itm and itm['measurements']:
+                            for k, v in itm['measurements'].items():
+                                if isinstance(v, Decimal):
+                                    itm['measurements'][k] = float(v)
+                        if 'percentiles' in itm and itm['percentiles']:
+                            for k, v in itm['percentiles'].items():
+                                if isinstance(v, Decimal):
+                                    itm['percentiles'][k] = float(v)
+                        else:
+                            itm['percentiles'] = itm.get('percentiles', {}) or {}
+
+                    return response(200, {
+                        "baby": baby,
+                        "measurements": updated_measurements,
+                        "updatedCount": updated_count,
+                        "totalItems": len(items),
+                        "metricsUpdated": sorted(list(metrics_union)),
+                        "birthPercentiles": baby.get('birthPercentiles'),
+                        "recalculatedAt": datetime.now(timezone.utc).isoformat(),
+                        "durationMs": duration_ms,
+                        "mode": "full"
+                    })
+
+                # BIRTH ONLY
+                if trigger_birth_only:
+                    birth_pct = _compute_birth_percentiles(baby)
+                    if not birth_pct:
+                        logger.info(f"[PATCH:BIRTH_PCT:SKIP] babyId={baby_id} reason=no_birth_measurements")
+                        return response(200, {"baby": baby, "recalcSkipped": True, "reason": "No birth measurements", "mode": "birth-only"})
+                    try:
+                        table.update_item(
+                            Key={'babyId': baby_id},
+                            UpdateExpression='SET birthPercentiles = :bp',
+                            ExpressionAttributeValues={':bp': {k: Decimal(str(v)) for k, v in birth_pct.items()}},
                         )
-                        updated_measurements = updated_measurements_resp.get('Items', [])
-                        
-                        # Convert Decimals to float for JSON serialization
-                        for item in updated_measurements:
-                            if 'measurements' in item and item['measurements']:
-                                for key, value in item['measurements'].items():
-                                    if isinstance(value, Decimal):
-                                        item['measurements'][key] = float(value)
-                            if 'percentiles' in item and item['percentiles']:
-                                for key, value in item['percentiles'].items():
-                                    if isinstance(value, Decimal):
-                                        item['percentiles'][key] = float(value)
-                        
-                        return response(200, {
-                            "baby": baby, 
-                            "measurements": updated_measurements,
-                            "updatedCount": updated_count, 
-                            "durationMs": duration_ms
-                        })
+                        baby['birthPercentiles'] = {k: float(v) for k, v in birth_pct.items()}
+                    except Exception as e:
+                        logger.error(f"[PATCH:BIRTH_PCT:ERROR_UPDATE] babyId={baby_id} err={e}")
+                        return response(500, {"error": "Failed to save birth percentiles"})
+                    return response(200, {
+                        "baby": baby,
+                        "birthPercentiles": baby.get('birthPercentiles'),
+                        "recalculatedAt": datetime.now(timezone.utc).isoformat(),
+                        "mode": "birth-only"
+                    })
 
-                    return response(200, {"baby": baby})
-                except Exception as e:
-                    logger.error(f"Error patching baby: {e}")
-                    return response(500, {"error": "Failed to patch baby"})
+                logger.info(f"[PATCH:RECALC:SKIP] babyId={baby_id} reason=no_relevant_changes keys={list(changed_keys)}")
+                return response(200, {"baby": baby, "recalcSkipped": True, "mode": "none"})
+            except Exception as e:
+                logger.error(f"Error patching baby: {e}")
+                return response(500, {"error": "Failed to patch baby"})
 
-            # DELETE /babies/{babyId}
-            if method == 'DELETE' and path.startswith('/babies/'):
-                baby_id = extract_baby_id(event)
-                if not baby_id:
-                    return response(400, {"error": "Baby ID is required"})
-                
-                try:
-                    baby = get_baby_if_accessible(baby_id, user_id)
-                    if not baby:
-                        return response(404, {"error": "Baby not found"})
+        # DELETE (logical deletion)
+        if method == 'DELETE' and path.startswith('/babies/'):
+            baby_id = extract_baby_id(event)
+            if not baby_id:
+                return response(400, {"error": "Baby ID is required"})
+            try:
+                baby = get_baby_if_accessible(baby_id, user_id)
+                if not baby:
+                    return response(404, {"error": "Baby not found"})
+                table.update_item(
+                    Key={'babyId': baby_id},
+                    UpdateExpression='SET isActive = :inactive, modifiedAt = :modified',
+                    ExpressionAttributeValues={
+                        ':inactive': False,
+                        ':modified': datetime.now(timezone.utc).isoformat()
+                    }
+                )
+                return response(200, {"message": "Baby deleted", "babyId": baby_id})
+            except Exception as e:
+                logger.error(f"Error deleting baby: {e}")
+                return response(500, {"error": "Failed to delete baby"})
 
-                    table.update_item(
-                        Key={'babyId': baby_id},
-                        UpdateExpression='SET isActive = :inactive, modifiedAt = :modified',
-                        ExpressionAttributeValues={
-                            ':inactive': False,
-                            ':modified': datetime.now(timezone.utc).isoformat()
-                        }
-                    )
-                    return response(200, {"message": "Baby deleted", "babyId": baby_id})
-                except Exception as e:
-                    logger.error(f"Error deleting baby: {e}")
-                    return response(500, {"error": "Failed to delete baby"})
-            return response(405, {"error": f"Method {method} not allowed for {path}"})
+        return response(405, {"error": f"Method {method} not allowed for {path}"})
     except Exception as e:
         logger.exception("[handler] Unhandled error")
-        # Always return a well-formed HTTP response for API Gateway
         return {"statusCode": 500, "body": f"Internal error: {e}"}
 
 
-    
+

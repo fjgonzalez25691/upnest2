@@ -1,11 +1,20 @@
-import os
+import os, sys
 os.environ['BABIES_TABLE'] = 'dummy-table-for-test'
 
 import unittest
+import json
 from decimal import Decimal
+
+# Asegurar que el paquete lambdas sea importable cuando se ejecuta desde backend/
+CURRENT_DIR = os.path.dirname(__file__)
+BACKEND_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, '..'))
+if BACKEND_ROOT not in sys.path:
+    sys.path.insert(0, BACKEND_ROOT)
+
 from lambdas.babies import baby_service
 
 class TableSpy:
+    """Simula tabla DynamoDB de bebés."""
     def __init__(self):
         self.last_item = None
         self.items = {}
@@ -21,18 +30,68 @@ class TableSpy:
     def update_item(self, Key, **kwargs):
         item = self.items.get(Key['babyId'])
         if not item:
-            return
-        expr = kwargs.get('ExpressionAttributeValues', {})
-        for k, v in expr.items():
-            if k.startswith(':'):
-                field = k[1:]
-                item[field] = v
+            return {'Attributes': None}
+        expr_vals = kwargs.get('ExpressionAttributeValues', {})
+        update_expr = kwargs.get('UpdateExpression', '')
+        # Soportamos forma 'SET field = :val, birthPercentiles = :bp'
+        if update_expr.startswith('SET'):
+            assignments = update_expr[3:].split(',')
+            for raw in assignments:
+                seg = raw.strip()
+                if ' = ' in seg:
+                    field, placeholder = seg.split(' = ')
+                    field = field.replace('#name', 'name').strip()
+                    placeholder = placeholder.strip()
+                    if placeholder in expr_vals:
+                        item[field] = expr_vals[placeholder]
+        # También aceptar patrón previo (usábamos ExpressionAttributeValues estrictamente)
+        for k, v in expr_vals.items():
+            if k.startswith(':') and k[1:] not in item:
+                # No sobrescribir si ya lo aplicamos vía SET
+                item[k[1:]] = v
+        return {'Attributes': item} if kwargs.get('ReturnValues') == 'ALL_NEW' else {}
+
+
+class GrowthTableSpy:
+    """Simula tabla de growth data para recálculo full."""
+    def __init__(self, items):
+        self.items = items  # lista de dicts con dataId, measurementDate, measurements
+        self.update_calls = 0
+
+    def query(self, **kwargs):
+        return {'Items': self.items}
+
+    def update_item(self, Key, **kwargs):
+        data_id = Key['dataId']
+        expr_vals = kwargs.get('ExpressionAttributeValues', {})
+        for it in self.items:
+            if it['dataId'] == data_id:
+                it['percentiles'] = expr_vals.get(':p', {})
+                it['updatedAt'] = expr_vals.get(':u')
+                self.update_calls += 1
+                break
 
 
 class TestBabyService(unittest.TestCase):
     def setUp(self):
         self.spy = TableSpy()
         baby_service.table = self.spy
+        # Por defecto growth_table no se usa en tests existentes; se asigna dinámicamente en tests PATCH
+
+    def _stub_percentiles(self, return_value_map=None):
+        """Monkeypatch compute_percentiles para evitar dependencias de layer."""
+        if return_value_map is None:
+            def fake(baby, measurement_date, measurements):
+                # Devuelve percentile = 42 para cada métrica válida
+                return {k: 42.0 for k, v in (measurements or {}).items() if v is not None}
+        else:
+            def fake(baby, measurement_date, measurements):
+                out = {}
+                for k, v in (measurements or {}).items():
+                    if k in return_value_map:
+                        out[k] = return_value_map[k]
+                return out
+        baby_service.compute_percentiles = fake
 
     def test_post_numeric_fields(self):
         event = {
@@ -123,6 +182,77 @@ class TestBabyService(unittest.TestCase):
         item = self.spy.last_item
         self.assertEqual(item["gestationalWeek"], 32)
         self.assertTrue(item["premature"])
+
+    # ---- NUEVOS TESTS PATCH ----
+    def _create_baby_base(self):
+        ev = {
+            "httpMethod": "POST",
+            "path": "/babies",
+            "body": '{"name": "B", "dateOfBirth": "2020-01-01", "gender": "male", "birthWeight": 3200, "birthHeight": 50.0, "headCircumference": 34.0}',
+            "requestContext": {}
+        }
+        resp = baby_service.lambda_handler(ev, None)
+        return self.spy.last_item['babyId']
+
+    def test_patch_full_recalc_on_gender_change(self):
+        baby_id = self._create_baby_base()
+        # Añadimos growth data simulado
+        growth_items = [
+            {"dataId": "d1", "babyId": baby_id, "measurementDate": "2020-02-01", "measurements": {"weight": 3500, "height": 52}},
+            {"dataId": "d2", "babyId": baby_id, "measurementDate": "2020-03-01", "measurements": {"weight": 4000}}
+        ]
+        growth_spy = GrowthTableSpy(growth_items)
+        baby_service.growth_table = growth_spy
+        self._stub_percentiles()
+        ev_patch = {
+            "httpMethod": "PATCH",
+            "path": f"/babies/{baby_id}",
+            "pathParameters": {"babyId": baby_id},
+            "queryStringParameters": {"syncRecalc": "1"},
+            "body": '{"gender": "female"}',
+            "requestContext": {}
+        }
+        resp = baby_service.lambda_handler(ev_patch, None)
+        self.assertEqual(resp['statusCode'], 200)
+        body = json.loads(resp['body'])
+        self.assertEqual(body.get('mode'), 'full')
+        self.assertIn('measurements', body)
+        self.assertEqual(body.get('updatedCount'), 2)
+        self.assertIn('birthPercentiles', body)
+        self.assertGreaterEqual(growth_spy.update_calls, 2)
+
+    def test_patch_birth_only_on_birth_weight_change(self):
+        baby_id = self._create_baby_base()
+        self._stub_percentiles()
+        ev_patch = {
+            "httpMethod": "PATCH",
+            "path": f"/babies/{baby_id}",
+            "pathParameters": {"babyId": baby_id},
+            "queryStringParameters": {"syncRecalc": "1"},
+            "body": '{"birthWeight": 3300}',
+            "requestContext": {}
+        }
+        resp = baby_service.lambda_handler(ev_patch, None)
+        body = json.loads(resp['body'])
+        self.assertEqual(body.get('mode'), 'birth-only')
+        self.assertIn('birthPercentiles', body)
+        self.assertNotIn('measurements', body)  # No full recalc
+
+    def test_patch_none_on_name_change_only(self):
+        baby_id = self._create_baby_base()
+        self._stub_percentiles()
+        ev_patch = {
+            "httpMethod": "PATCH",
+            "path": f"/babies/{baby_id}",
+            "pathParameters": {"babyId": baby_id},
+            "queryStringParameters": {"syncRecalc": "1"},
+            "body": '{"name": "Otro"}',
+            "requestContext": {}
+        }
+        resp = baby_service.lambda_handler(ev_patch, None)
+        body = json.loads(resp['body'])
+        self.assertEqual(body.get('mode'), 'none')
+        self.assertTrue(body.get('recalcSkipped'))
 
 
 if __name__ == "__main__":
