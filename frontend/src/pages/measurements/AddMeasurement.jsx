@@ -5,7 +5,7 @@ import React from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import GrowthDataForm from "../../components/measuremencomponents/GrowthDataForm";
 import PrimaryButton from "../../components/PrimaryButton";
-import { createGrowthData, getGrowthMeasurement } from "../../services/growthDataApi";
+import { createGrowthData } from "../../services/growthDataApi";
 
 const AddMeasurement = () => {
     const location = useLocation();
@@ -14,9 +14,11 @@ const AddMeasurement = () => {
 
     if (!baby) {
         return (
-            <div className="container mx-auto px-4 py-8">
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
                 <div className="max-w-2xl mx-auto text-center">
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-4">Baby Not Found</h2>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-4">
+                        No Baby Selected
+                    </h1>
                     <p className="text-gray-600 mb-4">
                         Please access this page from the baby profile.
                     </p>
@@ -34,42 +36,11 @@ const AddMeasurement = () => {
         try {
             const dataToSave = { ...measurementData, babyId: baby.babyId };
             
-            // Create the measurement
+            // Create the measurement - backend now returns percentiles immediately
             const response = await createGrowthData(dataToSave);
-            const measurementId = response.data.dataId;
-            console.log("Created measurement with ID:", measurementId);
+            console.log("Created measurement with percentiles:", response);
 
-            // Determine which fields were provided
-            const hasWeight = dataToSave.weight !== undefined && dataToSave.weight !== null;
-            const hasHeight = dataToSave.height !== undefined && dataToSave.height !== null;
-            const hasHeadCircumference = dataToSave.headCircumference !== undefined && dataToSave.headCircumference !== null;
-
-            // Poll until percentiles are calculated for the provided fields
-            const startTime = Date.now();
-            let updated = false;
-            let retries = 0;
-            
-            while (!updated && retries < 40) {
-                const fresh = await getGrowthMeasurement(measurementId);
-                
-                // Check if percentiles exist for the fields we provided
-                if (fresh.percentiles) {
-                    updated = 
-                        (!hasWeight || (fresh.percentiles.weight !== null && fresh.percentiles.weight !== undefined)) &&
-                        (!hasHeight || (fresh.percentiles.height !== null && fresh.percentiles.height !== undefined)) &&
-                        (!hasHeadCircumference || (fresh.percentiles.headCircumference !== null && fresh.percentiles.headCircumference !== undefined));
-                }
-                
-                if (!updated) {
-                    await new Promise(res => setTimeout(res, 200)); // Wait 0.2s
-                    retries++;
-                }
-            }
-            
-            const elapsed = Date.now() - startTime;
-            console.log(`Polling took ${elapsed}ms`);
-
-            // Navigate only when percentiles are ready
+            // No more polling needed - percentiles are in the response
             navigate(`/baby/${baby.babyId}`);
             
         } catch (err) {
@@ -83,21 +54,15 @@ const AddMeasurement = () => {
     };
 
     return (
-        <div className="container mx-auto px-4 py-8">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
             {/* Header */}
-            <div className="mb-8">
-                <div className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
-                    <Link to="/dashboard" className="hover:text-gray-700">Dashboard</Link>
-                    <span>/</span>
-                    <Link to={`/baby/${baby.babyId}`} className="hover:text-gray-700">{baby.name}</Link>
-                    <span>/</span>
-                    <span>Add Measurement</span>
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Add Measurement</h1>
-                        <p className="text-gray-600 mt-1">
+            <div className="max-w-2xl mx-auto mb-8">
+                <div className="bg-white rounded-3xl shadow-lg p-8 border border-blue-100">
+                    <div className="text-center">
+                        <h1 className="text-3xl font-bold text-blue-900 mb-2">
+                            📏 New Measurement
+                        </h1>
+                        <p className="text-blue-700 text-lg">
                             Record new growth data for {baby.name}
                         </p>
                     </div>

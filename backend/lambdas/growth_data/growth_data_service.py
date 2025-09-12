@@ -145,17 +145,44 @@ def get_baby_if_accessible(baby_id, user_id):
 
 
 def create_growth_data(event, user_id):
-    """Handle POST /growth-data"""
-    data = parse_body(event)
-    valid, msg = validate_growth_data(data)
-    if not valid:
-        return response(400, {"error": msg})
+    try:
+        data = json.loads(event['body'])
+    except (json.JSONDecodeError, TypeError):
+        return response(400, {"error": "Invalid JSON"})
 
-    # Check if baby exists and belongs to user
-    baby = get_baby_if_accessible(data['babyId'], user_id)
-    if not baby:
-        return response(404, {"error": "Baby not found or not accessible"})
+    # Validation
+    required_fields = ['babyId', 'measurementDate', 'measurements']
+    for field in required_fields:
+        if field not in data:
+            return response(400, {"error": f"Missing required field: {field}"})
 
+    baby_id = data['babyId']
+    measurement_date = data['measurementDate']
+    measurements = data['measurements']
+
+    # Validate measurements
+    valid_measurements = ['weight', 'height', 'headCircumference']
+    if not isinstance(measurements, dict) or not measurements:
+        return response(400, {"error": "Measurements must be a non-empty dictionary"})
+
+    for key in measurements:
+        if key not in valid_measurements:
+            return response(400, {"error": f"Invalid measurement: {key}"})
+
+    # Verify baby exists and belongs to user
+    try:
+        baby_response = babies_table.get_item(Key={'babyId': baby_id})
+        if 'Item' not in baby_response:
+            return response(404, {"error": "Baby not found"})
+        
+        baby = baby_response['Item']
+        if baby['userId'] != user_id:
+            return response(403, {"error": "Access denied"})
+    except Exception as e:
+        logger.error(f"Error fetching baby: {e}")
+        return response(500, {"error": "Failed to verify baby"})
+
+    # Normalize data
     try:
         data = normalize_numeric_fields(data)
     except Exception as e:
@@ -164,12 +191,43 @@ def create_growth_data(event, user_id):
     data_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     
+    # Calculate percentiles synchronously
+    try:
+        safe_measures_for_pct = {k: (float(v) if v is not None else None) for k, v in measurements.items()}
+        logger.info(
+            "[PCT_CREATE:INPUT] babyId=%s dob=%s gender=%s measureDate=%s measures=%s",
+            baby_id,
+            baby.get('dateOfBirth'),
+            baby.get('gender'),
+            measurement_date,
+            json.dumps(safe_measures_for_pct, default=str),
+        )
+        percentiles = compute_percentiles(
+            {"gender": baby['gender'], "dateOfBirth": baby['dateOfBirth']},
+            measurement_date,
+            {k: float(v) if v is not None else None for k, v in measurements.items()},
+        )
+        
+        logger.info(
+            "[PCT_CREATE:OUTPUT] babyId=%s measureDate=%s percentiles=%s",
+            baby_id,
+            measurement_date,
+            json.dumps(percentiles, default=str),
+        )
+
+        # Convert to Decimal for DynamoDB
+        percentiles_decimal = {k: Decimal(str(v)) for k, v in percentiles.items()}
+    except Exception as e:
+        logger.error(f"Error calculating percentiles: {e}")
+        return response(500, {"error": "Failed to calculate percentiles"})
+    
     growth_item = {
         'dataId': data_id,
         'babyId': data['babyId'],
         'userId': user_id,
         'measurementDate': data['measurementDate'],
         'measurements': data['measurements'],
+        'percentiles': percentiles_decimal,  # Add percentiles
         'createdAt': now,
         'updatedAt': now
     }
@@ -181,7 +239,19 @@ def create_growth_data(event, user_id):
 
     try:
         growth_table.put_item(Item=growth_item)
-        return response(201, {"message": "Growth data created", "data": growth_item})
+        
+        # Return response in same format as PUT
+        return response(201, {
+            "babyId": growth_item.get('babyId'),
+            "dataId": growth_item.get('dataId'),
+            "measurementDate": growth_item.get('measurementDate'),
+            "measurements": growth_item.get('measurements'),
+            "percentiles": percentiles,  # Float format for frontend
+            "notes": growth_item.get('notes'),
+            "measurementSource": growth_item.get('measurementSource'),
+            "createdAt": growth_item.get('createdAt'),
+            "updatedAt": growth_item.get('updatedAt')
+        })
     except Exception as e:
         logger.error(f"Error creating growth data: {e}")
         return response(500, {"error": "Failed to create growth data"})
@@ -319,10 +389,29 @@ def update_growth_data(event, data_id, user_id):
         if not baby:
             return response(404, {"error": "Baby not found or not accessible"})
 
+        safe_measures_for_pct = {k: (float(v) if v is not None else None) for k, v in update_measurements.items()}
+        logger.info(
+            "[PCT_UPDATE:INPUT] dataId=%s babyId=%s dob=%s gender=%s measureDate=%s measures=%s",
+            data_id,
+            baby_id,
+            baby.get('dateOfBirth'),
+            baby.get('gender'),
+            measurement_date,
+            json.dumps(safe_measures_for_pct, default=str),
+        )
+
         pct = compute_percentiles(
             {"gender": baby['gender'], "dateOfBirth": baby['dateOfBirth']},
             measurement_date,
-            {k: float(v) if v is not None else None for k, v in update_measurements.items()},
+            safe_measures_for_pct,
+        )
+
+        logger.info(
+            "[PCT_UPDATE:OUTPUT] dataId=%s babyId=%s measureDate=%s percentiles=%s",
+            data_id,
+            baby_id,
+            measurement_date,
+            json.dumps(pct, default=str),
         )
 
         update_fields = {'measurements': update_measurements, 'percentiles': {k: Decimal(str(v)) for k, v in pct.items()}, 'updatedAt': datetime.now(timezone.utc).isoformat()}
@@ -342,11 +431,14 @@ def update_growth_data(event, data_id, user_id):
         )
 
         attrs = updated.get('Attributes', {})
+        pct_attr = attrs.get('percentiles') or {}
+        percentiles = {k: (float(v) if v is not None else None) for k, v in pct_attr.items()}
         return response(200, {
             "babyId": attrs.get('babyId'),
             "dataId": attrs.get('dataId'),
+            "measurementDate": attrs.get('measurementDate'),
             "measurements": attrs.get('measurements'),
-            "percentiles": attrs.get('percentiles'),
+            "percentiles": percentiles,  # unified as floats
             "updatedAt": attrs.get('updatedAt')
         })
     except Exception as e:

@@ -8,104 +8,166 @@ import PrimaryButton from "../../components/PrimaryButton";
 import GrowthDataList from "../../components/measuremencomponents/GrowthDataList";
 
 const GrowthTracking = () => {
-    const { babyId } = useParams();
-    const [measurements, setMeasurements] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+  const { babyId } = useParams();
+  const [measurements, setMeasurements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-    const location = useLocation();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-    const refreshFlag = location.state?.refresh; // Use a refresh flag to force re-fetch
+  const babyName = location.state?.babyName || "Baby";
+  const birthDate = location.state?.birthDate || "Unknown";
 
-    useEffect(() => {
-        const fetchMeasurements = async () => {
-            setLoading(true);
-            setError("");
-            try {
-                const data = await getGrowthData(babyId);
-                setMeasurements(Array.isArray(data) ? data : []);
-            } catch (err) {
-                setError("Failed to load measurements.");
-            } finally {
-                setLoading(false);
-            }
-        };
-        if (babyId) fetchMeasurements();
-    }, [babyId, refreshFlag]); // Refresh when coming back from edit
+  // Carga inicial/refresco: usa prevMeasurements para pintar al instante y refresca en segundo plano
+  useEffect(() => {
+    const prev = location.state?.prevMeasurements;
+    const updated = location.state?.updatedMeasurement;
 
-    const navigate = useNavigate();
-    
-
-    const babyName = location.state?.babyName || "Baby";
-    const birthDate = location.state?.birthDate || "Unknown";
-
-    const handleEdit = (measurement) => {
-        navigate(`/edit-measurement/${measurement.dataId}`, {
-            state: {
-                babyName,
-                birthDate
-            }
-        });
-    };
-
-    const handleDelete = async (measurement) => {
-        if (!window.confirm("Are you sure you want to delete this measurement? This action cannot be undone.")) {
-            return;
-        }
-        try {
-            await deleteGrowthData(measurement.dataId);
-            setMeasurements((prev) => prev.filter((m) => m.dataId !== measurement.dataId));
-        } catch (err) {
-            alert("Failed to delete measurement. Please try again.");
-            console.error(err);
-        }
-    };
-
-    if (loading) {
-        return <div className="p-8 text-center">Loading measurements...</div>;
+    // Si venimos de editar y tenemos lista previa, muéstrala YA
+    if (prev && Array.isArray(prev)) {
+      // Aplica el reemplazo optimista
+      const firstPaint = updated
+        ? prev.map((m) => (m.dataId === updated.dataId ? updated : m))
+        : prev;
+      setMeasurements(firstPaint);
+      setLoading(false); // no mostrar loader
+    } else {
+      // Camino normal (sin volver de editar)
+      setLoading(true);
     }
 
-    if (error) {
-        return (
-            <div className="p-8 text-center text-red-600">
-                {error}
-                <br />
-                <PrimaryButton onClick={() => window.location.reload()}>Retry</PrimaryButton>
-            </div>
-        );
-    }
+    // Refresco en segundo plano (no bloqueante)
+    const doFetch = async () => {
+      try {
+        const data = await getGrowthData(babyId);
+        let list = Array.isArray(data) ? data : [];
+        if (updated) {
+          list = list.map((m) => (m.dataId === updated.dataId ? updated : m));
+        }
+        setMeasurements(list);
+      } catch (err) {
+        console.error("Error loading measurements:", err);
+        setError("Failed to load measurements. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
-            <div className="max-w-4xl mx-auto">
-                <div className="mb-8">
-                    <Link to={`/baby/${babyId}`} className="text-blue-600 hover:text-blue-800 flex items-center mb-4 transition-colors">
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Back to Profile
-                    </Link>
-                </div>
-                <div className="bg-white rounded-3xl shadow-lg p-8 border border-blue-100">
-                    <div className="flex items-center justify-between mb-6">
-                        <h1 className="text-2xl font-bold">{babyName}'s Growth Measurements</h1>
-                    </div>
-                    {measurements.length === 0 ? (
-                        <div className="text-center text-gray-500">No measurements found for this baby.</div>
-                    ) : (
-                        <GrowthDataList
-                            measurements={measurements}
-                            birthDate={birthDate}
-                            loading={loading}
-                            error={error}
-                            onEdit={handleEdit}
-                            onDelete={handleDelete}
-                        />
-                    )}
-                </div>
-            </div>
-        </div>
+    if (babyId) doFetch();
+    // Nota: dependemos solo de babyId; location.state no es estable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [babyId]);
+
+  // Efecto 2: si updatedMeasurement cambia, parchea en memoria sin refetch
+  useEffect(() => {
+    const updated = location.state?.updatedMeasurement;
+    if (!updated) return;
+    setMeasurements((prev) =>
+      prev.map((m) => (m.dataId === updated.dataId ? updated : m))
     );
+  }, [location.state?.updatedMeasurement]);
+
+  const handleEdit = (measurement) => {
+    navigate(`/edit-measurement/${measurement.dataId}`, {
+      state: {
+        babyName,
+        birthDate,
+        prevMeasurements: measurements,
+      },
+    });
+  };
+
+  const handleDelete = async (measurement) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this measurement? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+    try {
+      await deleteGrowthData(measurement.dataId);
+      setMeasurements((prev) =>
+        prev.filter((m) => m.dataId !== measurement.dataId)
+      );
+    } catch (err) {
+      console.error("Error deleting measurement:", err);
+      alert("Failed to delete measurement. Please try again.");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="text-lg text-gray-600">Loading measurements...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="text-lg text-red-600 mb-4">{error}</div>
+          <PrimaryButton onClick={() => window.location.reload()}>
+            Retry
+          </PrimaryButton>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-8">
+          <Link
+            to={`/baby/${babyId}`}
+            className="text-blue-600 hover:text-blue-800 flex items-center mb-4 transition-colors"
+          >
+            <svg
+              className="w-5 h-5 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Back to Profile
+          </Link>
+        </div>
+        <div className="bg-white rounded-3xl shadow-lg p-8 border border-blue-100">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold">
+              {babyName}'s Growth Measurements
+            </h1>
+          </div>
+          {measurements.length === 0 ? (
+            <div className="text-center text-gray-500">
+              No measurements found for this baby.
+            </div>
+          ) : (
+            <GrowthDataList
+              measurements={measurements}
+              birthDate={birthDate}
+              loading={loading}
+              error={error}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default GrowthTracking;

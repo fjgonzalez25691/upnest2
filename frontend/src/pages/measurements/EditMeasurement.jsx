@@ -37,7 +37,8 @@ const EditMeasurement = () => {
           setBaby(babyData);
         }
       } catch (err) {
-        setError("Error loading data");
+        console.error("Error loading measurement data:", err);
+        setError("Error loading data. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -48,18 +49,20 @@ const EditMeasurement = () => {
   const handleSave = async (formData) => {
     setSaving(true);
     try {
-        const updated = await updateGrowthData(measurementId, formData);
-        navigate(`/baby/${updated.babyId}/growth/tracking`, {
-            state: {
-                babyName: babyName || baby?.name,
-                birthDate: birthDate || baby?.dateOfBirth,
-                refresh: Date.now()
-            }
-        });
+      const updated = await updateGrowthData(measurementId, formData);
+      navigate(`/baby/${updated.babyId}/growth/tracking`, {
+        state: {
+          babyName: babyName || baby?.name,
+          birthDate: birthDate || baby?.dateOfBirth,
+          prevMeasurements: location.state?.prevMeasurements || null,
+          updatedMeasurement: updated
+        }
+      });
     } catch (err) {
-        setError("Error updating measurement");
+      console.error("Error updating measurement:", err);
+      setError("Error updating measurement. Please try again.");
     } finally {
-        setSaving(false);
+      setSaving(false);
     }
   };
 
@@ -68,28 +71,70 @@ const EditMeasurement = () => {
     navigate(`/baby/${measurement.babyId}/growth/tracking`, {
       state: {
         babyName: babyName || baby?.name,
-        birthDate: birthDate || baby?.dateOfBirth
+        birthDate: birthDate || baby?.dateOfBirth,
+        prevMeasurements: location.state?.prevMeasurements || null
       }
     });
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>{error}</div>;
-  if (!measurement) return <div>No measurement found</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+      <div className="max-w-2xl mx-auto text-center">
+        <div className="text-lg text-gray-600">Loading measurement...</div>
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+      <div className="max-w-2xl mx-auto text-center">
+        <div className="text-lg text-red-600">{error}</div>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Retry
+        </button>
+      </div>
+    </div>
+  );
+
+  if (!measurement) return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+      <div className="max-w-2xl mx-auto text-center">
+        <div className="text-lg text-gray-600">No measurement found</div>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-3xl font-bold text-gray-900 mb-4">
-        Edit measurement {baby ? `of ${babyName}` : ""}
-      </h1>
-      <GrowthDataForm
-        mode="edit"
-        babyId={measurement.babyId}
-        initialData={measurement}
-        onSubmit={handleSave}
-        onCancel={handleCancel}
-        submitLabel={saving ? "Saving..." : "Save changes"}
-      />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+      <div className="max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="bg-white rounded-3xl shadow-lg p-8 border border-blue-100">
+            <div className="text-center">
+              <h1 className="text-3xl font-bold text-blue-900 mb-2">
+                📏 Edit Measurement
+              </h1>
+              <p className="text-blue-700 text-lg">
+                Update measurement {baby ? `for ${babyName}` : ""}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Form */}
+        <GrowthDataForm
+          mode="edit"
+          babyId={measurement.babyId}
+          initialData={measurement}
+          onSubmit={handleSave}
+          onCancel={handleCancel}
+          submitLabel={saving ? "Saving..." : "Save changes"}
+          heading="Update Growth Measurement"
+        />
+      </div>
     </div>
   );
 };

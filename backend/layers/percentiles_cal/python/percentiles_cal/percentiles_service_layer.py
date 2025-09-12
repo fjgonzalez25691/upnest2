@@ -9,7 +9,7 @@ import os
 import math
 import logging
 from datetime import datetime
-from importlib import resources
+
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -46,35 +46,25 @@ def _cache_key(measurement_type: str, sex: str) -> str:
 def _open_table_file(measurement_type: str, sex: str):
     """
     Find and open the appropriate growth table file.
-    Tries loading from the layer package first (for production),
-    then falls back to common local development paths.
+    In Lambda: uses /opt/data/ (layer mount point)
+    In local: uses data/ relative to this file
     """
     dir_name = _DIR_MAP.get(measurement_type)
     fname = _filename(measurement_type, sex)
 
-    # 1. Try loading from package resources (for deployed Lambda layer)
-    try:
-        base  = resources.files("percentiles_cal") 
-        return (base / "data" / dir_name / fname).open("r", encoding="utf-8")
-    except (ModuleNotFoundError, FileNotFoundError):
-        logger.debug(f"Could not find {fname} in package resources. Trying local paths.")
+    # 1. Lambda environment - layer mounted at /opt/python/percentiles_cal/
+    lambda_path = Path("/opt/python/percentiles_cal/data") / dir_name / fname
+    if lambda_path.exists():
+        logger.debug(f"Found Lambda layer file at: {lambda_path}")
+        return lambda_path.open("r", encoding="utf-8")
 
-    # 2. Fallback to local file system paths for development
-    # Path from current working directory
-    local_path_from_cwd = Path.cwd() / "scripts" / "percentiles" / "data" / dir_name / fname
-    if local_path_from_cwd.exists():
-        logger.debug(f"Found local file at: {local_path_from_cwd}")
-        return local_path_from_cwd.open("r", encoding="utf-8")
+    # 2. Local development - data/ relative to this file
+    local_path = Path(__file__).parent / "data" / dir_name / fname
+    if local_path.exists():
+        logger.debug(f"Found local file at: {local_path}")
+        return local_path.open("r", encoding="utf-8")
 
-    # Path relative to this file's location
-    # Assumes project structure: backend/layers/percentiles_cal/python/percentiles_cal/
-    # We go up 5 levels to the project root.
-    local_path_from_file = Path(__file__).resolve().parents[5] / "scripts" / "percentiles" / "data" / dir_name / fname
-    if local_path_from_file.exists():
-        logger.debug(f"Found local file at: {local_path_from_file}")
-        return local_path_from_file.open("r", encoding="utf-8")
-
-    raise FileNotFoundError(f"Growth table not found: {dir_name}/{fname}. Looked in package and local paths.")
+    raise FileNotFoundError(f"Growth table not found: {dir_name}/{fname}. Checked Lambda (/opt/python/percentiles_cal/data/) and local (./data/) paths.")
 
 
 def _load_records(measurement_type: str, sex: str) -> list[dict]:
@@ -248,6 +238,12 @@ def compute_percentiles(baby: dict, measurement_date: str, measurements: dict) -
     """
     if not baby or not baby.get('gender') or not baby.get('dateOfBirth'):
         raise ValueError("baby must include 'gender' and 'dateOfBirth'")
+    
+    logger.info(
+        "[LAYER:INPUT] sex=%s dob=%s mDate=%s measures=%s",
+        baby.get('gender'), baby.get('dateOfBirth'), measurement_date,
+        json.dumps(measurements, default=str),
+    )
 
     result: dict[str, float] = {}
     for mtype, value in (measurements or {}).items():
