@@ -6,9 +6,7 @@ import { getBabyById, updateBaby, deleteBaby } from "../../services/babyApi";
 import { getGrowthData } from "../../services/growthDataApi";
 import PrimaryButton from "../../components/PrimaryButton";
 import BabyProfileForm from "../../components/babycomponents/BabyProfileForm";
-
-// Move constants outside component to avoid dependency issues
-const MEASUREMENT_KEYS = ['weight', 'height', 'headCircumference'];
+import usePercentilePolling from "../../hooks/usePercentilePolling";
 
 const BabyProfile = () => {
     const { babyId } = useParams();
@@ -54,6 +52,14 @@ const BabyProfile = () => {
         }
     }, [babyId, loadData]);
 
+    const { startPolling } = usePercentilePolling({
+        babyId,
+        onComplete: async () => {
+            await loadData(false);
+            setSaving(false);
+        },
+    });
+
     const handleSave = async (updatedBabyData) => {
         try {
             setSaving(true);
@@ -93,10 +99,11 @@ const BabyProfile = () => {
 
             console.log("🔍 Baby profile updated successfully");
 
+            startPolling();
+
         } catch (err) {
             console.error("Error updating baby profile:", err);
             setError("Failed to update baby profile. Please try again.");
-        } finally {
             setSaving(false);
         }
     };
