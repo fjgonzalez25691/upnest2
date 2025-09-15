@@ -1,5 +1,11 @@
 // src/pages/BabyProfile.jsx
 // Baby profile page showing detailed information and growth tracking
+// Updated (Option A): remove percentile polling. The backend PATCH returns immediate recalculation modes:
+//  * full       -> all measurements with fresh percentiles
+//  * birth-only -> single (possibly synthetic) birth measurement with birth percentiles
+//  * none       -> no recalculation; fallback to existing data
+// We pass prevMeasurements via navigation state to render charts instantly without P-- flicker.
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getBabyById, updateBaby, deleteBaby } from "../../services/babyApi";
@@ -15,8 +21,16 @@ const BabyProfile = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [editMode, setEditMode] = useState(false);
-    const [saving, setSaving] = useState(false);  // Renamed from recalculating
+    const [saving, setSaving] = useState(false);  // Saving PATCH request in flight
+    const [waitingRecalc, setWaitingRecalc] = useState(false); // Waiting for percentile recomputation confirmation (updatedAt change)
     const navigate = useNavigate();
+
+    // Waiters to confirm DynamoDB Stream has applied changes (updatedAt changed)
+    const { waitForBirthRecalc, waitForAllRecalc } = usePercentilePolling(babyId, {
+        intervalMs: 1000,
+        maxAttempts: 12, // ~12s timeout
+        debug: false
+    });
 
     console.log("🔍 BabyProfile mounted with babyId:", babyId);
 
@@ -52,59 +66,143 @@ const BabyProfile = () => {
         }
     }, [babyId, loadData]);
 
-    const { startPolling } = usePercentilePolling({
-        babyId,
-        onComplete: async () => {
-            await loadData(false);
-            setSaving(false);
-        },
-    });
-
     const handleSave = async (updatedBabyData) => {
         try {
             setSaving(true);
             setError("");
 
-            // Decide if backend must sync-recalc (gender or dateOfBirth changed)
+            // Previous snapshot to detect updatedAt changes
+            const snapshotMap = measurements.reduce((acc, m) => {
+                if (m?.dataId && m.updatedAt) acc[m.dataId] = m.updatedAt;
+                return acc;
+            }, {});
+            const prevBirthDate = baby?.baby?.dateOfBirth;
+            const prevBirthUpdatedAt = measurements.find(m => m.measurementDate === prevBirthDate)?.updatedAt;
+
+            // Decide if backend should request synchronous recalculation.
+            // Backend only evaluates recalculation branches when syncRecalc=true, so we include
+            // structural changes (gender/dateOfBirth) OR birth measurement field changes.
             const original = baby?.baby || {};
-            const needsSync = ['gender', 'dateOfBirth'].some(
-                (k) => k in updatedBabyData && updatedBabyData[k] !== original[k]
-            );
+            const allKeys = ['name','dateOfBirth','gender','premature','gestationalWeek','birthWeight','birthHeight','headCircumference'];
+            // Build diff object: only send fields that actually changed (strict inequality)
+            const diffPayload = {};
+            for (const k of allKeys) {
+                if (k in updatedBabyData) {
+                    const newVal = updatedBabyData[k];
+                    const oldVal = original[k];
+                    // Normalize number/string comparison (e.g., "3200" vs 3200)
+                    const normalizedNew = typeof newVal === 'number' ? newVal : (newVal === '' ? undefined : newVal);
+                    const normalizedOld = typeof oldVal === 'number' ? oldVal : (oldVal === '' ? undefined : oldVal);
+                    if (JSON.stringify(normalizedNew) !== JSON.stringify(normalizedOld)) {
+                        diffPayload[k] = newVal;
+                    }
+                }
+            }
+            const structuralKeys = ['gender', 'dateOfBirth'];
+            const birthKeys = ['birthWeight', 'birthHeight', 'headCircumference'];
+            const changedStructural = structuralKeys.filter(k => k in diffPayload);
+            const changedBirth = birthKeys.filter(k => k in diffPayload);
+            const needsSync = changedStructural.length > 0 || changedBirth.length > 0;
+            const changedBirthSet = new Set(changedBirth);
+            if (Object.keys(diffPayload).length === 0) {
+                console.log('ℹ️ No effective changes detected; aborting save.');
+                setSaving(false);
+                setEditMode(false);
+                return;
+            }
 
-            console.log("🔍 Saving baby data with syncRecalc:", needsSync);
+            console.log("🔍 Saving baby data. diff keys=", Object.keys(diffPayload), "syncRecalc=", needsSync);
 
-            // Save baby data (send ?syncRecalc=1 if needed)
-            const response = await updateBaby(babyId, updatedBabyData, { syncRecalc: needsSync });
+            // Save (send only diff fields)
+            const response = await updateBaby(babyId, diffPayload, { syncRecalc: needsSync });
             
-            // If backend did sync recalc, use the returned data instead of reloading
-            if (response?.updatedCount !== undefined) {
-                console.log(`🔍 Backend recalculated ${response.updatedCount} percentiles in ${response.durationMs}ms`);
-                
-                // Use the measurements returned by the backend
+            const mode = response?.mode; // 'full' | 'birth-only' | 'none' | undefined (legacy)
+
+            if (mode === 'full') {
                 if (response.measurements) {
                     setMeasurements(response.measurements);
-                    console.log(`🔍 Using ${response.measurements} measurements from backend response`);
+                    console.log(`🔍 FULL mode: ${response.measurements.length} measurements (recalculated).`);
                 }
-                
-                // Update baby data with the returned data
-                if (response.baby) {
-                    setBaby({ baby: response.baby });
-                    console.log("🔍 Updated baby data from backend response");
+                if (response.baby) setBaby({ baby: response.baby });
+                // Wait for confirmation: ALL measurements have a different updatedAt + valid percentiles
+                setWaitingRecalc(true);
+                try {
+                    const res = await waitForAllRecalc({ snapshotMap });
+                    if (res.success) {
+                        setMeasurements(res.measurements);
+                        console.log(`✅ Confirmed FULL recalc (attempts=${res.attempts}).`);
+                    } else {
+                        console.warn(`⚠️ Timeout waiting for FULL recalc (attempts=${res.attempts}).`);
+                    }
+                } finally {
+                    setWaitingRecalc(false);
+                }
+            } else if (mode === 'birth-only') {
+                if (response.baby) setBaby({ baby: response.baby });
+                const birthItem = response.measurements?.[0];
+                if (birthItem) {
+                    const dob = (response.baby?.dateOfBirth) || (baby?.baby?.dateOfBirth);
+                    let next = [...measurements];
+                    const idx = next.findIndex(m =>
+                        (dob && m.measurementDate === dob) ||
+                        (birthItem.dataId && m.dataId === birthItem.dataId)
+                    );
+                    if (idx >= 0) next[idx] = { ...next[idx], ...birthItem }; else next.push(birthItem);
+                    next.sort((a, b) => (b.measurementDate || '').localeCompare(a.measurementDate || ''));
+                    setMeasurements(next);
+                    console.log('🔍 BIRTH-ONLY mode: merged birth measurement.');
+                    // Wait only for birth measurement (updatedAt changes + percentiles present)
+                    if (prevBirthDate) {
+                        setWaitingRecalc(true);
+                        try {
+                            const res = await waitForBirthRecalc({ birthDate: prevBirthDate, prevUpdatedAt: prevBirthUpdatedAt });
+                            if (res.success) {
+                                // Reemplazar lista completa para asegurar persistencia final
+                                setMeasurements(res.measurements);
+                                console.log(`✅ Confirmed BIRTH recalc (attempts=${res.attempts}).`);
+                            } else {
+                                console.warn(`⚠️ Timeout waiting for BIRTH recalc (attempts=${res.attempts}).`);
+                            }
+                        } finally {
+                            setWaitingRecalc(false);
+                        }
+                    }
+                }
+            } else if (mode === 'none') {
+                if (response.baby) setBaby({ baby: response.baby }); else await loadData(false);
+                // Fallback: if birth fields changed but backend still returned none (legacy behavior), wait for birth recalculation.
+                if (changedBirthSet.size > 0 && prevBirthDate) {
+                    console.log('⚠️ Backend returned mode=none but birth fields changed; initiating fallback birth wait.');
+                    setWaitingRecalc(true);
+                    try {
+                        const res = await waitForBirthRecalc({ birthDate: prevBirthDate, prevUpdatedAt: prevBirthUpdatedAt });
+                        if (res.success) {
+                            setMeasurements(res.measurements);
+                            console.log(`✅ Fallback birth recalc confirmed (attempts=${res.attempts}).`);
+                        } else {
+                            console.warn(`⚠️ Timeout in fallback birth wait (attempts=${res.attempts}).`);
+                        }
+                    } finally {
+                        setWaitingRecalc(false);
+                    }
+                } else {
+                    console.log('🔍 NONE mode: no recalculation performed.');
                 }
             } else {
-                // Only reload if sync recalc was not performed
-                await loadData(false);
+                await loadData(false); // fallback legacy
+                console.log('ℹ️ Fallback: reloaded data (no mode provided).');
             }
+            // Close edit mode only AFTER any waiting logic finishes
             setEditMode(false);
 
             console.log("🔍 Baby profile updated successfully");
-
-            startPolling();
 
         } catch (err) {
             console.error("Error updating baby profile:", err);
             setError("Failed to update baby profile. Please try again.");
             setSaving(false);
+        } finally {
+            setSaving(false); // ensure spinner ends
         }
     };
 
@@ -183,13 +281,22 @@ const BabyProfile = () => {
                     <BabyProfileForm
                         baby={baby?.baby}
                         isEditable={editMode}
-                        isRecalculating={saving}  // Pass saving state
+                        isRecalculating={saving || waitingRecalc}  // Show spinner while saving or confirming recalculation
                         onSave={handleSave}
                         onAdd={handleAddMeasurement}
                         onCancel={handleCancel}
                         onEdit={() => setEditMode(true)}
                         onDelete={handleDelete}
                     />
+                    {waitingRecalc && (
+                        <div className="mt-4 p-3 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-700 flex items-center gap-2">
+                            <svg className="w-5 h-5 animate-spin text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <circle cx="12" cy="12" r="10" strokeWidth="4" className="opacity-25" />
+                                <path d="M4 12a8 8 0 018-8" strokeWidth="4" className="opacity-75" />
+                            </svg>
+                            Confirming updated percentiles...
+                        </div>
+                    )}
                 </div>
 
                 {/* Growth Tracking Section */}
@@ -198,14 +305,16 @@ const BabyProfile = () => {
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                             <h2 className="text-2xl font-bold text-gray-800">Growth Tracking</h2>
                             <Link
-                                to={`/baby/${babyId}/growth/tracking`}
+                                to={waitingRecalc ? '#' : `/baby/${babyId}/growth/tracking`}
+                                onClick={e => { if (waitingRecalc) e.preventDefault(); }}
                                 state={{
                                     babyName: baby.baby.name,
-                                    birthDate: baby.baby.dateOfBirth 
+                                    birthDate: baby.baby.dateOfBirth,
+                                    prevMeasurements: measurements
                                 }}
                             >
-                                <PrimaryButton variant="primary" className="mt-4 sm:mt-0">
-                                    View Growth Dashboard
+                                <PrimaryButton variant="primary" className={`mt-4 sm:mt-0 ${waitingRecalc ? 'opacity-60 pointer-events-none' : ''}`} disabled={waitingRecalc}>
+                                    {waitingRecalc ? 'Waiting recalc…' : 'View Growth Dashboard'}
                                 </PrimaryButton>
                             </Link>
                         </div>
@@ -223,9 +332,13 @@ const BabyProfile = () => {
                                 <p className="text-gray-600 text-sm mb-4">
                                     View WHO percentile charts and growth trends
                                 </p>
-                                <Link to={`/baby/${babyId}/growth/tracking`} state={{ babyName: baby.baby.name }}>
-                                    <PrimaryButton variant="primary" size="sm">
-                                        View Charts
+                                <Link
+                                    to={waitingRecalc ? '#' : `/baby/${babyId}/growth/tracking`}
+                                    onClick={e => { if (waitingRecalc) e.preventDefault(); }}
+                                    state={{ babyName: baby.baby.name, birthDate: baby.baby.dateOfBirth, prevMeasurements: measurements }}
+                                >
+                                    <PrimaryButton variant="primary" size="sm" disabled={waitingRecalc} className={waitingRecalc ? 'opacity-60 pointer-events-none' : ''}>
+                                        {waitingRecalc ? 'Waiting…' : 'View Charts'}
                                     </PrimaryButton>
                                 </Link>
                             </div>
@@ -257,9 +370,13 @@ const BabyProfile = () => {
                                 <p className="text-gray-600 text-sm mb-4">
                                     Browse all recorded measurements and data
                                 </p>
-                                <Link to={`/baby/${babyId}/growth/tracking`}>
-                                    <PrimaryButton variant="primary" size="sm">
-                                        View History
+                                <Link
+                                    to={waitingRecalc ? '#' : `/baby/${babyId}/growth/tracking`}
+                                    onClick={e => { if (waitingRecalc) e.preventDefault(); }}
+                                    state={{ babyName: baby.baby.name, birthDate: baby.baby.dateOfBirth, prevMeasurements: measurements }}
+                                >
+                                    <PrimaryButton variant="primary" size="sm" disabled={waitingRecalc} className={waitingRecalc ? 'opacity-60 pointer-events-none' : ''}>
+                                        {waitingRecalc ? 'Waiting…' : 'View History'}
                                     </PrimaryButton>
                                 </Link>
                             </div>

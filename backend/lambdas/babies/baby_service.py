@@ -142,7 +142,8 @@ def build_update_expression(update_fields):
             update_expr_parts.append(f"{k} = :{k}")
     update_expr = "SET " + ", ".join(update_expr_parts)
     expr_values = {f":{k}": v for k, v in update_fields.items()}
-    return update_expr, expr_values, attribute_names if attribute_names else None
+    # Return empty dict instead of None for attribute_names
+    return update_expr, expr_values, attribute_names
 
 
 def process_baby_data(data):
@@ -290,12 +291,17 @@ def lambda_handler(event, context):
                 update_fields['modifiedAt'] = datetime.now(timezone.utc).isoformat()
                 update_expr, expr_values, attribute_names = build_update_expression(update_fields)
                 logger.info(f"[PUT] Update fields: {update_fields}")
-                table.update_item(
-                    Key={'babyId': baby_id},
-                    UpdateExpression=update_expr,
-                    ExpressionAttributeValues=expr_values,
-                    ExpressionAttributeNames=attribute_names
-                )
+                # Prepare update_item kwargs
+                update_kwargs = {
+                    'Key': {'babyId': baby_id},
+                    'UpdateExpression': update_expr,
+                    'ExpressionAttributeValues': expr_values,
+                    'ReturnValues': 'ALL_NEW'
+                }
+                if attribute_names:  # Only add if not empty
+                    update_kwargs['ExpressionAttributeNames'] = attribute_names
+
+                updated = table.update_item(**update_kwargs)
                 return response(200, {"message": "Baby updated", "babyId": baby_id})
             except Exception as e:
                 logger.error(f"Error updating baby: {e}")
@@ -332,13 +338,18 @@ def lambda_handler(event, context):
                 update_fields['modifiedAt'] = datetime.now(timezone.utc).isoformat()
                 update_expr, expr_values, attribute_names = build_update_expression(update_fields)
 
-                updated = table.update_item(
-                    Key={'babyId': baby_id},
-                    UpdateExpression=update_expr,
-                    ExpressionAttributeValues=expr_values,
-                    ExpressionAttributeNames=attribute_names,
-                    ReturnValues='ALL_NEW'
-                )
+                # Build kwargs similar to PUT (avoid empty ExpressionAttributeNames)
+                patch_update_kwargs = {
+                    'Key': {'babyId': baby_id},
+                    'UpdateExpression': update_expr,
+                    'ExpressionAttributeValues': expr_values,
+                    'ReturnValues': 'ALL_NEW'
+                }
+                if attribute_names:
+                    patch_update_kwargs['ExpressionAttributeNames'] = attribute_names
+
+                logger.info(f"[PATCH] update_fields={update_fields} changed_keys={list(changed_keys)} sync={sync} attr_names_present={bool(attribute_names)}")
+                updated = table.update_item(**patch_update_kwargs)
                 baby = updated.get('Attributes', {})
 
                 if not sync:
@@ -431,20 +442,72 @@ def lambda_handler(event, context):
                     birth_pct = _compute_birth_percentiles(baby)
                     if not birth_pct:
                         logger.info(f"[PATCH:BIRTH_PCT:SKIP] babyId={baby_id} reason=no_birth_measurements")
-                        return response(200, {"baby": baby, "recalcSkipped": True, "reason": "No birth measurements", "mode": "birth-only"})
+                        return response(200, {
+                            "baby": baby,
+                            "recalcSkipped": True,
+                            "reason": "No birth measurements",
+                            "mode": "birth-only"
+                        })
+
+                    # Persist birthPercentiles on baby (para lectura directa)
                     try:
                         table.update_item(
                             Key={'babyId': baby_id},
                             UpdateExpression='SET birthPercentiles = :bp',
-                            ExpressionAttributeValues={':bp': {k: Decimal(str(v)) for k, v in birth_pct.items()}},
+                            ExpressionAttributeValues={
+                                ':bp': {k: Decimal(str(v)) for k, v in birth_pct.items()}
+                            },
                         )
                         baby['birthPercentiles'] = {k: float(v) for k, v in birth_pct.items()}
                     except Exception as e:
                         logger.error(f"[PATCH:BIRTH_PCT:ERROR_UPDATE] babyId={baby_id} err={e}")
                         return response(500, {"error": "Failed to save birth percentiles"})
+
+                    # Intentar leer growth-data existente del nacimiento
+                    birth_measurement = None
+                    birth_data_id = baby.get('birthDataId')
+                    dob = baby.get('dateOfBirth')
+
+                    if birth_data_id:
+                        try:
+                            gd_item = growth_table.get_item(Key={'dataId': birth_data_id}).get('Item')
+                            if gd_item and gd_item.get('measurementDate') == dob:
+                                birth_measurement = gd_item
+                        except Exception as e:
+                            logger.error(f"[PATCH:BIRTH_ONLY:FETCH_EXISTING_ERROR] babyId={baby_id} err={e}")
+
+                    # Si no existe todavía (el stream aún no escribió), sintetizamos
+                    if not birth_measurement:
+                        birth_measurement = {
+                            "dataId": birth_data_id or "synthetic-birth",
+                            "babyId": baby_id,
+                            "userId": baby.get("userId"),
+                            "measurementDate": dob,
+                            "measurementSource": "birth",
+                            "measurements": {
+                                "weight": float(baby.get("birthWeight")) if baby.get("birthWeight") is not None else None,
+                                "height": float(baby.get("birthHeight")) if baby.get("birthHeight") is not None else None,
+                                "headCircumference": float(baby.get("headCircumference")) if baby.get("headCircumference") is not None else None,
+                            },
+                            "synthetic": True,   # marca para saber que aún puede reemplazarse por el real
+                            "createdAt": datetime.now(timezone.utc).isoformat(),
+                            "updatedAt": datetime.now(timezone.utc).isoformat(),
+                        }
+
+                    # Merge/override percentiles en memoria (sin esperar al stream)
+                    birth_measurement['percentiles'] = {k: float(v) for k, v in birth_pct.items()}
+
+                    # Normalizar Decimals por si vino de Dynamo
+                    for sec in ('measurements', 'percentiles'):
+                        if sec in birth_measurement and birth_measurement[sec]:
+                            for k, v in list(birth_measurement[sec].items()):
+                                if isinstance(v, Decimal):
+                                    birth_measurement[sec][k] = float(v)
+
                     return response(200, {
                         "baby": baby,
                         "birthPercentiles": baby.get('birthPercentiles'),
+                        "measurements": [birth_measurement],
                         "recalculatedAt": datetime.now(timezone.utc).isoformat(),
                         "mode": "birth-only"
                     })

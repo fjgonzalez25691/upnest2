@@ -19,12 +19,12 @@ const GrowthTracking = () => {
   const babyName = location.state?.babyName || "Baby";
   const birthDate = location.state?.birthDate || "Unknown";
 
-  // Carga inicial/refresco: usa prevMeasurements para pintar al instante y refresca en segundo plano
+  // Initial load / refresh: use prevMeasurements (passed through navigation state) for immediate paint; then background refresh
   useEffect(() => {
     const prev = location.state?.prevMeasurements;
     const updated = location.state?.updatedMeasurement;
 
-    // Si venimos de editar y tenemos lista previa, muéstrala YA
+  // If we came from an edit and have a previous list, show it immediately
     if (prev && Array.isArray(prev)) {
       // Aplica el reemplazo optimista
       const firstPaint = updated
@@ -37,7 +37,7 @@ const GrowthTracking = () => {
       setLoading(true);
     }
 
-    // Refresco en segundo plano (no bloqueante)
+  // Non-blocking background refresh
     const doFetch = async () => {
       try {
         const data = await getGrowthData(babyId);
