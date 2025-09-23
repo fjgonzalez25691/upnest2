@@ -1,5 +1,5 @@
 import React from "react";
-import { useAuth } from "react-oidc-context";
+
 import { Route, Routes } from "react-router-dom";
 
 // Components
@@ -18,6 +18,7 @@ import AddBaby from "./pages/babies/AddBaby.jsx";
 import AddMeasurement from "./pages/measurements/AddMeasurement.jsx";
 import GrowthTracking from "./pages/measurements/GrowthTracking.jsx";
 import EditMeasurement from "./pages/measurements/EditMeasurement.jsx";
+import TestPollingCounter from "./test/TestPollingCounter.jsx";
 
 // Growth Tracking Pages
 /* import GrowthTracking from "./pages/GrowthTracking.jsx";
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/add-measurement" element={<ProtectedRoute element={<AddMeasurement />} />} />
         <Route path="/baby/:babyId/growth/tracking" element={<ProtectedRoute element={<GrowthTracking />} />} />
         <Route path="/edit-measurement/:measurementId" element={<ProtectedRoute element={<EditMeasurement />} />} />
+        <Route path="/test-polling-counter" element={<ProtectedRoute element={<TestPollingCounter />} />} />
       </Routes>
       <Footer />
     </>

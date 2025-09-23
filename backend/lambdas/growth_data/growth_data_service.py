@@ -145,6 +145,7 @@ def get_baby_if_accessible(baby_id, user_id):
 
 
 def create_growth_data(event, user_id):
+    logger.warning(f"====Function create_growth_data====")
     try:
         data = json.loads(event['body'])
     except (json.JSONDecodeError, TypeError):
@@ -258,7 +259,9 @@ def create_growth_data(event, user_id):
 
 
 def get_growth_data_list(event, user_id):
+
     """Handle GET /growth-data with optional ?babyId filter"""
+    logger.warning(f"====Function get_growth_data_list====")
     try:
         query_params = event.get('queryStringParameters') or {}
         limit = min(int(query_params.get('limit', 50)), 100)
@@ -331,6 +334,7 @@ def get_growth_data_list(event, user_id):
 
 def get_growth_data_by_id(data_id, user_id):
     """Handle GET /growth-data/{dataId}"""
+    logger.warning(f"====Function get_growth_data_by_id({data_id})====")
     if not data_id or not is_valid_uuid(data_id):
         return response(400, {"error": "Invalid data ID"})
 
@@ -349,6 +353,7 @@ def get_growth_data_by_id(data_id, user_id):
 
 def update_growth_data(event, data_id, user_id):
     """Handle PUT /growth-data/{dataId}"""
+    logger.info(f"====Function update_growth_data({data_id})====")
     if not data_id or not is_valid_uuid(data_id):
         return response(400, {"error": "Invalid data ID"})
 
@@ -448,6 +453,7 @@ def update_growth_data(event, data_id, user_id):
 
 def delete_growth_data(data_id, user_id):
     """Handle DELETE /growth-data/{dataId}"""
+    logger.warning(f"====Function delete_growth_data({data_id})====")
     if not data_id or not is_valid_uuid(data_id):
         return response(400, {"error": "Invalid data ID"})
 
@@ -472,7 +478,7 @@ def lambda_handler(event, context):
     path = event['path']
     user_id = get_user_id_from_context(event)
 
-    logger.info(f"Growth Data service: {method} {path} by user {user_id}")
+    logger.warning(f"Growth Data service: {method} {path} by user {user_id}")
 
     # Handle CORS preflight
     if method == 'OPTIONS':

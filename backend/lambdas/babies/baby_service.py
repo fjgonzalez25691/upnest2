@@ -191,7 +191,6 @@ def lambda_handler(event, context):
     try:
         # Stream events (DynamoDB) delegated to existing processor
         if isinstance(event, dict) and "Records" in event:
-            logger.info(f"====== DynamoDB stream with {len(event['Records'])} records =====")
             logger.info(f"Stream event: {json.dumps(event)}")
             return handle_stream_event(event, context)
 

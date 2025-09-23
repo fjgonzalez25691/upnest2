@@ -130,6 +130,7 @@ def _upsert_birth_growth_item(baby: dict, normalized: dict) -> None:
     ``percentiles`` attribute which forces the downstream stream processor to
     recompute percentiles using the updated baby details.
     """
+    logger.warning(f"====Function baby._upsert_birth_growth_item({baby.get('babyId')})====")
     baby_id = baby.get("babyId")
     user_id = baby.get("userId")
     dob = baby.get("dateOfBirth")
@@ -185,6 +186,7 @@ def _upsert_birth_growth_item(baby: dict, normalized: dict) -> None:
 
 def _delete_birth_growth_item_and_pointer(baby: dict) -> None:
     """Delete the GrowthData birth item (if any) and remove Babies.birthDataId."""
+    logger.warning(f"====Function baby._delete_birth_growth_item_and_pointer({baby.get('babyId')})====")
     baby_id = baby.get("babyId")
     birth_id = baby.get("birthDataId")
     if not baby_id or not birth_id:
@@ -221,6 +223,7 @@ def _remove_percentiles_for_baby(baby_id: str) -> None:
     DynamoDB transactions accept at most 25 items, so the query results are
     chunked into groups of 25 to keep each transaction within the limit.
     """
+    logger.warning(f"====Function baby._remove_percentiles_for_baby({baby_id})====")
     if not baby_id:
         return
 
@@ -295,6 +298,7 @@ def handle_stream_event(event, _ctx):
       - If at least one birth measurement exists and DOB exists: upsert GrowthData (birth).
       - If no birth measurements remain but pointer exists: delete GrowthData birth item + pointer.
     """
+    logger.warning(f"====Function baby.handle_stream_event====")
     processed = 0
     for rec in event.get("Records", []):
         etype = rec.get("eventName")

@@ -1,138 +1,254 @@
-// src/hooks/usePolling.js
-import { useRef, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * Enhanced generic polling hook.
- * Two usage patterns:
- *  1) Provide a fetchFn + stopCondition → fetchFn result passed to stopCondition; when true polling stops.
- *  2) Provide a callback (backwards compatible) that returns true to continue, false to stop.
- *
- * Options:
- *  - interval (ms) polling interval
- *  - autoStart boolean
- *  - maxAttempts: stop after N attempts (treat as failure)
- *  - immediate: run first tick immediately (default true)
- *  - onAttempt({ attempt, data, shouldContinue })
- *  - onFinish(success, finalData, attempts)
+ * usePolling(fn, options)
+ *  fn: (signal) => Promise<any>
+ *  options:
+ *    - interval (ms)
+ *    - leading = true
+ *    - enabled = true
+ *    - maxRetries
+ *    - backoffFactor = 1
+ *    - jitter = false
+ *    - stopOnError = false
+ *    - pauseOnHidden = true
+ *    - stopCondition = (data, attempts) => boolean
  */
-export default function usePolling(
-  callbackOrOptions,
-  maybeInterval,
-  maybeOptions = {}
-) {
-  // Backward compatibility: (callback, interval, { autoStart })
-  let legacyCallback = null;
-  let options = {};
-  let interval = 1000;
-
-  if (typeof callbackOrOptions === 'function') {
-    legacyCallback = callbackOrOptions;
-    interval = maybeInterval || 1000;
-    options = maybeOptions || {};
-  } else if (typeof callbackOrOptions === 'object') {
-    options = callbackOrOptions;
-    interval = options.interval || 1000;
+export function usePolling(
+  fn,
+  {
+    interval,
+    leading = true,
+    enabled = true,
+    maxRetries,
+    backoffFactor = 1,
+    jitter = false,
+    stopOnError = false,
+    pauseOnHidden = true,
+    stopCondition,
   }
+) {
+  const [state, setState] = useState({
+    data: undefined,
+    error: undefined,
+    isRunning: Boolean(enabled),
+    isFetching: false,
+    attempts: 0, // errores consecutivos
+  });
 
-  const {
-    autoStart = false,
-    fetchFn,                 // async () => any
-    stopCondition,           // (data, attempt) => boolean
-    maxAttempts = 50,
-    immediate = true,
-    onAttempt,               // ({attempt, data, shouldContinue})
-    onFinish                 // (success, finalData, attempts)
-  } = options;
-
-  const timerRef = useRef(null);
-  const attemptsRef = useRef(0);
-  const stoppedRef = useRef(false);
-  const runningRef = useRef(false);
-  const lastDataRef = useRef(undefined);
+  const timerIdRef = useRef(null);
+  const abortRef = useRef(null);
+  const runningRef = useRef(Boolean(enabled));
 
   const clearTimer = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
+    if (timerIdRef.current !== null) {
+      window.clearTimeout(timerIdRef.current);
+      timerIdRef.current = null;
     }
   }, []);
 
-  const finish = useCallback((success) => {
-    stoppedRef.current = true;
+  const stop = useCallback(() => {
+    runningRef.current = false;
     clearTimer();
-    onFinish && onFinish(success, lastDataRef.current, attemptsRef.current);
-  }, [clearTimer, onFinish]);
+    if (abortRef.current) abortRef.current.abort();
+    setState((s) => ({ ...s, isRunning: false }));
+  }, [clearTimer]);
 
-  const stop = useCallback(() => finish(true), [finish]);
+  // Función para calcular delay con backoff y jitter
+  const calculateDelay = useCallback((baseDelay, attemptCount) => {
+    let delay = baseDelay;
 
-  const scheduleNext = useCallback(() => {
-    if (stoppedRef.current) return;
-    timerRef.current = setTimeout(() => tick(), interval);
-  }, [interval, tick]);
+    // backoff por errores consecutivos
+    if (attemptCount > 0 && backoffFactor > 1) {
+      delay = baseDelay * Math.pow(backoffFactor, attemptCount);
+    }
+    if (jitter) {
+      const factor = 1 + (Math.random() - 0.5) * 0.4; // ±20%
+      delay = Math.max(0, Math.floor(delay * factor));
+    }
+
+    return delay;
+  }, [backoffFactor, jitter]);
 
   const tick = useCallback(async () => {
-    if (runningRef.current || stoppedRef.current) return;
-    runningRef.current = true;
-    attemptsRef.current += 1;
-    let shouldContinue = true;
-    try {
-      if (fetchFn || stopCondition) {
-        const data = fetchFn ? await fetchFn() : undefined;
-        lastDataRef.current = data;
-        if (stopCondition) {
-          const done = stopCondition(data, attemptsRef.current);
-          if (done) shouldContinue = false;
-        }
-      } else if (legacyCallback) {
-        // Legacy mode
-        const cont = await legacyCallback();
-        if (cont === false) shouldContinue = false;
-      } else {
-        // Nothing to do
-        shouldContinue = false;
-      }
-      onAttempt && onAttempt({ attempt: attemptsRef.current, data: lastDataRef.current, shouldContinue });
-      if (!shouldContinue) {
-        finish(true);
-        runningRef.current = false;
-        return;
-      }
-      if (attemptsRef.current >= maxAttempts) {
-        finish(false);
-        runningRef.current = false;
-        return;
-      }
-    } catch (_e) { // swallow and continue
-      void _e; // explicitly ignore
-      if (attemptsRef.current >= maxAttempts) {
-        finish(false);
-        runningRef.current = false;
-        return;
-      }
-      // swallow error and continue
+    if (!runningRef.current) return;
+
+    // Función interna para programar siguiente ejecución (evita dependencia circular)
+    const scheduleNext = (baseDelay, attemptCount = 0) => {
+      setState((currentState) => {
+        const delay = calculateDelay(baseDelay, attemptCount);
+        clearTimer();
+        timerIdRef.current = window.setTimeout(() => {
+          tick();
+        }, delay);
+        return currentState; // No modificamos el estado, solo programamos
+      });
+    };
+
+    // Pausar si la pestaña está oculta
+    if (pauseOnHidden && document.visibilityState === "hidden") {
+      scheduleNext(interval);
+      return;
     }
-    runningRef.current = false;
-    scheduleNext();
-  }, [fetchFn, stopCondition, legacyCallback, onAttempt, finish, maxAttempts, scheduleNext]);
+
+    // cancelar petición previa si existía
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setState((s) => ({ ...s, isFetching: true, error: undefined }));
+
+    try {
+      const result = await fn(controller.signal);
+      setState((s) => {
+        const newState = {
+          ...s,
+          data: result,
+          isFetching: false,
+          attempts: 0,
+        };
+        
+        // Check stop condition if provided
+        if (stopCondition && stopCondition(result, s.attempts + 1)) {
+          stop();
+          return newState;
+        }
+        
+        // Schedule next execution after success
+        const delay = calculateDelay(interval, 0);
+        clearTimer();
+        timerIdRef.current = window.setTimeout(() => {
+          tick();
+        }, delay);
+        
+        return newState;
+      });
+    } catch (err) {
+      if (err && err.name === "AbortError") {
+        // parada manual o re-render
+        setState((s) => ({ ...s, isFetching: false }));
+        return;
+      }
+
+      setState((s) => {
+        const newAttempts = s.attempts + 1;
+        
+        if (stopOnError) {
+          stop();
+          return {
+            ...s,
+            error: err,
+            isFetching: false,
+            attempts: newAttempts,
+          };
+        }
+        
+        if (typeof maxRetries === "number" && newAttempts >= maxRetries) {
+          stop();
+          return {
+            ...s,
+            error: err,
+            isFetching: false,
+            attempts: newAttempts,
+          };
+        }
+        
+        // Programar reintento con backoff
+        const delay = calculateDelay(interval, newAttempts);
+        clearTimer();
+        timerIdRef.current = window.setTimeout(() => {
+          tick();
+        }, delay);
+        
+        return {
+          ...s,
+          error: err,
+          isFetching: false,
+          attempts: newAttempts,
+        };
+      });
+    }
+  }, [
+    fn,
+    interval,
+    pauseOnHidden,
+    calculateDelay,
+    clearTimer,
+    stop,
+    stopOnError,
+    maxRetries,
+    stopCondition,
+  ]);
+
+  const scheduleNext = useCallback(
+    (baseDelay, attemptCount = 0) => {
+      const delay = calculateDelay(baseDelay, attemptCount);
+      clearTimer();
+      timerIdRef.current = window.setTimeout(() => {
+        tick();
+      }, delay);
+    },
+    [calculateDelay, clearTimer, tick]
+  );
 
   const start = useCallback(() => {
-    stoppedRef.current = false;
-    attemptsRef.current = 0;
-    clearTimer();
-    if (immediate) tick(); else timerRef.current = setTimeout(() => tick(), interval);
-  }, [immediate, interval, tick, clearTimer]);
+    if (runningRef.current) return;
+    runningRef.current = true;
+    setState((s) => ({ ...s, isRunning: true }));
+    if (leading) {
+      tick();
+    } else {
+      scheduleNext(interval);
+    }
+  }, [interval, leading, scheduleNext, tick]);
 
+  const reset = useCallback(() => {
+    setState((s) => ({ ...s, attempts: 0, error: undefined }));
+  }, []);
+
+  // Arranque / parada según "enabled"
   useEffect(() => {
-    if (autoStart) start();
-    return () => clearTimer();
-  }, [autoStart, start, clearTimer]);
+    if (enabled) {
+      runningRef.current = true;
+      setState((s) => ({ ...s, isRunning: true }));
+      if (leading) {
+        tick();
+      } else {
+        scheduleNext(interval);
+      }
+    } else {
+      stop();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, interval, leading]);
+
+  // Pausar/continuar al cambiar visibilidad
+  useEffect(() => {
+    if (!pauseOnHidden) return;
+    const onVis = () => {
+      if (!runningRef.current) return;
+      clearTimer();
+      if (document.visibilityState === "visible") {
+        scheduleNext(0); // dispara pronto al volver visible
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [pauseOnHidden, scheduleNext, clearTimer]);
+
+  // Limpieza al desmontar
+  useEffect(() => {
+    return () => {
+      clearTimer();
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, [clearTimer]);
 
   return {
-    start,
-    stop,
-    isActive: () => !stoppedRef.current,
-    attempts: () => attemptsRef.current,
-    lastData: () => lastDataRef.current
+    ...state,
+    tick, // fuerza una iteración inmediata
+    start, // inicia si estaba parado
+    stop, // detiene y cancela la petición en curso
+    reset, // limpia error y contador
   };
 }
-

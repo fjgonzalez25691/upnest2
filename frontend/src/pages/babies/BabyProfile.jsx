@@ -1,18 +1,16 @@
 // src/pages/BabyProfile.jsx
-// Baby profile page showing detailed information and growth tracking
-// Updated (Option A): remove percentile polling. The backend PATCH returns immediate recalculation modes:
-//  * full       -> all measurements with fresh percentiles
-//  * birth-only -> single (possibly synthetic) birth measurement with birth percentiles
-//  * none       -> no recalculation; fallback to existing data
-// We pass prevMeasurements via navigation state to render charts instantly without P-- flicker.
+// Baby profile page with targeted polling based on change type:
+// - Structural changes (gender/dateOfBirth): poll all measurements
+// - Birth measurement changes: poll specific birth measurement
+// - Non-critical changes: no polling needed
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getBabyById, updateBaby, deleteBaby } from "../../services/babyApi";
-import { getGrowthData } from "../../services/growthDataApi";
+import { getGrowthData, getGrowthMeasurement } from "../../services/growthDataApi";
 import PrimaryButton from "../../components/PrimaryButton";
 import BabyProfileForm from "../../components/babycomponents/BabyProfileForm";
-import usePercentilePolling from "../../hooks/usePercentilePolling";
+import { usePolling } from "../../hooks/usePolling";
 
 const BabyProfile = () => {
     const { babyId } = useParams();
@@ -21,16 +19,207 @@ const BabyProfile = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [editMode, setEditMode] = useState(false);
-    const [saving, setSaving] = useState(false);  // Saving PATCH request in flight
-    const [waitingRecalc, setWaitingRecalc] = useState(false); // Waiting for percentile recomputation confirmation (updatedAt change)
+    const [saving, setSaving] = useState(false);
+    const [waitingRecalc, setWaitingRecalc] = useState(false);
+    const [pollingError, setPollingError] = useState(null);
     const navigate = useNavigate();
+    
+    // References to store current state for polling stop conditions
+    const prevUpdatedAtRef = useRef(null);
+    const measurementSnapshotsRef = useRef({});
+    const initialBirthMeasurementRef = useRef(null);
+    const changedBirthFieldsRef = useRef([]);
 
-    // Waiters to confirm DynamoDB Stream has applied changes (updatedAt changed)
-    const { waitForBirthRecalc, waitForAllRecalc } = usePercentilePolling(babyId, {
-        intervalMs: 1000,
-        maxAttempts: 12, // ~12s timeout
-        debug: false
-    });
+    // Check if measurement has valid percentiles (accept numbers or numeric strings)
+    const hasValidPercentiles = useCallback((measurement) => {
+        const p = measurement?.percentiles;
+        if (!p) return false;
+        const toNumber = (val) => {
+            if (val === null || val === undefined) return null;
+            if (typeof val === 'number') return Number.isFinite(val) ? val : null;
+            if (typeof val === 'string') {
+                const cleaned = val.trim().replace('%', '').replace(',', '.');
+                const n = Number.parseFloat(cleaned);
+                return Number.isNaN(n) ? null : n;
+            }
+            return null;
+        };
+        return Object.values(p).some(v => toNumber(v) !== null);
+    }, []);
+
+    // Check if specific percentiles changed for modified measurements
+    const hasChangedPercentiles = useCallback((currentMeasurement, initialMeasurement, changedFields) => {
+        // Normalizador robusto: acepta number | string (con comas/pct) | null/undefined
+        const toNumber = (val) => {
+            if (val === null || val === undefined) return null;
+            if (typeof val === 'number') return Number.isFinite(val) ? val : null;
+            if (typeof val === 'string') {
+                const cleaned = val.trim().replace('%', '').replace(',', '.');
+                const n = Number.parseFloat(cleaned);
+                return Number.isNaN(n) ? null : n;
+            }
+            return null;
+        };
+
+        const fieldMapping = {
+            birthWeight: 'weight',
+            birthHeight: 'height',
+            headCircumference: 'headCircumference',
+        };
+
+        const currentP = currentMeasurement?.percentiles ?? null;
+        const initialP = initialMeasurement?.percentiles ?? null;
+
+        if (!currentP || !changedFields?.length) return false;
+
+        // Recorremos solo los campos de nacimiento que cambiaron y exigimos que su percentil asociado:
+        // - sea válido (number)
+        // - y sea distinto al inicial (si el inicial existía); si el inicial era nulo, basta con que ahora sea válido
+        for (const field of changedFields) {
+            const pField = fieldMapping[field];
+            if (!pField) continue; // campo no mapeado a percentil
+
+            const cur = toNumber(currentP[pField]);
+            const ini = toNumber(initialP ? initialP[pField] : null);
+
+            // Si el percentil actual no es válido aún, seguimos esperando
+            if (cur === null) {
+                return false;
+            }
+
+            // Si antes no había percentil (ini === null), con tenerlo ya válido damos por cambiado
+            if (ini === null) continue;
+
+            // Si existía, debe ser distinto (tolerancia 0.01)
+            if (Math.abs(cur - ini) < 0.01) {
+                return false;
+            }
+        }
+
+        // Todos los campos cambiados tienen percentiles válidos y cambiados
+        return true;
+    }, []);
+
+    // Polling for all measurements (structural changes)
+    const allMeasurementsPolling = usePolling(
+        async () => await getGrowthData(babyId),
+        {
+            interval: 1000,
+            enabled: false,
+            maxRetries: 15,
+            stopOnError: false,
+            stopCondition: (currentData, attempts) => {
+                if (!currentData || !Array.isArray(currentData)) return false;
+                
+                const snapshots = measurementSnapshotsRef.current;
+                const ids = Object.keys(snapshots || {});
+                
+                if (ids.length === 0) return true; // No baseline, accept any data
+                
+                let allUpdated = true;
+                let allHavePercentiles = true;
+                
+                for (const id of ids) {
+                    const m = currentData.find(x => x.dataId === id);
+                    if (!m || !m.updatedAt) {
+                        allUpdated = false;
+                        break;
+                    }
+                    if (m.updatedAt === snapshots[id]) {
+                        allUpdated = false; // Not updated yet
+                    }
+                    if (!hasValidPercentiles(m)) {
+                        allHavePercentiles = false;
+                    }
+                }
+                
+                console.log(`🔍 All measurements polling attempt ${attempts}/15:`, {
+                    allUpdated,
+                    allHavePercentiles,
+                    totalMeasurements: ids.length
+                });
+                
+                // Stop if all have valid percentiles (most important)
+                if (allHavePercentiles) {
+                    console.log(`✅ All measurements have valid percentiles, stopping polling`);
+                    return true;
+                }
+                
+                // If all updated but no percentiles yet, wait more (max 10 extra attempts)
+                if (allUpdated && attempts <= 10) {
+                    console.log('🔄 All measurements updated, waiting for percentiles...');
+                    return false;
+                }
+                
+                // After waiting, stop anyway if all are updated
+                if (allUpdated && attempts > 10) {
+                    console.log('⏱️ All measurements updated but no percentiles after waiting, stopping');
+                    return true;
+                }
+                
+                return false;
+            }
+        }
+    );
+
+    // Polling for specific birth measurement with integrated stop condition
+    const birthMeasurementPolling = usePolling(
+        async () => {
+            const birthDataId = baby?.baby?.birthDataId;
+            if (!birthDataId) return null;
+            return await getGrowthMeasurement(birthDataId);
+        },
+        {
+            interval: 1000,
+            enabled: false,
+            maxRetries: 10,
+            stopOnError: false,
+            stopCondition: (currentData, attempts) => {
+                if (!currentData) return false;
+                
+                const prevUpdatedAt = prevUpdatedAtRef.current;
+                const initialMeasurement = initialBirthMeasurementRef.current;
+                const changedFields = changedBirthFieldsRef.current;
+                
+                if (!prevUpdatedAt || !initialMeasurement || !changedFields.length) {
+                    return true; // No baseline, accept any data
+                }
+                
+                const hasChanged = currentData.updatedAt !== prevUpdatedAt;
+                const hasChangedPercentilesForFields = hasChangedPercentiles(currentData, initialMeasurement, changedFields);
+                
+                console.log(`🔍 Intelligent birth polling attempt ${attempts}/10:`, {
+                    currentUpdatedAt: currentData.updatedAt,
+                    prevUpdatedAt,
+                    hasChanged,
+                    changedFields,
+                    hasChangedPercentiles: hasChangedPercentilesForFields,
+                    initialPercentiles: initialMeasurement.percentiles,
+                    currentPercentiles: currentData.percentiles
+                });
+                
+                // Stop if we have valid changed percentiles for modified fields (most important)
+                if (hasChangedPercentilesForFields) {
+                    console.log('✅ Birth measurement has valid changed percentiles for modified fields, stopping polling');
+                    return true;
+                }
+                
+                // If updatedAt changed but percentiles haven't updated for changed fields, wait more
+                if (hasChanged && attempts <= 7) {
+                    console.log('🔄 Birth measurement updatedAt changed, waiting for percentiles to update...');
+                    return false;
+                }
+                
+                // After several attempts with changed updatedAt, stop anyway
+                if (hasChanged && attempts > 7) {
+                    console.log('⏱️ Birth measurement updatedAt changed but percentiles not updated after waiting, stopping');
+                    return true;
+                }
+                
+                return false;
+            }
+        }
+    );
 
     console.log("🔍 BabyProfile mounted with babyId:", babyId);
 
@@ -70,27 +259,49 @@ const BabyProfile = () => {
         try {
             setSaving(true);
             setError("");
+            setPollingError(null);
 
-            // Previous snapshot to detect updatedAt changes
-            const snapshotMap = measurements.reduce((acc, m) => {
-                if (m?.dataId && m.updatedAt) acc[m.dataId] = m.updatedAt;
+            // 1. CAPTURE INITIAL STATE WITH PERCENTILES
+            const initialMeasurementsSnapshot = measurements.reduce((acc, m) => {
+                if (m?.dataId) {
+                    acc[m.dataId] = {
+                        updatedAt: m.updatedAt,
+                        percentiles: m.percentiles ? { ...m.percentiles } : null,
+                        birthWeight: m.measurements?.weight,
+                        birthHeight: m.measurements?.height,
+                        headCircumference: m.measurements?.headCircumference
+                    };
+                }
                 return acc;
             }, {});
-            const prevBirthDate = baby?.baby?.dateOfBirth;
-            const prevBirthUpdatedAt = measurements.find(m => m.measurementDate === prevBirthDate)?.updatedAt;
+            
+            const birthDataId = baby?.baby?.birthDataId;
+            const initialBirthMeasurement = birthDataId ? 
+                measurements.find(m => m.dataId === birthDataId) : null;
 
-            // Decide if backend should request synchronous recalculation.
-            // Backend only evaluates recalculation branches when syncRecalc=true, so we include
-            // structural changes (gender/dateOfBirth) OR birth measurement field changes.
+            console.log("🔍 Initial state captured:", {
+                totalMeasurements: Object.keys(initialMeasurementsSnapshot).length,
+                birthDataId,
+                initialBirthData: initialBirthMeasurement ? {
+                    updatedAt: initialBirthMeasurement.updatedAt,
+                    percentiles: initialBirthMeasurement.percentiles,
+                    measurements: {
+                        birthWeight: initialBirthMeasurement.measurements?.weight,
+                        birthHeight: initialBirthMeasurement.measurements?.height,
+                        headCircumference: initialBirthMeasurement.measurements?.headCircumference
+                    }
+                } : null
+            });
+
+            // Build diff payload - only send changed fields
             const original = baby?.baby || {};
             const allKeys = ['name','dateOfBirth','gender','premature','gestationalWeek','birthWeight','birthHeight','headCircumference'];
-            // Build diff object: only send fields that actually changed (strict inequality)
             const diffPayload = {};
+            
             for (const k of allKeys) {
                 if (k in updatedBabyData) {
                     const newVal = updatedBabyData[k];
                     const oldVal = original[k];
-                    // Normalize number/string comparison (e.g., "3200" vs 3200)
                     const normalizedNew = typeof newVal === 'number' ? newVal : (newVal === '' ? undefined : newVal);
                     const normalizedOld = typeof oldVal === 'number' ? oldVal : (oldVal === '' ? undefined : oldVal);
                     if (JSON.stringify(normalizedNew) !== JSON.stringify(normalizedOld)) {
@@ -98,12 +309,7 @@ const BabyProfile = () => {
                     }
                 }
             }
-            const structuralKeys = ['gender', 'dateOfBirth'];
-            const birthKeys = ['birthWeight', 'birthHeight', 'headCircumference'];
-            const changedStructural = structuralKeys.filter(k => k in diffPayload);
-            const changedBirth = birthKeys.filter(k => k in diffPayload);
-            const needsSync = changedStructural.length > 0 || changedBirth.length > 0;
-            const changedBirthSet = new Set(changedBirth);
+
             if (Object.keys(diffPayload).length === 0) {
                 console.log('ℹ️ No effective changes detected; aborting save.');
                 setSaving(false);
@@ -111,98 +317,149 @@ const BabyProfile = () => {
                 return;
             }
 
-            console.log("🔍 Saving baby data. diff keys=", Object.keys(diffPayload), "syncRecalc=", needsSync);
+            // Classify change types
+            const structuralKeys = ['gender', 'dateOfBirth'];
+            const birthKeys = ['birthWeight', 'birthHeight', 'headCircumference'];
+            const changedStructural = structuralKeys.filter(k => k in diffPayload);
+            const changedBirth = birthKeys.filter(k => k in diffPayload);
+            const needsSync = changedStructural.length > 0 || changedBirth.length > 0;
 
-            // Save (send only diff fields)
+            console.log("🔍 Change analysis:", {
+                total: Object.keys(diffPayload),
+                structural: changedStructural,
+                birth: changedBirth,
+                needsSync
+            });
+
+            // Save changes
             const response = await updateBaby(babyId, diffPayload, { syncRecalc: needsSync });
-            
-            const mode = response?.mode; // 'full' | 'birth-only' | 'none' | undefined (legacy)
+            const mode = response?.mode;
 
-            if (mode === 'full') {
+            console.log(`🔍 PATCH response mode: ${mode}`);
+
+            // Update baby data
+            if (response.baby) setBaby({ baby: response.baby });
+
+            // 2. INTELLIGENT POLLING LOGIC
+            if (changedStructural.length > 0) {
+                // Structural changes affect all measurements
                 if (response.measurements) {
                     setMeasurements(response.measurements);
-                    console.log(`🔍 FULL mode: ${response.measurements.length} measurements (recalculated).`);
+                    console.log(`🔍 Structural change: ${response.measurements.length} measurements updated`);
                 }
-                if (response.baby) setBaby({ baby: response.baby });
-                // Wait for confirmation: ALL measurements have a different updatedAt + valid percentiles
-                setWaitingRecalc(true);
-                try {
-                    const res = await waitForAllRecalc({ snapshotMap });
-                    if (res.success) {
-                        setMeasurements(res.measurements);
-                        console.log(`✅ Confirmed FULL recalc (attempts=${res.attempts}).`);
-                    } else {
-                        console.warn(`⚠️ Timeout waiting for FULL recalc (attempts=${res.attempts}).`);
+                
+                if (mode === 'full' && Object.keys(initialMeasurementsSnapshot).length > 0) {
+                    setWaitingRecalc(true);
+                    
+                    // Set reference for intelligent stop condition
+                    measurementSnapshotsRef.current = Object.keys(initialMeasurementsSnapshot).reduce((acc, id) => {
+                        acc[id] = initialMeasurementsSnapshot[id].updatedAt;
+                        return acc;
+                    }, {});
+                    
+                    console.log('🔍 Starting intelligent structural measurements polling...');
+                    allMeasurementsPolling.start();
+                    
+                    // Wait for polling to finish
+                    while (allMeasurementsPolling.isRunning) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
                     }
-                } finally {
+                    
+                    const finalData = allMeasurementsPolling.data;
+                    if (finalData && finalData.length > 0) {
+                        setMeasurements(finalData);
+                        console.log(`✅ All measurements updated (attempts=${allMeasurementsPolling.attempts})`);
+                    } else {
+                        console.warn(`⚠️ Structural polling finished without success (attempts=${allMeasurementsPolling.attempts})`);
+                        setPollingError("Failed to confirm all measurements update");
+                    }
                     setWaitingRecalc(false);
                 }
-            } else if (mode === 'birth-only') {
-                if (response.baby) setBaby({ baby: response.baby });
+                
+            } else if (changedBirth.length > 0) {
+                // Only birth measurement changes - intelligent percentile checking
                 const birthItem = response.measurements?.[0];
                 if (birthItem) {
-                    const dob = (response.baby?.dateOfBirth) || (baby?.baby?.dateOfBirth);
+                    // Update measurements with birth item
+                    const dob = response.baby?.dateOfBirth || baby?.baby?.dateOfBirth;
                     let next = [...measurements];
                     const idx = next.findIndex(m =>
                         (dob && m.measurementDate === dob) ||
                         (birthItem.dataId && m.dataId === birthItem.dataId)
                     );
-                    if (idx >= 0) next[idx] = { ...next[idx], ...birthItem }; else next.push(birthItem);
+                    if (idx >= 0) next[idx] = { ...next[idx], ...birthItem };
+                    else next.push(birthItem);
                     next.sort((a, b) => (b.measurementDate || '').localeCompare(a.measurementDate || ''));
                     setMeasurements(next);
-                    console.log('🔍 BIRTH-ONLY mode: merged birth measurement.');
-                    // Wait only for birth measurement (updatedAt changes + percentiles present)
-                    if (prevBirthDate) {
+                    
+                    // Intelligent check: only verify percentiles changed for modified fields
+                    const hasValidPercentiles = hasChangedPercentiles(birthItem, initialBirthMeasurement, changedBirth);
+                    const hasUpdatedTimestamp = birthItem.updatedAt && 
+                        birthItem.updatedAt !== initialBirthMeasurement?.updatedAt;
+                    
+                    console.log('🔍 Birth-only intelligent analysis:', {
+                        changedFields: changedBirth,
+                        hasValidPercentiles,
+                        hasUpdatedTimestamp,
+                        mode,
+                        initialPercentiles: initialBirthMeasurement?.percentiles,
+                        currentPercentiles: birthItem.percentiles
+                    });
+                    
+                    if (!hasValidPercentiles || !hasUpdatedTimestamp) {
                         setWaitingRecalc(true);
-                        try {
-                            const res = await waitForBirthRecalc({ birthDate: prevBirthDate, prevUpdatedAt: prevBirthUpdatedAt });
-                            if (res.success) {
-                                // Reemplazar lista completa para asegurar persistencia final
-                                setMeasurements(res.measurements);
-                                console.log(`✅ Confirmed BIRTH recalc (attempts=${res.attempts}).`);
-                            } else {
-                                console.warn(`⚠️ Timeout waiting for BIRTH recalc (attempts=${res.attempts}).`);
-                            }
-                        } finally {
-                            setWaitingRecalc(false);
+                        
+                        // Set references for intelligent stop condition  
+                        prevUpdatedAtRef.current = initialBirthMeasurement?.updatedAt;
+                        initialBirthMeasurementRef.current = initialBirthMeasurement;
+                        changedBirthFieldsRef.current = changedBirth;
+                        
+                        console.log('🔍 Starting intelligent birth measurement polling...');
+                        birthMeasurementPolling.start();
+                        
+                        // Wait for polling to finish
+                        while (birthMeasurementPolling.isRunning) {
+                            await new Promise(resolve => setTimeout(resolve, 100));
                         }
-                    }
-                }
-            } else if (mode === 'none') {
-                if (response.baby) setBaby({ baby: response.baby }); else await loadData(false);
-                // Fallback: if birth fields changed but backend still returned none (legacy behavior), wait for birth recalculation.
-                if (changedBirthSet.size > 0 && prevBirthDate) {
-                    console.log('⚠️ Backend returned mode=none but birth fields changed; initiating fallback birth wait.');
-                    setWaitingRecalc(true);
-                    try {
-                        const res = await waitForBirthRecalc({ birthDate: prevBirthDate, prevUpdatedAt: prevBirthUpdatedAt });
-                        if (res.success) {
-                            setMeasurements(res.measurements);
-                            console.log(`✅ Fallback birth recalc confirmed (attempts=${res.attempts}).`);
+                        
+                        const finalData = birthMeasurementPolling.data;
+                        if (finalData && finalData.updatedAt !== initialBirthMeasurement?.updatedAt) {
+                            // Update specific measurement
+                            setMeasurements(prev => {
+                                const updated = [...prev];
+                                const idx = updated.findIndex(m => m.dataId === finalData.dataId);
+                                if (idx >= 0) updated[idx] = finalData;
+                                return updated;
+                            });
+                            
+                            console.log(`✅ Birth measurement updated (attempts=${birthMeasurementPolling.attempts})`);
                         } else {
-                            console.warn(`⚠️ Timeout in fallback birth wait (attempts=${res.attempts}).`);
+                            console.log("datos iniciales:", initialBirthMeasurement, "datos finales:", finalData);
+                            console.warn(`⚠️ Birth polling finished without success (attempts=${birthMeasurementPolling.attempts})`);
+                            setPollingError("Failed to confirm birth measurement update");
                         }
-                    } finally {
                         setWaitingRecalc(false);
+                    } else {
+                        console.log('✅ Birth measurement already updated, no polling needed');
                     }
-                } else {
-                    console.log('🔍 NONE mode: no recalculation performed.');
                 }
+                
             } else {
-                await loadData(false); // fallback legacy
-                console.log('ℹ️ Fallback: reloaded data (no mode provided).');
+                // Non-critical changes only
+                console.log('✅ Non-critical changes only, no polling needed');
+                if (mode === 'none' || !response.measurements) {
+                    await loadData(false); // Fallback refresh
+                }
             }
-            // Close edit mode only AFTER any waiting logic finishes
-            setEditMode(false);
 
-            console.log("🔍 Baby profile updated successfully");
+            setEditMode(false);
+            console.log("✅ Baby profile updated successfully");
 
         } catch (err) {
-            console.error("Error updating baby profile:", err);
+            console.error("❌ Error updating baby profile:", err);
             setError("Failed to update baby profile. Please try again.");
-            setSaving(false);
         } finally {
-            setSaving(false); // ensure spinner ends
+            setSaving(false);
         }
     };
 
@@ -288,13 +545,24 @@ const BabyProfile = () => {
                         onEdit={() => setEditMode(true)}
                         onDelete={handleDelete}
                     />
-                    {waitingRecalc && (
-                        <div className="mt-4 p-3 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-700 flex items-center gap-2">
-                            <svg className="w-5 h-5 animate-spin text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <circle cx="12" cy="12" r="10" strokeWidth="4" className="opacity-25" />
-                                <path d="M4 12a8 8 0 018-8" strokeWidth="4" className="opacity-75" />
-                            </svg>
-                            Confirming updated percentiles...
+                    {(waitingRecalc || pollingError) && (
+                        <div className={`mt-4 p-3 rounded-md border text-sm flex items-center gap-2 ${
+                            pollingError 
+                                ? 'bg-red-50 border-red-200 text-red-700'
+                                : 'bg-blue-50 border-blue-200 text-blue-700'
+                        }`}>
+                            {waitingRecalc && (
+                                <svg className="w-5 h-5 animate-spin text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <circle cx="12" cy="12" r="10" strokeWidth="4" className="opacity-25" />
+                                    <path d="M4 12a8 8 0 018-8" strokeWidth="4" className="opacity-75" />
+                                </svg>
+                            )}
+                            {pollingError && (
+                                <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                            )}
+                            {pollingError || "Updating percentiles..."}
                         </div>
                     )}
                 </div>

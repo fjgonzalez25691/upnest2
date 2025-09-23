@@ -54,10 +54,12 @@ frontend/__tests__/
 # Ignore aws sam artifacts
 .aws-sam/
 
-# Ignore auxiliars scripts
+# Ignore auxiliars scripts and trial files
 scripts/
 informe.md
 resumen.md
 .gitignore
 frontend/src/utils/numberUtils.js
 .gitignore
+frontend/src/pages/dev/
+
