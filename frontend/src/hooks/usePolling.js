@@ -4,20 +4,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * usePolling(fn, options)
  *  fn: (signal) => Promise<any>
  *  options:
- *    - interval (ms)
- *    - leading = true
+ *    - interval (ms) = 2000
+ *    - leading = true (ejecuta inmediatamente al iniciar)
  *    - enabled = true
- *    - maxRetries
- *    - backoffFactor = 1
- *    - jitter = false
- *    - stopOnError = false
- *    - pauseOnHidden = true
- *    - stopCondition = (data, attempts) => boolean
+ *    - maxRetries (errores consecutivos antes de parar)
+ *    - backoffFactor = 1 (exponencial sobre errores)
+ *    - jitter = false (aleatoriza delay ±20%)
+ *    - stopOnError = false (si true, detiene al primer error)
+ *    - pauseOnHidden = true (pausa mientras pestaña oculta)
+ *    - stopCondition = (data, attempts) => boolean  (si true -> éxito)
+ *    - onSuccess = (data) => void (se llama UNA vez cuando stopCondition true)
+ *    - onError = (error, attempts) => void (cada error; attempts = consecutivos)
+ *    - debug = false (logs internos)
  */
 export function usePolling(
   fn,
   {
-    interval,
+    interval = 2000,
     leading = true,
     enabled = true,
     maxRetries,
@@ -26,7 +29,10 @@ export function usePolling(
     stopOnError = false,
     pauseOnHidden = true,
     stopCondition,
-  }
+    onSuccess,          // NUEVO
+    onError,            // NUEVO
+    debug = false,      // NUEVO
+  } = {}
 ) {
   const [state, setState] = useState({
     data: undefined,
@@ -39,6 +45,11 @@ export function usePolling(
   const timerIdRef = useRef(null);
   const abortRef = useRef(null);
   const runningRef = useRef(Boolean(enabled));
+  const successRef = useRef(false); // evita doble onSuccess
+
+  const log = useCallback((...args) => {
+    if (debug) console.log("[usePolling]", ...args);
+  }, [debug]);
 
   const clearTimer = useCallback(() => {
     if (timerIdRef.current !== null) {
@@ -54,44 +65,37 @@ export function usePolling(
     setState((s) => ({ ...s, isRunning: false }));
   }, [clearTimer]);
 
-  // Función para calcular delay con backoff y jitter
-  const calculateDelay = useCallback((baseDelay, attemptCount) => {
-    let delay = baseDelay;
-
-    // backoff por errores consecutivos
-    if (attemptCount > 0 && backoffFactor > 1) {
-      delay = baseDelay * Math.pow(backoffFactor, attemptCount);
-    }
-    if (jitter) {
-      const factor = 1 + (Math.random() - 0.5) * 0.4; // ±20%
-      delay = Math.max(0, Math.floor(delay * factor));
-    }
-
-    return delay;
-  }, [backoffFactor, jitter]);
+  const calculateDelay = useCallback(
+    (baseDelay, attemptCount) => {
+      let delay = baseDelay;
+      if (attemptCount > 0 && backoffFactor > 1) {
+        delay = baseDelay * Math.pow(backoffFactor, attemptCount);
+      }
+      if (jitter) {
+        const factor = 1 + (Math.random() - 0.5) * 0.4; // ±20%
+        delay = Math.max(0, Math.floor(delay * factor));
+      }
+      return delay;
+    },
+    [backoffFactor, jitter]
+  );
 
   const tick = useCallback(async () => {
     if (!runningRef.current) return;
 
-    // Función interna para programar siguiente ejecución (evita dependencia circular)
     const scheduleNext = (baseDelay, attemptCount = 0) => {
-      setState((currentState) => {
-        const delay = calculateDelay(baseDelay, attemptCount);
-        clearTimer();
-        timerIdRef.current = window.setTimeout(() => {
-          tick();
-        }, delay);
-        return currentState; // No modificamos el estado, solo programamos
-      });
+      const delay = calculateDelay(baseDelay, attemptCount);
+      clearTimer();
+      timerIdRef.current = window.setTimeout(() => {
+        tick();
+      }, delay);
     };
 
-    // Pausar si la pestaña está oculta
     if (pauseOnHidden && document.visibilityState === "hidden") {
       scheduleNext(interval);
       return;
     }
 
-    // cancelar petición previa si existía
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -100,6 +104,16 @@ export function usePolling(
 
     try {
       const result = await fn(controller.signal);
+      
+      // ✅ FIX: Evaluar stopCondition ANTES de setState
+      let shouldStop = false;
+      if (!successRef.current && stopCondition && stopCondition(result, state.attempts + 1)) {
+        shouldStop = true;
+        successRef.current = true;
+        runningRef.current = false;
+        log("stopCondition met -> success");
+      }
+
       setState((s) => {
         const newState = {
           ...s,
@@ -107,59 +121,69 @@ export function usePolling(
           isFetching: false,
           attempts: 0,
         };
-        
-        // Check stop condition if provided
-        if (stopCondition && stopCondition(result, s.attempts + 1)) {
-          stop();
-          return newState;
+
+        if (shouldStop) {
+          return { ...newState, isRunning: false };
         }
-        
-        // Schedule next execution after success
+
+        // Continuar polling
         const delay = calculateDelay(interval, 0);
         clearTimer();
         timerIdRef.current = window.setTimeout(() => {
           tick();
         }, delay);
-        
         return newState;
       });
+
+      // ✅ FIX: Llamar onSuccess después de setState, pero basado en la evaluación previa
+      if (shouldStop && onSuccess) {
+        try {
+          log("Calling onSuccess callback");
+          onSuccess(result);
+        } catch (cbErr) {
+          console.error("[usePolling] onSuccess error:", cbErr);
+        }
+      }
     } catch (err) {
       if (err && err.name === "AbortError") {
-        // parada manual o re-render
         setState((s) => ({ ...s, isFetching: false }));
         return;
       }
 
       setState((s) => {
         const newAttempts = s.attempts + 1;
-        
-        if (stopOnError) {
-          stop();
+
+        // Llamar callback de error siempre que ocurra
+        if (onError) {
+            try { onError(err, newAttempts); } catch (cbErr) {
+              console.error("[usePolling] onError error:", cbErr);
+            }
+        }
+
+        // cortar por stopOnError o maxRetries
+        if (
+          stopOnError ||
+          (typeof maxRetries === "number" && newAttempts >= maxRetries)
+        ) {
+          log("Stopping due to error policy", { stopOnError, maxRetries, newAttempts });
+          runningRef.current = false;
+          clearTimer();
           return {
             ...s,
             error: err,
             isFetching: false,
             attempts: newAttempts,
+            isRunning: false,
           };
         }
-        
-        if (typeof maxRetries === "number" && newAttempts >= maxRetries) {
-          stop();
-          return {
-            ...s,
-            error: err,
-            isFetching: false,
-            attempts: newAttempts,
-          };
-        }
-        
-        // Programar reintento con backoff
+
+        // reintentar con backoff
         const delay = calculateDelay(interval, newAttempts);
         clearTimer();
         timerIdRef.current = window.setTimeout(() => {
           tick();
         }, delay);
-        
+
         return {
           ...s,
           error: err,
@@ -174,10 +198,13 @@ export function usePolling(
     pauseOnHidden,
     calculateDelay,
     clearTimer,
-    stop,
+    stopCondition,
     stopOnError,
     maxRetries,
-    stopCondition,
+    onSuccess,
+    onError,
+    log,
+    state.attempts, // ✅ FIX: Añadido para acceder al valor actual
   ]);
 
   const scheduleNext = useCallback(
@@ -193,6 +220,7 @@ export function usePolling(
 
   const start = useCallback(() => {
     if (runningRef.current) return;
+    successRef.current = false;
     runningRef.current = true;
     setState((s) => ({ ...s, isRunning: true }));
     if (leading) {
@@ -203,11 +231,12 @@ export function usePolling(
   }, [interval, leading, scheduleNext, tick]);
 
   const reset = useCallback(() => {
+    successRef.current = false;
     setState((s) => ({ ...s, attempts: 0, error: undefined }));
   }, []);
 
-  // Arranque / parada según "enabled"
   useEffect(() => {
+    successRef.current = false;
     if (enabled) {
       runningRef.current = true;
       setState((s) => ({ ...s, isRunning: true }));
@@ -222,21 +251,19 @@ export function usePolling(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, interval, leading]);
 
-  // Pausar/continuar al cambiar visibilidad
   useEffect(() => {
     if (!pauseOnHidden) return;
     const onVis = () => {
       if (!runningRef.current) return;
       clearTimer();
       if (document.visibilityState === "visible") {
-        scheduleNext(0); // dispara pronto al volver visible
+        scheduleNext(0);
       }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [pauseOnHidden, scheduleNext, clearTimer]);
 
-  // Limpieza al desmontar
   useEffect(() => {
     return () => {
       clearTimer();
@@ -246,9 +273,9 @@ export function usePolling(
 
   return {
     ...state,
-    tick, // fuerza una iteración inmediata
-    start, // inicia si estaba parado
-    stop, // detiene y cancela la petición en curso
-    reset, // limpia error y contador
+    start,
+    stop,
+    reset,
+    tick, // fuerza un ciclo inmediato
   };
 }

@@ -367,6 +367,10 @@ def lambda_handler(event, context):
                     items = resp.get('Items', [])
                     updated_count = 0
                     metrics_union = set()
+                    
+                    # 🆕 ADD: Dictionary to store recalculated percentiles
+                    calculated_percentiles_by_measurement = {}
+                    
                     for item in items:
                         raw_meas = item.get('measurements') or {}
                         meas = {k: (float(v) if v is not None else None) for k, v in raw_meas.items()}
@@ -376,7 +380,11 @@ def lambda_handler(event, context):
                             pct = compute_percentiles({"gender": baby.get('gender'), "dateOfBirth": baby.get('dateOfBirth')}, item.get('measurementDate'), meas) or {}
                         except Exception as e:
                             logger.error(f"[PCT_PATCH:ERROR] dataId={item.get('dataId')} err={e}")
+                        
                         if pct:
+                            # 🆕 ADD: Save calculated percentiles to return them
+                            calculated_percentiles_by_measurement[item['dataId']] = {k: float(v) for k, v in pct.items()}
+                            
                             metrics_union.update(pct.keys())
                             try:
                                 growth_table.update_item(
@@ -409,6 +417,7 @@ def lambda_handler(event, context):
                     duration_ms = int((time.time() - start) * 1000)
                     logger.info(f"[PATCH:FULL:END] babyId={baby_id} updatedCount={updated_count} durationMs={duration_ms}")
 
+                    # Get updated measurements from DB (as before)
                     updated_measurements_resp = growth_table.query(IndexName='BabyGrowthDataIndex', KeyConditionExpression=Key('babyId').eq(baby_id))
                     updated_measurements = updated_measurements_resp.get('Items', [])
                     updated_measurements.sort(key=lambda x: x.get('measurementDate', ''), reverse=True)
@@ -424,9 +433,18 @@ def lambda_handler(event, context):
                         else:
                             itm['percentiles'] = itm.get('percentiles', {}) or {}
 
+                    # 🆕 ADD: Create measurements with calculated percentiles for comparison
+                    measurements_with_calculated_percentiles = []
+                    for measurement in updated_measurements:
+                        measurement_with_calc = dict(measurement)  # Copy
+                        data_id = measurement.get('dataId')
+                        if data_id in calculated_percentiles_by_measurement:
+                            measurement_with_calc['calculatedPercentiles'] = calculated_percentiles_by_measurement[data_id]
+                        measurements_with_calculated_percentiles.append(measurement_with_calc)
+
                     return response(200, {
                         "baby": baby,
-                        "measurements": updated_measurements,
+                        "measurements": measurements_with_calculated_percentiles,  # 🆕 With calculated percentiles
                         "updatedCount": updated_count,
                         "totalItems": len(items),
                         "metricsUpdated": sorted(list(metrics_union)),
@@ -448,7 +466,7 @@ def lambda_handler(event, context):
                             "mode": "birth-only"
                         })
 
-                    # Persist birthPercentiles on baby (para lectura directa)
+                    # Persist birthPercentiles on baby (for direct reading)
                     try:
                         table.update_item(
                             Key={'babyId': baby_id},
@@ -462,7 +480,7 @@ def lambda_handler(event, context):
                         logger.error(f"[PATCH:BIRTH_PCT:ERROR_UPDATE] babyId={baby_id} err={e}")
                         return response(500, {"error": "Failed to save birth percentiles"})
 
-                    # Intentar leer growth-data existente del nacimiento
+                    # Try to read existing birth growth-data
                     birth_measurement = None
                     birth_data_id = baby.get('birthDataId')
                     dob = baby.get('dateOfBirth')
@@ -475,7 +493,7 @@ def lambda_handler(event, context):
                         except Exception as e:
                             logger.error(f"[PATCH:BIRTH_ONLY:FETCH_EXISTING_ERROR] babyId={baby_id} err={e}")
 
-                    # Si no existe todavía (el stream aún no escribió), sintetizamos
+                    # If it doesn't exist yet (stream hasn't written), synthesize it
                     if not birth_measurement:
                         birth_measurement = {
                             "dataId": birth_data_id or "synthetic-birth",
@@ -488,15 +506,15 @@ def lambda_handler(event, context):
                                 "height": float(baby.get("birthHeight")) if baby.get("birthHeight") is not None else None,
                                 "headCircumference": float(baby.get("headCircumference")) if baby.get("headCircumference") is not None else None,
                             },
-                            "synthetic": True,   # marca para saber que aún puede reemplazarse por el real
+                            "synthetic": True,   # mark to know it can still be replaced by the real one
                             "createdAt": datetime.now(timezone.utc).isoformat(),
                             "updatedAt": datetime.now(timezone.utc).isoformat(),
                         }
 
-                    # Merge/override percentiles en memoria (sin esperar al stream)
+                    # Merge/override percentiles in memory (without waiting for stream)
                     birth_measurement['percentiles'] = {k: float(v) for k, v in birth_pct.items()}
 
-                    # Normalizar Decimals por si vino de Dynamo
+                    # Normalize Decimals in case they came from DynamoDB
                     for sec in ('measurements', 'percentiles'):
                         if sec in birth_measurement and birth_measurement[sec]:
                             for k, v in list(birth_measurement[sec].items()):
