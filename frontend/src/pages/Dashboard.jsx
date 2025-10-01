@@ -13,14 +13,14 @@ const Dashboard = () => {
   const [error, setError] = useState("");
 
   // Debug useEffect - added for troubleshooting
-  useEffect(() => {
+  /* useEffect(() => {
     console.log('🔍 Dashboard Debug:');
     console.log('🔍 User:', user);
     console.log('🔍 UserId:', userId);
     console.log('🔍 IsAuthenticated:', user ? 'Yes' : 'No');
     console.log('🔍 User token:', user?.id_token ? 'Present' : 'Missing');
     console.log('🔍 localStorage keys:', Object.keys(localStorage));
-  }, [user, userId]);
+  }, [user, userId]); */
 
   // Fetch user's babies on component mount
   useEffect(() => {

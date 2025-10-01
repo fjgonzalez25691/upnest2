@@ -39,8 +39,7 @@ Conditions:
   CreateGrowthDataTable: !Equals [!Ref ExistingGrowthDataTable, ""]
   UseExistingGrowthDataTable: !Not [!Equals [!Ref ExistingGrowthDataTable, ""]]
   UseExistingBabiesTable: !Not [!Equals [!Ref ExistingBabiesTable, ""]]
-  HasBabiesStreamSource: !Or [ !Condition CreateBabiesTable, !Condition UseExistingBabiesTable ]
-  HasGrowthDataStreamSource: !Or [ !Condition CreateGrowthDataTable, !Condition UseExistingGrowthDataTable ]
+  
 
 
 Globals:
@@ -394,10 +393,14 @@ Resources:
     # Lambda Functions - CHANGED: Added individual tags to each function
     UpNest2BabyFunction:
       Type: AWS::Serverless::Function
+      
       Properties:
         FunctionName: upnest2-baby
         CodeUri: backend/lambdas/babies/
         Handler: baby_service.lambda_handler
+        Environment:
+          Variables:
+            GROWTH_DATA_LAMBDA: !GetAtt UpNest2GrowthDataFunction.Arn
         Description: UpNest2 Baby CRUD operations + Stream processing
         Timeout: 60
         MemorySize: 512
@@ -424,6 +427,12 @@ Resources:
                 - CreateBabiesTable
                 - !GetAtt BabiesTable.StreamArn
                 - !GetAtt ExistingBabiesTableStreamArn.StreamArn
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource:
+                - !GetAtt UpNest2GrowthDataFunction.Arn
+                - !Sub "${UpNest2GrowthDataFunction.Arn}:*"
         Events:
           BabiesGet:
             Type: Api
@@ -462,7 +471,6 @@ Resources:
               Path: /babies/{babyId}
               Method: DELETE
           BabiesStream:
-            Condition: HasBabiesStreamSource
             Type: DynamoDB
             Properties:
               Stream: !If
@@ -551,7 +559,6 @@ Resources:
           - !Ref PercentilesCalLayer
 
     UpNest2PercentilesFunction:
-      Condition: HasGrowthDataStreamSource
       Type: AWS::Serverless::Function
       Properties:
         FunctionName: upnest2-percentiles
@@ -664,7 +671,7 @@ Outputs:
       Name: !Sub "${AWS::StackName}-ExistingBabiesTableStreamArn" 
     
   PercentilesFunctionName:
-    Condition: HasGrowthDataStreamSource
+    
     Description: "Percentiles Lambda function name"
     Value: !Ref UpNest2PercentilesFunction
     Export:

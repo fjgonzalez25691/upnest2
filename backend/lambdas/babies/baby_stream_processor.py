@@ -3,28 +3,45 @@
 Baby Stream Projector (MVP, no layers)
 
 Listens to DynamoDB Stream events from the Babies table and ensures there is a
-single "birth" measurement in GrowthData linked via Babies.birthDataId.
+single canonical "birth" GrowthData record referenced by Babies.birthDataId.
 
 Behavior:
-- If a baby has dateOfBirth and at least one birth measurement (weight/height/HC),
-  upsert GrowthData item at dataId = birthDataId (or create a new UUID if missing),
-  with measurementDate = dateOfBirth and measurements normalized to Decimal.
-- If birth measurements become empty (no values) and a birthDataId exists,
-  delete the GrowthData birth item and remove Babies.birthDataId.
-- On DOB or birth measurements change, update GrowthData and REMOVE 'percentiles'
-  so the GrowthData stream recomputes with the new age/values.
+- If a baby has dateOfBirth plus at least one birth measurement (weight / height /
+    headCircumference), upsert a GrowthData item at dataId=birthDataId (or create a
+    new UUID) with measurementDate=dateOfBirth and normalized measurements.
+- If birth measurements become entirely empty (no numeric values) and a
+    birthDataId exists, delete the corresponding GrowthData item and clear
+    Babies.birthDataId.
+- Any DOB or birth measurement change removes the 'percentiles' attribute so the
+    downstream GrowthData stream processor recomputes with updated age/values.
 
-Env:
-  BABIES_TABLE, GROWTH_DATA_TABLE, GROWTH_DATA_LAMBDA
+Environment:
+    BABIES_TABLE, GROWTH_DATA_TABLE, GROWTH_DATA_LAMBDA
 
 Notes:
-- Measurements units expected: weight in grams; height/headCircumference in cm.
-- Percentiles are computed downstream by the GrowthData stream processor, which
-  recalculates on INSERT, when measurements change, or when 'percentiles' is missing.
+- Units expected: weight in grams; height & headCircumference in centimeters.
+- Percentiles are NOT computed here; we deliberately remove them to mark stale
+    state and let the GrowthData stream handler recalculate (single responsibility).
 
-Note: Synchronous HTTP recomputation via ``PATCH /babies/{id}?syncRecalc=1`` is now the
-recommended path. This stream processor remains as a best-effort fallback for legacy
-flows.
+Idempotence:
+- Upsert uses a stable birthDataId when present; replays of MODIFY events with the
+    same logical state result in identical writes (no-op aside from updatedAt).
+- Deleting when already absent or inserting identical normalized values is safe.
+
+Recompute Strategy:
+- We never compute percentiles inline here to keep latency and complexity low.
+- Removing 'percentiles' acts as an invalidation token recognized by the
+    growth_data_service internal recompute path.
+
+Limitations / Future:
+- Does not debounce rapid successive updates; multiple near-simultaneous writes
+    could briefly thrash 'percentiles'. Acceptable for current scale.
+- Additional validation (e.g., gestational age cross-check) could be added later.
+
+Migration Note:
+Synchronous HTTP recomputation via PATCH /babies/{id}?syncRecalc=1 is now the
+preferred path for user-facing updates. This stream processor remains a
+best-effort consistency layer and legacy fallback.
 """
 
 import os
@@ -49,7 +66,9 @@ _ser = TypeSerializer()
 
 BABIES_TABLE = os.environ.get("BABIES_TABLE", "upnest-babies")
 GROWTH_DATA_TABLE = os.environ.get("GROWTH_DATA_TABLE", "upnest-growth-data")
-GROWTH_DATA_LAMBDA = os.environ.get("GROWTH_DATA_LAMBDA", "UpNest2GrowthDataFunction")
+GROWTH_DATA_LAMBDA = os.environ.get("GROWTH_DATA_LAMBDA")
+if not GROWTH_DATA_LAMBDA:
+    logger.error("GROWTH_DATA_LAMBDA environment variable not set")
 
 babies_table = dynamodb.Table(BABIES_TABLE)
 growth_table = dynamodb.Table(GROWTH_DATA_TABLE)

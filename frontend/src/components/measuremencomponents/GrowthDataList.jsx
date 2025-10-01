@@ -58,7 +58,7 @@ const GrowthDataList = ({
         return sorted;
     }, [measurements, sortBy, sortOrder]);
     
-    console.log("Baby birth date:", birthDate);
+    // console.log("Baby birth date:", birthDate);
 
     const handleSort = (field) => {
         if (sortBy === field) {

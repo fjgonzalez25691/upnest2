@@ -21,14 +21,14 @@ const MeasurementCard = ({
         });
     };
 
-    console.log("MeasurementCard rendered with measurement:", { 
+    /* console.log("MeasurementCard rendered with measurement:", { 
         dataId: measurement.dataId,
         measurementDate: measurement.measurementDate,
         measurements: measurement.measurements,
         percentiles: measurement.percentiles,
         hasPercentiles: !!measurement.percentiles,
         birthDate 
-    });
+    }); */
 
     const getAgeAtMeasurement = (measurementDate, birthDate) => {
         if (!birthDate) return null;

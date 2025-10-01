@@ -2,20 +2,56 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * usePolling(fn, options)
- *  fn: (signal) => Promise<any>
- *  options:
+ * Generic resilient polling hook.
+ *
+ * fn: (signal: AbortSignal) => Promise<any>
+ *    Async function invoked every cycle. Receives an AbortSignal you SHOULD pass to fetch/axios when possible.
+ *
+ * options:
  *    - interval (ms) = 2000
- *    - leading = true (ejecuta inmediatamente al iniciar)
+ *        Base delay between successful iterations (before backoff/jitter adjustments).
+ *    - leading = true
+ *        When true, executes immediately upon start; otherwise schedules first run after `interval`.
  *    - enabled = true
- *    - maxRetries (errores consecutivos antes de parar)
- *    - backoffFactor = 1 (exponencial sobre errores)
- *    - jitter = false (aleatoriza delay ±20%)
- *    - stopOnError = false (si true, detiene al primer error)
- *    - pauseOnHidden = true (pausa mientras pestaña oculta)
- *    - stopCondition = (data, attempts) => boolean  (si true -> éxito)
- *    - onSuccess = (data) => void (se llama UNA vez cuando stopCondition true)
- *    - onError = (error, attempts) => void (cada error; attempts = consecutivos)
- *    - debug = false (logs internos)
+ *        Controls automatic start/stop via effect. Setting to false aborts & clears timers.
+ *    - maxRetries (number | undefined)
+ *        Maximum consecutive errors before stopping. Undefined => unlimited retries.
+ *    - backoffFactor = 1
+ *        Exponential backoff multiplier applied to the base interval for consecutive errors (>1 enables backoff).
+ *    - jitter = false
+ *        Adds ±20% randomization to the computed delay to avoid thundering herds.
+ *    - stopOnError = false
+ *        If true, stops immediately after the first error instead of retrying.
+ *    - pauseOnHidden = true
+ *        When true, pauses scheduling while the document/tab is hidden (visibility API) to save resources.
+ *    - stopCondition = (data, attempts) => boolean
+ *        Evaluated after each successful fn() resolution (after the first real fetch). If returns true -> stop & success.
+ *        `attempts` here represents the next attempt count (consecutive error counter + 1) for convenience.
+ *    - onSuccess = (data) => void
+ *        Invoked exactly once when stopCondition returns true.
+ *    - onError = (error, attempts) => void
+ *        Called on EVERY error. `attempts` is the consecutive error count after this failure.
+ *    - debug = false
+ *        Enables internal console logging (prefixed with [usePolling]).
+ *
+ * State returned:
+ *    data          Last successful result.
+ *    error         Last error (cleared on a successful cycle).
+ *    isRunning     Whether the polling loop is active (not yet stopped by success/error/disabled).
+ *    isFetching    Whether a request is currently in flight.
+ *    attempts      Consecutive error count.
+ *
+ * Returned controls:
+ *    start()       Manually (re)starts if not already running.
+ *    stop()        Stops future cycles and aborts in-flight request.
+ *    reset()       Resets error & consecutive attempt counter (does NOT auto-start if disabled).
+ *    tick()        Forces an immediate cycle (respecting current running state).
+ *
+ * Design notes / best practices:
+ *  - Stop condition is evaluated BEFORE state update to avoid race conditions with stale closures.
+ *  - onSuccess fires only once; further calls are suppressed.
+ *  - Consecutive errors apply exponential backoff if backoffFactor > 1, otherwise constant interval.
+ *  - Visibility pause avoids wasted calls when tab is hidden (especially helpful for mobile / battery).
  */
 export function usePolling(
   fn,
@@ -39,13 +75,13 @@ export function usePolling(
     error: undefined,
     isRunning: Boolean(enabled),
     isFetching: false,
-    attempts: 0, // errores consecutivos
+  attempts: 0, // consecutive error counter
   });
 
   const timerIdRef = useRef(null);
   const abortRef = useRef(null);
   const runningRef = useRef(Boolean(enabled));
-  const successRef = useRef(false); // evita doble onSuccess
+  const successRef = useRef(false); // prevents double onSuccess firing
 
   const log = useCallback((...args) => {
     if (debug) console.log("[usePolling]", ...args);
@@ -105,7 +141,7 @@ export function usePolling(
     try {
       const result = await fn(controller.signal);
       
-      // ✅ FIX: Evaluar stopCondition ANTES de setState
+  // Evaluate stopCondition BEFORE setState (race-condition safe)
       let shouldStop = false;
       if (!successRef.current && stopCondition && stopCondition(result, state.attempts + 1)) {
         shouldStop = true;
@@ -126,7 +162,7 @@ export function usePolling(
           return { ...newState, isRunning: false };
         }
 
-        // Continuar polling
+  // Schedule next polling cycle
         const delay = calculateDelay(interval, 0);
         clearTimer();
         timerIdRef.current = window.setTimeout(() => {
@@ -135,7 +171,7 @@ export function usePolling(
         return newState;
       });
 
-      // ✅ FIX: Llamar onSuccess después de setState, pero basado en la evaluación previa
+  // Fire onSuccess AFTER state update, based on pre-computed decision
       if (shouldStop && onSuccess) {
         try {
           log("Calling onSuccess callback");
@@ -153,14 +189,14 @@ export function usePolling(
       setState((s) => {
         const newAttempts = s.attempts + 1;
 
-        // Llamar callback de error siempre que ocurra
+  // Invoke onError callback for every error occurrence
         if (onError) {
             try { onError(err, newAttempts); } catch (cbErr) {
               console.error("[usePolling] onError error:", cbErr);
             }
         }
 
-        // cortar por stopOnError o maxRetries
+  // Stop due to policy: either explicit stopOnError or reached maxRetries
         if (
           stopOnError ||
           (typeof maxRetries === "number" && newAttempts >= maxRetries)
@@ -177,7 +213,7 @@ export function usePolling(
           };
         }
 
-        // reintentar con backoff
+  // Retry with (optional) exponential backoff
         const delay = calculateDelay(interval, newAttempts);
         clearTimer();
         timerIdRef.current = window.setTimeout(() => {
@@ -204,7 +240,7 @@ export function usePolling(
     onSuccess,
     onError,
     log,
-    state.attempts, // ✅ FIX: Añadido para acceder al valor actual
+  state.attempts, // included so closure sees latest attempts for stopCondition evaluation
   ]);
 
   const scheduleNext = useCallback(
@@ -276,6 +312,6 @@ export function usePolling(
     start,
     stop,
     reset,
-    tick, // fuerza un ciclo inmediato
+    tick, // force an immediate cycle
   };
 }

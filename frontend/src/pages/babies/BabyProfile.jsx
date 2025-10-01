@@ -1,5 +1,5 @@
 // src/pages/BabyProfile.jsx
-// Baby profile page for managing baby information
+// Baby profile page: displays baby baseline data, handles edits and orchestrates percentile recalculation polling.
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
@@ -8,6 +8,20 @@ import { getGrowthData, getGrowthMeasurement } from "../../services/growthDataAp
 import PrimaryButton from "../../components/PrimaryButton";
 import BabyProfileForm from "../../components/babycomponents/BabyProfileForm";
 import { usePolling } from "../../hooks/usePolling";
+
+// Utility comparator with numeric tolerance for percentile values (avoids noisy float diffs)
+ function comparePercentiles(persisted = {}, expected = {}, eps = 0.01) {
+    const keys = ["weight", "height", "headCircumference"];
+    return keys.every(k => {
+        const aRaw = persisted?.[k];
+        const bRaw = expected?.[k];
+        if (aRaw == null && bRaw == null) return true;
+        const a = parseFloat(aRaw ?? 0);
+        const b = parseFloat(bRaw ?? 0);
+        if (Number.isNaN(a) && Number.isNaN(b)) return true;
+        return Math.abs(a - b) < eps;
+    });
+}
 
 const BabyProfile = () => {
     const { babyId } = useParams();
@@ -18,32 +32,21 @@ const BabyProfile = () => {
     const [error, setError] = useState("");
     const [editMode, setEditMode] = useState(false);
     const navigate = useNavigate();
-    // Polling coordination states
+    // Polling coordination flags: keep separate booleans so modes don't interfere
     const [waitingForBirth, setWaitingForBirth] = useState(false);
     const [waitingForFull, setWaitingForFull] = useState(false);
 
-    // Expected target data for each polling mode (kept separate to avoid ambiguity)
+    // Expected target data for each polling mode (isolated to prevent cross‑contamination between birth/full flows)
     const [expectedBirthPercentiles, setExpectedBirthPercentiles] = useState(null); // object { weight, height, headCircumference }
     const [expectedFullMeasurements, setExpectedFullMeasurements] = useState(null); // array of measurements with calculatedPercentiles
 
-    console.log("🔍 BabyProfile mounted with babyId:", babyId);
+    // console.log("🔍 BabyProfile mounted with babyId:", babyId);
 
-    // Utility comparator with tolerance for floating values
-    const comparePercentiles = useCallback((persisted = {}, expected = {}, eps = 0.01) => {
-        const keys = ["weight", "height", "headCircumference"];    
-        return keys.every(k => {
-            const aRaw = persisted?.[k];
-            const bRaw = expected?.[k];
-            if (aRaw == null && bRaw == null) return true; // both missing
-            const a = parseFloat(aRaw ?? 0);
-            const b = parseFloat(bRaw ?? 0);
-            if (Number.isNaN(a) && Number.isNaN(b)) return true;
-            return Math.abs(a - b) < eps;
-        });
-    }, []);
+    
 
-    // Hook para el polling de recálculo de percentiles al actualizar datos de nacimiento
-    const _birthPolling = usePolling(
+    // Polling hook: birth-only recalculation
+    // Design: we only start when server responded with mode 'birth-only' and we have a target expectedBirthPercentiles set.
+    const birthPolling = usePolling(
         async () => {
             const birthDataId = baby?.baby?.birthDataId;
             return birthDataId ? await getGrowthMeasurement(birthDataId) : null;
@@ -58,9 +61,9 @@ const BabyProfile = () => {
             pauseOnHidden: true,
             stopCondition: (data) => {
                 if (!data || !expectedBirthPercentiles) return false;
-                const persisted = data.percentiles || {};
-                const allMatch = comparePercentiles(persisted, expectedBirthPercentiles);
-                console.log("🔍 Birth polling check", { persisted, expected: expectedBirthPercentiles, allMatch });
+                const birthPersistedPercentiles = data.percentiles || {};
+                const allMatch = comparePercentiles(birthPersistedPercentiles, expectedBirthPercentiles);
+                console.log("🔍 Birth polling check", { birthPersisted: birthPersistedPercentiles, birthExpected: expectedBirthPercentiles, allMatch });
                 if (allMatch) console.log("✅ Birth percentiles match calculated ones!");
                 return allMatch;
             },
@@ -79,8 +82,9 @@ const BabyProfile = () => {
 
     );
 
-    // Hook para el polling de recálculo completo de todas las medidas
-    const _fullPolling = usePolling(
+    // Polling hook: full recalculation (all measurements)
+    // NOTE: This is a safety net; backend already does synchronous recompute, but retained while feature stabilizes.
+    const fullPolling = usePolling(
         async () => {
             return await getGrowthData(babyId);
         },
@@ -181,7 +185,7 @@ const BabyProfile = () => {
         }
     );
 
-    // Unified data loading function
+    // Unified data loading (idempotent) – batches baby + growth data fetches
     const loadData = useCallback(async (showLoading = true) => {
         try {
             if (showLoading) setLoading(true);
@@ -211,19 +215,40 @@ const BabyProfile = () => {
         }
     }, [babyId]);
 
-    // Initial data load
+    // Initial load
     useEffect(() => {
         if (babyId) {
             loadData();
         }
     }, [babyId, loadData]);
 
+    // Reset polling states if babyId changes (avoid stale timers referencing previous baby context)
+    const resertPollingStates = useCallback(() => {
+        try {
+            birthPolling.stop();
+            birthPolling.reset();
+        } catch (e) {
+            console.warn("⚠️ Unable to reset birth polling:", e);
+        }
+        try {
+            fullPolling.stop();
+            fullPolling.reset();
+        } catch (e) {
+            console.warn("⚠️ Unable to reset full polling:", e);
+        }
+        setWaitingForBirth(false);
+        setWaitingForFull(false);
+        setExpectedBirthPercentiles(null);
+        setExpectedFullMeasurements(null);
+    }, [birthPolling, fullPolling]);
+
     const handleSave = async (updatedBabyData) => {
         try {
             setError("");
+            // Ensure polling related state is clean before starting a new save flow (avoid mixed expected targets)
+            resertPollingStates();
 
-
-            // Build diff payload - only send changed fields
+            // Build minimal diff payload (optimizes network + avoids unintended recompute triggers)
             const original = baby?.baby || {};
             const allKeys = [
                 'name',
@@ -258,11 +283,22 @@ const BabyProfile = () => {
 
             console.log("🔍 Saving changes:", diffPayload);
 
-            // Save changes (request synchronous recalculation mode)
+            // Persist changes (server chooses recalculation mode deterministically)
             const response = await updateBaby(babyId, diffPayload, { syncRecalc: true });
+
+            if (response?.baby) {
+                setBaby({ baby: response.baby });
+            } else {
+                //Update local snapshot to reflect form changes inmediately
+                setBaby(prev => ({ baby: { ...prev.baby, ...diffPayload }}));
+            }
             
             switch (response.mode) {
                 case 'birth-only':
+                    // Sync local baby state so next edit diff calculation uses fresh baseline
+                    if (response?.baby) {
+                        setBaby({ baby: response.baby });
+                    }
                     setExpectedBirthPercentiles(response.birthPercentiles);
                     setWaitingForBirth(true);
                     console.log("ℹ️ Waiting for birth measurements to be recalculated in the database...", {
@@ -273,6 +309,10 @@ const BabyProfile = () => {
 
                 case 'full':
                     console.log("🔍 Full recalculation triggered, setting up polling...", response.measurements);
+                    // Sync baby baseline immediately (gender/dateOfBirth changes affect recompute scope)
+                    if (response?.baby) {
+                        setBaby({ baby: response.baby });
+                    }
                     setExpectedFullMeasurements(response.measurements);
                     setWaitingForFull(true);
                     console.log("ℹ️ Waiting for all measurements to be recalculated in the database...", {
@@ -282,7 +322,7 @@ const BabyProfile = () => {
                     break;
                     
                 case 'none':
-                    // Actualización directa sin recálculo
+                    // Direct update without recompute
                     if (response?.baby?.babyId) {
                         setBaby({ baby: response.baby });
                         console.log("✅ Baby profile updated successfully (no recalc needed):", response);
@@ -324,7 +364,7 @@ const BabyProfile = () => {
         navigate("/add-measurement", { state: { baby: baby?.baby } });
     };
 
-    // Loading state
+    // Loading skeleton state
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6 flex items-center justify-center">
@@ -336,7 +376,7 @@ const BabyProfile = () => {
         );
     }
 
-    // Error state
+    // Error boundary state (basic inline handling)
     if (error || !baby) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
@@ -360,7 +400,7 @@ const BabyProfile = () => {
 
     return (
         <>
-            {/* Contenido principal */}
+            {/* Main content */}
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
                 <div className="max-w-4xl mx-auto">
                     {/* Navigation */}
@@ -376,12 +416,12 @@ const BabyProfile = () => {
                         </Link>
                     </div>
 
-                    {/* Baby Profile Form Component */}
+                    {/* Baby Profile Form */}
                     <div className="mb-8">
                         <BabyProfileForm
                             baby={baby?.baby}
                             isEditable={editMode}
-                            // Mostrar banner mientras guardamos o esperamos recalculo (polling)
+                            // Show recalculation banner while waiting for backend consistency
                             isRecalculating={waitingForBirth || waitingForFull}
                             onSave={handleSave}
                             onAdd={handleAddMeasurement}
@@ -412,7 +452,7 @@ const BabyProfile = () => {
 
                             {/* Growth Quick Actions */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {/* Charts */}
+                                {/* Charts card */}
                                 <div className="text-center p-6 bg-blue-50 rounded-xl border border-blue-100">
                                     <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
                                         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -433,7 +473,7 @@ const BabyProfile = () => {
                                     </Link>
                                 </div>
 
-                                {/* Add Data */}
+                                {/* Add Data card */}
                                 <div className="text-center p-6 bg-green-50 rounded-xl border border-green-100">
                                     <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
                                         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -449,7 +489,7 @@ const BabyProfile = () => {
                                     </PrimaryButton>
                                 </div>
 
-                                {/* History */}
+                                {/* History card */}
                                 <div className="text-center p-6 bg-purple-50 rounded-xl border border-purple-100">
                                     <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
                                         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -473,7 +513,7 @@ const BabyProfile = () => {
                         </div>
                     )}
 
-                    {/* Get Started Message if no data */}
+                    {/* Empty state message */}
                     {measurements.length === 0 && (
                         <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
                             <div className="text-center">
@@ -490,7 +530,7 @@ const BabyProfile = () => {
                 </div>
             </div>
 
-            {/* Modern Recalculation Overlay */}
+            {/* Percentile Recalculation Overlay */}
             {(waitingForBirth || waitingForFull) && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 backdrop-blur-md"

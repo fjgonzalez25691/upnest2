@@ -1,10 +1,41 @@
 """
 Unified Baby Service Handler
-Includes differentiated synchronous percentile recalculation logic in PATCH:
- - FULL (mode = full): if dateOfBirth or gender change => recalculates all growth-data percentiles + birthPercentiles
- - BIRTH ONLY (mode = birth-only): if ONLY birthWeight|birthHeight|headCircumference change => recalculates only birthPercentiles
- - NONE (mode = none): if no relevant fields change => no recalculation
-Always returns recalculated percentiles (no polling)
+
+Synchronous percentile recalculation logic (PATCH /babies/{id}) supports three
+explicit modes to keep behavior predictable and avoid unnecessary recompute:
+
+Modes:
+1. FULL (mode=full)
+     Trigger Conditions (any of):
+         - dateOfBirth change (age shifts -> all measurements need new percentiles)
+         - gender change (reference tables differ) 
+         - explicit forced full recompute request (future extension)
+     Action: Recompute percentiles for ALL growth-data items belonging to baby
+                     plus birthPercentiles (if birth measurements exist).
+
+2. BIRTH ONLY (mode=birth-only)
+     Trigger Conditions:
+         - Only birthWeight / birthHeight / headCircumference changed AND neither
+             dateOfBirth nor gender changed.
+     Action: Recompute ONLY the birthPercentiles and leave other measurements
+                     untouched for performance.
+
+3. NONE (mode=none)
+     Trigger Conditions:
+         - No relevant percentile-impacting fields changed (e.g., only name).
+     Action: Skip recomputation entirely; return current stored percentiles.
+
+Guarantees:
+- Always returns up-to-date percentiles for the impacted scope in the same
+    synchronous response (no client polling needed).
+- Avoids partial updates: if any recompute path errors, responds with error
+    (no silent partial writes of percentiles).
+- Numeric normalization applied before recomputation for consistency with
+    growth data service.
+
+Future Hooks (not yet implemented but reserved):
+- recalcVersion field for optimistic concurrency of percentile snapshots.
+- Optional async path with progress events if dataset scales large.
 """
 
 import json

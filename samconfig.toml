@@ -12,6 +12,12 @@ capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 s3_bucket = "upnest2"
 
+[staging.build.parameters]
+cached = true
+parallel = true
+no_dependency_layer = true
+
+
 [staging.deploy.parameters]
 stack_name = "sam-upNest2"
 s3_bucket = "upnest2"

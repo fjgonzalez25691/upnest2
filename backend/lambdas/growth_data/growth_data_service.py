@@ -1,12 +1,33 @@
 """
-Unified Growth Data Service - OPTIMIZED
-Handles ALL CRUD operations for growth data in ONE function
-Routes:
-- POST /growth-data (create)
-- GET /growth-data (list all with optional ?babyId=xxx filter)
-- GET /growth-data/{dataId} (get specific)
-- PUT /growth-data/{dataId} (update)
-- DELETE /growth-data/{dataId} (delete)
+Unified Growth Data Service (single Lambda entry point)
+
+Provides all CRUD operations plus an internal asynchronous recompute path for
+percentiles. Designed to minimize cold starts and code duplication.
+
+HTTP Routes (API Gateway shape):
+- POST   /growth-data                 -> create
+- GET    /growth-data                 -> list (optional ?babyId=... filter)
+- GET    /growth-data/{dataId}        -> retrieve single item
+- PUT    /growth-data/{dataId}        -> update
+- DELETE /growth-data/{dataId}        -> delete
+
+Internal Invocation (no httpMethod present):
+- Payload shape: {"dataId": "<uuid>"}
+    Used by other Lambdas (e.g. stream processors) to force percentile
+    recomputation for one record without going through API Gateway. The absence
+    of requestContext/httpMethod is the discriminator.
+
+Percentile Recompute Triggers:
+1. Explicit internal invocation with dataId payload.
+2. CRUD operations that create or update measurements and set/clear the
+     'percentiles' attribute.
+3. Downstream processes removing 'percentiles' to mark stale results.
+
+Design Notes:
+- Strictly avoids modifying business data during internal recompute; only the
+    'percentiles' field (and updatedAt timestamp) is touched.
+- Logging is intentionally verbose (INFO + some WARNING banners) while feature
+    stabilizes; can be reduced later once telemetry confirms reliability.
 """
 
 import json
@@ -260,39 +281,43 @@ def create_growth_data(event, user_id):
 
 def get_growth_data_list(event, user_id):
 
-    """Handle GET /growth-data with optional ?babyId filter"""
-    logger.warning(f"====Function get_growth_data_list====")
+    """Handle GET /growth-data with optional ?babyId filter.
+
+    NOTE: Verbose logging (DEBUG-ish at INFO level) is intentional for early
+    stabilization. Once query patterns are confirmed stable we can downgrade
+    most of these log lines to DEBUG or remove them.
+    """
+    logger.warning("==== get_growth_data_list START ====")
     try:
         query_params = event.get('queryStringParameters') or {}
         limit = min(int(query_params.get('limit', 50)), 100)
-        # DEBUG: Log complete event structure
-        logger.info(f"Complete event: {json.dumps(event, default=str)}")
+        # DEBUG: full raw event (may be large). Consider pruning once stable.
+        logger.info(f"[debug] full event: {json.dumps(event, default=str)}")
         baby_id = query_params.get('babyId')
         
-        # DEBUG: Logging detallado
-        logger.info(f"=== DEBUGGING GROWTH DATA QUERY ===")
-        logger.info(f"Query params received: {query_params}")
-        logger.info(f"Extracted baby_id: '{baby_id}' (type: {type(baby_id)})")
-        logger.info(f"User ID: {user_id}")
+        # DEBUG: breakdown of query parameters / context
+        logger.info("[debug] === growth data query context ===")
+        logger.info(f"[debug] query params: {query_params}")
+        logger.info(f"[debug] baby_id: '{baby_id}' (type: {type(baby_id)})")
+        logger.info(f"[debug] user_id: {user_id}")
         
         if baby_id:
-            logger.info(f"✓ Entering baby_id filter branch")
+            logger.info("[debug] entering babyId filter branch")
             
             # Filter by specific baby
             if not is_valid_uuid(baby_id):
-                logger.error(f"✗ UUID validation failed for: '{baby_id}'")
+                logger.error(f"[debug] invalid UUID format: '{baby_id}'")
                 return response(400, {"error": "Invalid baby ID format"})
             
-            logger.info(f"✓ UUID validation passed")
+            logger.info("[debug] uuid validation passed")
             
             # Check if baby exists and belongs to user
             baby = get_baby_if_accessible(baby_id, user_id)
             if not baby:
-                logger.error(f"✗ Baby access check failed for babyId='{baby_id}', userId='{user_id}'")
+                logger.error(f"[debug] baby access denied babyId='{baby_id}' userId='{user_id}'")
                 return response(404, {"error": "Baby not found or not accessible"})
             
-            logger.info(f"✓ Baby access validated. Baby: {baby}")
-            logger.info(f"➤ Executing GSI query for babyId: '{baby_id}'")
+            logger.info(f"[debug] baby access ok -> executing GSI query for babyId='{baby_id}'")
             
             # Use GSI for better performance
             result = growth_table.query(
@@ -303,14 +328,14 @@ def get_growth_data_list(event, user_id):
                 ScanIndexForward=False
             )
             growth_data = result.get('Items', [])
-            logger.info(f"✓ GSI query completed. Found {len(growth_data)} items")
+            logger.info(f"[debug] gsi query completed items={len(growth_data)}")
             
             # Log each item for debugging
             for i, item in enumerate(growth_data):
-                logger.info(f"  Item {i+1}: babyId='{item.get('babyId')}', dataId='{item.get('dataId')}'")
+                logger.info(f"[debug] item {i+1}: babyId='{item.get('babyId')}' dataId='{item.get('dataId')}'")
                 
         else:
-            logger.info(f"✗ No baby_id provided, fetching all user data")
+            logger.info("[debug] no babyId param -> querying all user data")
             # Get all user's growth data
             result = growth_table.query(
                 IndexName='UserGrowthDataIndex',
@@ -320,12 +345,11 @@ def get_growth_data_list(event, user_id):
                 ScanIndexForward=False
             )
             growth_data = result.get('Items', [])
-            logger.info(f"User query returned {len(growth_data)} items")
+            logger.info(f"[debug] user-wide query items={len(growth_data)}")
         
         # Sort by measurement date for consistent ordering
         growth_data.sort(key=lambda x: x.get('measurementDate', ''), reverse=True)
-        
-        logger.info(f"=== FINAL RESULT: {len(growth_data)} items ===")
+        logger.info(f"[debug] final result count={len(growth_data)}")
         return response(200, {"data": growth_data, "count": len(growth_data)})
     except Exception as e:
         logger.error(f"Error listing growth data: {e}")
@@ -470,10 +494,119 @@ def delete_growth_data(data_id, user_id):
     except Exception as e:
         logger.error(f"Error deleting growth data: {e}")
         return response(500, {"error": "Failed to delete growth data"})
+    
+def recompute_percentiles_for_growth_data_id(data_id: str) -> dict:
+    """Recompute percentiles for a specific growth data entry.
+       used for asynchronous internal invocation from baby_service on baby updates after DOB/gender change.
+
+    Args:
+        data_id (str): The ID of the growth data entry.
+
+    Returns:
+        dict: The updated percentiles for the growth data entry.
+    """
+    
+    # check valid UUID
+    if not data_id or not is_valid_uuid(data_id):
+        logger.error(f"Invalid data ID format: {data_id}")
+        raise ValueError("Invalid data ID format")
+    
+    # Fetch the existing growth data
+    resp = growth_table.get_item(Key={'dataId': data_id})
+    item = resp.get('Item')
+
+    if not item:
+        logger.error(f"Growth data not found for ID: {data_id}")
+        raise ValueError("Growth data not found")
+    
+    # Get the baby details
+    baby_id = item.get('babyId')
+    user_id = item.get('userId')
+    baby = get_baby_if_accessible(baby_id, user_id)
+    if not baby:
+        logger.error(f"Baby not found or not accessible for babyId: {baby_id}, userId: {user_id}")
+        raise ValueError("Baby not found or not accessible")
+
+    measurements = item.get('measurements', {}) or {}
+    safe_measures_for_pct = {
+        k: (float(v) if v is not None else None) 
+        for k, v in measurements.items()
+    }
+
+    logger.info(
+        "[INTERNAL_RECALC:INPUT] dataId=%s babyId=%s dob=%s gender=%s measureDate=%s measures=%s",
+        data_id,
+        baby_id,
+        baby.get('dateOfBirth'),
+        baby.get('gender'),
+        item.get('measurementDate'),
+        json.dumps(safe_measures_for_pct, default=str),
+    )
+
+    # Compute new percentiles
+    pct = compute_percentiles(
+        {"gender": baby['gender'], "dateOfBirth": baby['dateOfBirth']},
+        item.get('measurementDate'),
+        safe_measures_for_pct,
+    )
+
+    
+    logger.info(
+        "[INTERNAL_RECALC:OUTPUT] dataId=%s babyId=%s percentiles=%s",
+        data_id,
+        baby_id,
+        json.dumps(pct, default=str),
+    )
+    
+    # Update the growth data with new percentiles
+    growth_table.update_item(
+        Key={'dataId': data_id},
+        UpdateExpression="SET percentiles = :p, updatedAt = :u",
+        ExpressionAttributeValues={
+            ":p": {k: Decimal(str(v)) for k, v in pct.items()},
+            ":u": datetime.now(timezone.utc).isoformat()
+        }
+    )
+
+    return  {
+        "dataId": data_id,
+        "babyId": baby_id,
+        "percentiles": pct,
+        "recalculated": True
+    }
 
 
 def lambda_handler(event, context):
-    """Main Lambda handler - routes requests based on HTTP method and path"""
+    """Main Lambda handler:
+    - HTTP mode (API Gateway proxy): Use httpMethod/path to route
+    - Internal async invocation: payload {"dataId": "xxx"} to recompute percentiles for that growth data entry
+    """
+    # ------- Internal async invocation route -------
+    if isinstance(event, dict) and 'dataId' in event and 'httpMethod' not in event:
+        data_id = event['dataId']
+        logger.warning(f"[INTERNAL_RECALC:START] dataId={data_id}")
+        try:
+            result = recompute_percentiles_for_growth_data_id(data_id)
+            logger.info(f"[INTERNAL_RECALC:DONE] {json.dumps(result)}")
+            return {
+                "statusCode": 200,
+                "body": json.dumps(result, default=str)
+            }
+        except ValueError as ve:       
+            logger.error(f"[INTERNAL_RECALC:FAIL] {ve}")
+            return {
+                "statusCode": 404,
+                "body": json.dumps({"error": str(ve)})
+            }
+        except Exception as e:
+            logger.exception(f"[INTERNAL_RECALC:ERROR] dataId={data_id} err={e}")
+            return {
+                "statusCode": 500,
+                "body": json.dumps({"error": "Internal recalculation failed"})
+            }
+
+    # ----- Existing HTTP route -----
+
     method = event['httpMethod']
     path = event['path']
     user_id = get_user_id_from_context(event)
