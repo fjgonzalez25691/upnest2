@@ -290,10 +290,28 @@ def _remove_percentiles_for_baby(baby_id: str) -> None:
                 if GROWTH_DATA_LAMBDA:
                     for data_id in ids:
                         try:
-                            lambda_client.invoke(
+                            logger.info(
+                                "[invoke] Triggering growth_data lambda",
+                                extra={
+                                    "growthLambda": GROWTH_DATA_LAMBDA,
+                                    "dataId": data_id,
+                                    "chunkSize": len(ids),
+                                },
+                            )
+                            response = lambda_client.invoke(
                                 FunctionName=GROWTH_DATA_LAMBDA,
                                 InvocationType="Event",  # async fire-and-forget
                                 Payload=json.dumps({"dataId": data_id}).encode("utf-8"),
+                            )
+                            status_code = response.get("StatusCode")
+                            request_id = response.get("ResponseMetadata", {}).get("RequestId")
+                            logger.info(
+                                "[invoke] growth_data async dispatch OK",
+                                extra={
+                                    "statusCode": status_code,
+                                    "requestId": request_id,
+                                    "dataId": data_id,
+                                },
                             )
                         except Exception:
                             logger.exception(

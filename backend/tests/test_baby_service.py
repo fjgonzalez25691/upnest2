@@ -5,7 +5,7 @@ import unittest
 import json
 from decimal import Decimal
 
-# Asegurar que el paquete lambdas sea importable cuando se ejecuta desde backend/
+# Ensure the 'lambdas' package is importable when running tests from backend/
 CURRENT_DIR = os.path.dirname(__file__)
 BACKEND_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, '..'))
 if BACKEND_ROOT not in sys.path:
@@ -14,7 +14,7 @@ if BACKEND_ROOT not in sys.path:
 from lambdas.babies import baby_service
 
 class TableSpy:
-    """Simula tabla DynamoDB de bebés."""
+    """Simulates a DynamoDB Babies table."""
     def __init__(self):
         self.last_item = None
         self.items = {}
@@ -33,7 +33,7 @@ class TableSpy:
             return {'Attributes': None}
         expr_vals = kwargs.get('ExpressionAttributeValues', {})
         update_expr = kwargs.get('UpdateExpression', '')
-        # Soportamos forma 'SET field = :val, birthPercentiles = :bp'
+        # Support form 'SET field = :val, birthPercentiles = :bp'
         if update_expr.startswith('SET'):
             assignments = update_expr[3:].split(',')
             for raw in assignments:
@@ -44,18 +44,18 @@ class TableSpy:
                     placeholder = placeholder.strip()
                     if placeholder in expr_vals:
                         item[field] = expr_vals[placeholder]
-        # También aceptar patrón previo (usábamos ExpressionAttributeValues estrictamente)
+        # Also accept previous pattern (we strictly used ExpressionAttributeValues before)
         for k, v in expr_vals.items():
             if k.startswith(':') and k[1:] not in item:
-                # No sobrescribir si ya lo aplicamos vía SET
+                # Do not overwrite if it was already applied via SET
                 item[k[1:]] = v
         return {'Attributes': item} if kwargs.get('ReturnValues') == 'ALL_NEW' else {}
 
 
 class GrowthTableSpy:
-    """Simula tabla de growth data para recálculo full."""
+    """Simulates a Growth Data table for full recalculation."""
     def __init__(self, items):
-        self.items = items  # lista de dicts con dataId, measurementDate, measurements
+        self.items = items  # list of dicts with dataId, measurementDate, measurements
         self.update_calls = 0
 
     def query(self, **kwargs):
@@ -76,7 +76,7 @@ class TestBabyService(unittest.TestCase):
     def setUp(self):
         self.spy = TableSpy()
         baby_service.table = self.spy
-        # Por defecto growth_table no se usa en tests existentes; se asigna dinámicamente en tests PATCH
+    # By default growth_table isn't used in existing tests; assigned dynamically in PATCH tests
 
     def _stub_percentiles(self, return_value_map=None):
         """Monkeypatch compute_percentiles para evitar dependencias de layer."""

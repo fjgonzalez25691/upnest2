@@ -155,7 +155,8 @@ def normalize_numeric_fields(data):
 def get_baby_if_accessible(baby_id, user_id):
     """Check if baby exists and is accessible to the user"""
     try:
-        result = babies_table.get_item(Key={'babyId': baby_id})
+        # Usar lectura consistente para DOB/gender tras PATCH
+        result = babies_table.get_item(Key={'babyId': baby_id}, ConsistentRead=True)
         baby = result.get('Item')
         if not baby or baby.get('userId') != user_id or not baby.get('isActive', True):
             return None
@@ -363,7 +364,7 @@ def get_growth_data_by_id(data_id, user_id):
         return response(400, {"error": "Invalid data ID"})
 
     try:
-        result = growth_table.get_item(Key={'dataId': data_id})
+        result = growth_table.get_item(Key={'dataId': data_id}, ConsistentRead=True)
         growth_data = result.get('Item')
         
         if not growth_data or growth_data.get('userId') != user_id:
@@ -388,7 +389,7 @@ def update_growth_data(event, data_id, user_id):
 
     try:
         # Check if growth data exists and belongs to user
-        result = growth_table.get_item(Key={'dataId': data_id})
+        result = growth_table.get_item(Key={'dataId': data_id}, ConsistentRead=True)
         existing_data = result.get('Item')
         
         if not existing_data or existing_data.get('userId') != user_id:
@@ -506,13 +507,15 @@ def recompute_percentiles_for_growth_data_id(data_id: str) -> dict:
         dict: The updated percentiles for the growth data entry.
     """
     
-    # check valid UUID
-    if not data_id or not is_valid_uuid(data_id):
-        logger.error(f"Invalid data ID format: {data_id}")
-        raise ValueError("Invalid data ID format")
+    if not data_id:
+        logger.error("Missing dataId in asynchronous recompute payload")
+        raise ValueError("Missing dataId")
+    
+    if not is_valid_uuid(data_id):
+        logger.warning(f"Non-UUID dataId received for recompute: {data_id}. Proceeding anyway.")
     
     # Fetch the existing growth data
-    resp = growth_table.get_item(Key={'dataId': data_id})
+    resp = growth_table.get_item(Key={'dataId': data_id}, ConsistentRead=True)
     item = resp.get('Item')
 
     if not item:
@@ -542,6 +545,13 @@ def recompute_percentiles_for_growth_data_id(data_id: str) -> dict:
         item.get('measurementDate'),
         json.dumps(safe_measures_for_pct, default=str),
     )
+
+    # Si es la medición de nacimiento, usar DOB actual como measurementDate
+    if (item.get('dataId') and baby.get('birthDataId') == item['dataId']) or item.get('measurementSource') == 'birth':
+        if item.get('measurementDate') != baby.get('dateOfBirth'):
+            logger.info("[INTERNAL_RECALC:BIRTH_ALIGN] dataId=%s oldDate=%s newDOB=%s",
+                        item['dataId'], item.get('measurementDate'), baby.get('dateOfBirth'))
+            item['measurementDate'] = baby.get('dateOfBirth')
 
     # Compute new percentiles
     pct = compute_percentiles(

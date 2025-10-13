@@ -43,6 +43,7 @@ import logging
 from datetime import datetime, timezone
 import os
 import uuid
+from typing import Optional
 import boto3
 from decimal import Decimal
 from boto3.dynamodb.conditions import Key
@@ -184,6 +185,23 @@ def process_baby_data(data):
         raise ValueError(str(ve))
     data = normalize_numeric_fields(data)
     return data
+
+
+def _fetch_growth_item_consistent(data_id: str) -> Optional[dict]:
+    """Fetch growth-data row with strong consistency to avoid stale measurement dates."""
+    if not data_id:
+        return None
+    try:
+        resp = growth_table.get_item(Key={'dataId': data_id}, ConsistentRead=True)
+        return resp.get('Item')
+    except Exception as exc:
+        logger.warning(f"[FETCH_GROWTH_ITEM:ERROR] dataId={data_id} err={exc}")
+        return None
+
+
+def _coerce_measurements_to_float(item: dict) -> dict:
+    raw = item.get('measurements') or {}
+    return {k: (float(v) if v is not None else None) for k, v in raw.items()}
 
 
 def _compute_birth_percentiles(baby_obj: dict) -> dict:
@@ -403,23 +421,78 @@ def lambda_handler(event, context):
                     calculated_percentiles_by_measurement = {}
                     
                     for item in items:
-                        raw_meas = item.get('measurements') or {}
-                        meas = {k: (float(v) if v is not None else None) for k, v in raw_meas.items()}
-                        logger.info("[PCT_PATCH:INPUT] dataId=%s date=%s meas=%s", item.get('dataId'), item.get('measurementDate'), json.dumps(meas))
+                        data_id = item.get('dataId')
+                        meas = _coerce_measurements_to_float(item)
+                        measurement_date = item.get('measurementDate')
+
+                        # Align the birth record's measurement date to the new DOB
+                        if data_id and data_id == baby.get('birthDataId'):
+                            if measurement_date != baby.get('dateOfBirth'):
+                                logger.info("[PCT_PATCH:BIRTH_ALIGN] dataId=%s oldDate=%s newDOB=%s",
+                                            data_id, measurement_date, baby.get('dateOfBirth'))
+                                measurement_date = baby.get('dateOfBirth')
+                                # Optional: also persist the aligned date
+                                try:
+                                    growth_table.update_item(
+                                        Key={'dataId': data_id},
+                                        UpdateExpression='SET measurementDate = :d, updatedAt = :u',
+                                        ExpressionAttributeValues={
+                                            ':d': measurement_date,
+                                            ':u': datetime.now(timezone.utc).isoformat(),
+                                        }
+                                    )
+                                except Exception as e:
+                                    logger.warning(f"[PCT_PATCH:BIRTH_ALIGN:WARN] dataId={data_id} err={e}")
+
+                        logger.info(
+                            "[PCT_PATCH:INPUT] dataId=%s date=%s meas=%s",
+                            data_id,
+                            measurement_date,
+                            json.dumps(meas),
+                        )
+
                         pct = {}
                         try:
-                            pct = compute_percentiles({"gender": baby.get('gender'), "dateOfBirth": baby.get('dateOfBirth')}, item.get('measurementDate'), meas) or {}
-                        except Exception as e:
-                            logger.error(f"[PCT_PATCH:ERROR] dataId={item.get('dataId')} err={e}")
+                            pct = compute_percentiles(
+                                {"gender": baby.get('gender'), "dateOfBirth": baby.get('dateOfBirth')},
+                                measurement_date,
+                                meas,
+                            ) or {}
+                        except Exception as err:
+                            logger.error(f"[PCT_PATCH:ERROR] dataId={data_id} err={err}")
+                            if data_id and "before birth date" in str(err).lower():
+                                fresh_item = _fetch_growth_item_consistent(data_id)
+                                if fresh_item and fresh_item.get('measurementDate') != measurement_date:
+                                    meas = _coerce_measurements_to_float(fresh_item)
+                                    measurement_date = fresh_item.get('measurementDate')
+                                    logger.info(
+                                        "[PCT_PATCH:RETRY] dataId=%s refreshedDate=%s meas=%s",
+                                        data_id,
+                                        measurement_date,
+                                        json.dumps(meas),
+                                    )
+                                    try:
+                                        pct = compute_percentiles(
+                                            {"gender": baby.get('gender'), "dateOfBirth": baby.get('dateOfBirth')},
+                                            measurement_date,
+                                            meas,
+                                        ) or {}
+                                    except Exception as retry_err:
+                                        logger.error(f"[PCT_PATCH:ERROR_RETRY] dataId={data_id} err={retry_err}")
+                                else:
+                                    logger.warning(
+                                        "[PCT_PATCH:STALE_SKIP] dataId=%s unable to refresh stale measurementDate",
+                                        data_id,
+                                    )
                         
                         if pct:
                             # 🆕 ADD: Save calculated percentiles to return them
-                            calculated_percentiles_by_measurement[item['dataId']] = {k: float(v) for k, v in pct.items()}
+                            calculated_percentiles_by_measurement[data_id] = {k: float(v) for k, v in pct.items()}
                             
                             metrics_union.update(pct.keys())
                             try:
                                 growth_table.update_item(
-                                    Key={'dataId': item['dataId']},
+                                    Key={'dataId': data_id},
                                     UpdateExpression='SET percentiles = :p, updatedAt = :u',
                                     ExpressionAttributeValues={
                                         ':p': {k: Decimal(str(v)) for k, v in pct.items()},
@@ -428,10 +501,10 @@ def lambda_handler(event, context):
                                 )
                                 updated_count += 1
                             except Exception as e:
-                                logger.error(f"[PCT_PATCH:ERROR_UPDATE] dataId={item.get('dataId')} err={e}")
-                            logger.info("[PCT_PATCH:OUTPUT] dataId=%s pct=%s", item.get('dataId'), json.dumps(pct))
+                                logger.error(f"[PCT_PATCH:ERROR_UPDATE] dataId={data_id} err={e}")
+                            logger.info("[PCT_PATCH:OUTPUT] dataId=%s pct=%s", data_id, json.dumps(pct))
                         else:
-                            logger.info("[PCT_PATCH:SKIP] dataId=%s reason=empty_result", item.get('dataId'))
+                            logger.info("[PCT_PATCH:SKIP] dataId=%s reason=empty_result", data_id)
 
                     birth_pct = _compute_birth_percentiles(baby)
                     if birth_pct:
@@ -535,7 +608,7 @@ def lambda_handler(event, context):
                             "measurements": {
                                 "weight": float(baby.get("birthWeight")) if baby.get("birthWeight") is not None else None,
                                 "height": float(baby.get("birthHeight")) if baby.get("birthHeight") is not None else None,
-                                "headCircumference": float(baby.get("headCircumference")) if baby.get("headCircumference") is not None else None,
+                                "headCircumference": float(baby.get("birthCircumference")) if baby.get("birthCircumference") is not None else None,
                             },
                             "synthetic": True,   # mark to know it can still be replaced by the real one
                             "createdAt": datetime.now(timezone.utc).isoformat(),

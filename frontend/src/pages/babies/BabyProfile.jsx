@@ -24,6 +24,9 @@ import { usePolling } from "../../hooks/usePolling";
 }
 
 const BabyProfile = () => {
+    // Minimum polling/spinner runtime before allowing completion (ms)
+    const MIN_POLL_DURATION_MS = 2000;
+
     const { babyId } = useParams();
     const [baby, setBaby] = useState(null);
     const [measurements, setMeasurements] = useState([]);
@@ -35,6 +38,11 @@ const BabyProfile = () => {
     // Polling coordination flags: keep separate booleans so modes don't interfere
     const [waitingForBirth, setWaitingForBirth] = useState(false);
     const [waitingForFull, setWaitingForFull] = useState(false);
+    const isRecalculating = waitingForBirth || waitingForFull;
+
+    // Start timestamps for each polling to enforce a minimum window
+    const [birthPollStartedAt, setBirthPollStartedAt] = useState(null);
+    const [fullPollStartedAt, setFullPollStartedAt] = useState(null);
 
     // Expected target data for each polling mode (isolated to prevent cross‑contamination between birth/full flows)
     const [expectedBirthPercentiles, setExpectedBirthPercentiles] = useState(null); // object { weight, height, headCircumference }
@@ -60,6 +68,10 @@ const BabyProfile = () => {
             stopOnError: false,
             pauseOnHidden: true,
             stopCondition: (data) => {
+                // Ensure minimum polling/spinner window (see MIN_POLL_DURATION_MS)
+                if (!birthPollStartedAt || (Date.now() - birthPollStartedAt) < MIN_POLL_DURATION_MS) {
+                    return false;
+                }
                 if (!data || !expectedBirthPercentiles) return false;
                 const birthPersistedPercentiles = data.percentiles || {};
                 const allMatch = comparePercentiles(birthPersistedPercentiles, expectedBirthPercentiles);
@@ -72,11 +84,14 @@ const BabyProfile = () => {
                 setMeasurements(prev => [...prev, data]);
                 setWaitingForBirth(false);
                 setExpectedBirthPercentiles(null);
+                setBirthPollStartedAt(null);
+                setEditMode(false); // Exit edit mode when birth recalculation completes
             },
             onError: (err) => {
                 console.error("❌ Polling error:", err);
                 setWaitingForBirth(false);
                 setExpectedBirthPercentiles(null);
+                setBirthPollStartedAt(null);
             }
         }
 
@@ -97,12 +112,16 @@ const BabyProfile = () => {
             stopOnError: false,
             pauseOnHidden: true,
             stopCondition: (data) => {
-                // Validación básica de tipos
+                // Ensure minimum polling/spinner window (see MIN_POLL_DURATION_MS)
+                if (!fullPollStartedAt || (Date.now() - fullPollStartedAt) < MIN_POLL_DURATION_MS) {
+                    return false;
+                }
+                // Basic type validation
                 if (!Array.isArray(data) || !Array.isArray(expectedFullMeasurements)) return false;
 
                 const requiredKeys = ["weight", "height", "headCircumference"];
 
-                // Mapa rápido para acceso O(1) por dataId
+                // Fast map for O(1) access by dataId
                 const persistedMap = new Map(data.map(m => [m.dataId, m]));
 
                 let matchedCount = 0;
@@ -115,14 +134,14 @@ const BabyProfile = () => {
                     if (!persisted) {
                         missingMeasurements++;
                         mismatchDetails.push({ dataId: expected.dataId, reason: 'missing measurement in DB' });
-                        continue; // no break: queremos log completo del tick
+                        continue; // no break: keep full per-tick logging
                     }
 
                     const persistedP = persisted.percentiles || {};
                     const expectedP = expected.calculatedPercentiles || expected.percentiles || {};
                     console.log("🔍 Comparing measurement", { persisted: persistedP, expected: expectedP });
 
-                    // Verificar presencia de claves requeridas si existen en el esperado
+                    // Verify presence of required keys when they exist in expected
                     let keysOk = true;
                     for (const k of requiredKeys) {
                         const expVal = expectedP[k];
@@ -138,7 +157,7 @@ const BabyProfile = () => {
 
                     const match = comparePercentiles(persistedP, expectedP);
                     if (!match) {
-                        // Capturar diferencias numéricas por clave
+                        // Capture numeric differences per key
                         const diffs = requiredKeys.reduce((acc, k) => {
                             const e = expectedP[k];
                             const p = persistedP[k];
@@ -176,11 +195,14 @@ const BabyProfile = () => {
                 setMeasurements(data);
                 setWaitingForFull(false);
                 setExpectedFullMeasurements(null);
+                setFullPollStartedAt(null);
+                setEditMode(false); // Exit edit mode when full recalculation completes
             },
             onError: (err) => {
                 console.error("❌ Full polling error:", err);
                 setWaitingForFull(false);
                 setExpectedFullMeasurements(null);
+                setFullPollStartedAt(null);
             }
         }
     );
@@ -240,6 +262,8 @@ const BabyProfile = () => {
         setWaitingForFull(false);
         setExpectedBirthPercentiles(null);
         setExpectedFullMeasurements(null);
+        setBirthPollStartedAt(null);
+        setFullPollStartedAt(null);
     }, [birthPolling, fullPolling]);
 
     const handleSave = async (updatedBabyData) => {
@@ -289,7 +313,7 @@ const BabyProfile = () => {
             if (response?.baby) {
                 setBaby({ baby: response.baby });
             } else {
-                //Update local snapshot to reflect form changes inmediately
+                // Update local snapshot to reflect form changes immediately
                 setBaby(prev => ({ baby: { ...prev.baby, ...diffPayload }}));
             }
             
@@ -301,6 +325,7 @@ const BabyProfile = () => {
                     }
                     setExpectedBirthPercentiles(response.birthPercentiles);
                     setWaitingForBirth(true);
+                    setBirthPollStartedAt(Date.now());
                     console.log("ℹ️ Waiting for birth measurements to be recalculated in the database...", {
                         calculated: response.birthPercentiles,
                         mode: response.mode
@@ -315,6 +340,7 @@ const BabyProfile = () => {
                     }
                     setExpectedFullMeasurements(response.measurements);
                     setWaitingForFull(true);
+                    setFullPollStartedAt(Date.now());
                     console.log("ℹ️ Waiting for all measurements to be recalculated in the database...", {
                         calculatedCount: response.measurements?.length,
                         mode: response.mode
@@ -336,7 +362,10 @@ const BabyProfile = () => {
 
             console.log("✅ Baby profile updated successfully:", response);            
 
-            setEditMode(false);
+            // Only exit edit mode if no recalculation is happening
+            if (response.mode === 'none') {
+                setEditMode(false);
+            }
 
         } catch (err) {
             console.error("❌ Error updating baby profile:", err);
@@ -364,7 +393,7 @@ const BabyProfile = () => {
         navigate("/add-measurement", { state: { baby: baby?.baby } });
     };
 
-    // Loading skeleton state
+    // Loading skeleton state - spinner with gradient background
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6 flex items-center justify-center">
@@ -401,7 +430,7 @@ const BabyProfile = () => {
     return (
         <>
             {/* Main content */}
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+            <div className={`min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6 ${isRecalculating ? "pointer-events-none select-none" : ""}`}>
                 <div className="max-w-4xl mx-auto">
                     {/* Navigation */}
                     <div className="mb-8">
@@ -422,7 +451,7 @@ const BabyProfile = () => {
                             baby={baby?.baby}
                             isEditable={editMode}
                             // Show recalculation banner while waiting for backend consistency
-                            isRecalculating={waitingForBirth || waitingForFull}
+                            isRecalculating={isRecalculating}
                             onSave={handleSave}
                             onAdd={handleAddMeasurement}
                             onCancel={handleCancel}
