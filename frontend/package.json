@@ -15,7 +15,9 @@
     "deploy:staging": "npm run build:staging && echo 'Build completed for staging'",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.10",
@@ -31,15 +33,27 @@
     "tailwindcss": "^4.1.10"
   },
   "devDependencies": {
+    "@chromatic-com/storybook": "^4.1.1",
     "@eslint/js": "^9.25.0",
+    "@storybook/addon-a11y": "^9.1.12",
+    "@storybook/addon-docs": "^9.1.12",
+    "@storybook/addon-themes": "^9.1.12",
+    "@storybook/addon-vitest": "^9.1.12",
+    "@storybook/react-vite": "^9.1.12",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react-swc": "^3.9.0",
+    "@vitest/browser": "3.2.4",
+    "@vitest/coverage-v8": "3.2.4",
     "eslint": "^9.25.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
+    "eslint-plugin-storybook": "^9.1.12",
     "globals": "^16.0.0",
     "jsdom": "^26.1.0",
+    "playwright": "^1.56.0",
+    "prop-types": "^15.8.1",
+    "storybook": "^9.1.12",
     "vite": "^6.3.5",
     "vitest": "^3.2.4"
   }

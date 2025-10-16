@@ -6,6 +6,17 @@ frontend/.next/
 frontend/.cache/
 frontend/.DS_Store
 
+# --- Storybook ---
+frontend/storybook-static/
+frontend/.storybook-out/
+frontend/storybook-build/
+frontend/.storybook/*.backup
+frontend/.storybook/.cache/
+frontend/.storybook/public/
+
+# --- Storybook Stories (ejemplos/demo) ---
+frontend/src/stories/
+
 # --- Python/Backend ---
 backend/venv*/
 backend/__pycache__/
@@ -64,3 +75,6 @@ frontend/src/utils/numberUtils.js
 .gitignore
 frontend/src/pages/dev/
 
+
+*storybook.log
+storybook-static
