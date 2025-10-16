@@ -4,14 +4,20 @@
 
 ## 🏁 Table of Contents
 
-- [Project Overview](#-project-overview)
-- [Motivation](#-motivation)
-- [Tech Stack](#-tech-stack)
-- [Project Structure](#-project-structure)
-- [Getting Started](#-getting-started)
-- [Lessons Learned / What Went Wrong](#-lessons-learned--what-went-wrong)
-- [Next Steps / Improvements](#-next-steps--improvements)
-- [Author](#-author)
+- [UpNest – Growth Tracking for Neurodiverse \& Lifelong Learners](#upnest--growth-tracking-for-neurodiverse--lifelong-learners)
+  - [🏁 Table of Contents](#-table-of-contents)
+  - [🚀 Project Overview](#-project-overview)
+  - [💡 Motivation](#-motivation)
+  - [🧩 Tech Stack](#-tech-stack)
+  - [📂 Project Structure](#-project-structure)
+  - [🛠️ Getting Started](#️-getting-started)
+    - [Frontend](#frontend)
+  - [🔄 Synchronous percentile recalculation](#-synchronous-percentile-recalculation)
+    - [Backend](#backend)
+    - [SAM (example)](#sam-example)
+  - [❌ Lessons Learned / What Went Wrong](#-lessons-learned--what-went-wrong)
+  - [🙌 Next Steps / Improvements](#-next-steps--improvements)
+  - [👤 Author](#-author)
 
 ---
 

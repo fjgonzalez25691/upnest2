@@ -5,12 +5,15 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import { getGrowthData } from "../../services/growthDataApi";
 import PercentilesChart from "../../components/PercentilesChart";
+import TextBox from "../../components/TextBox";
+import PrimaryButton from "../../components/PrimaryButton";
 
 const PercentilesView = () => {
   const { babyId } = useParams();
   const [measurements, setMeasurements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedType, setSelectedType] = useState('weight');
 
   const location = useLocation();
   
@@ -85,12 +88,12 @@ const PercentilesView = () => {
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
               <div className="text-lg text-red-600 mb-4">{error}</div>
-              <button
+              <PrimaryButton
                 onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                variant="primary"
               >
                 Retry
-              </button>
+              </PrimaryButton>
             </div>
           </div>
         </div>
@@ -123,14 +126,36 @@ const PercentilesView = () => {
             Back to Profile
           </Link>
           
+          {/* Main Title */}
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+            {babyName}'s Growth Charts
+          </h1>
+          
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                {babyName}'s Growth Charts
-              </h1>
-              <p className="text-gray-600 mt-2">
+            <div className="flex items-center gap-8">
+              <p className="text-gray-600">
                 WHO percentile charts showing growth patterns over time
               </p>
+              
+              {/* Measurement Type Selector */}
+              <div className="min-w-[280px]">
+                <TextBox
+                  label="Measurement Type:"
+                  name="measurementType"
+                  type="select"
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  options={[
+                    { value: "weight", label: "Weight" },
+                    { value: "height", label: "Height" },
+                    { value: "headCircumference", label: "Head Circumference" }
+                  ]}
+                  editable={true}
+                  labelPosition="inline"
+                  size="compact"
+                  className="min-w-[180px]"
+                />
+              </div>
             </div>
             
             {/* Quick Actions */}
@@ -138,12 +163,10 @@ const PercentilesView = () => {
               <Link
                 to={`/baby/${babyId}/growth/tracking`}
                 state={{ babyName, birthDate, prevMeasurements: measurements }}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center"
               >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                View Data List
+                <PrimaryButton variant="primary" size="compact" showIcon={false}>
+                  View Growth Dashboard
+                </PrimaryButton>
               </Link>
             </div>
           </div>
@@ -161,14 +184,13 @@ const PercentilesView = () => {
                 <p className="text-gray-500 mb-6">
                   Add measurements to {babyName}'s profile to see percentile charts and growth tracking.
                 </p>
-                <Link
-                  to={`/baby/${babyId}`}
-                  className="inline-flex items-center px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Add Measurements
+                <Link to={`/baby/${babyId}`}>
+                  <PrimaryButton variant="add" className="inline-flex items-center">
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add Measurements
+                  </PrimaryButton>
                 </Link>
               </div>
             </div>
@@ -177,6 +199,7 @@ const PercentilesView = () => {
               measurements={measurements} 
               babyData={{ birthDate }}
               gender={gender}
+              measurementType={selectedType}
             />
           )}
           

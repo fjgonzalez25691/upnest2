@@ -2,7 +2,7 @@
 // Purpose: Interactive percentile charts for baby growth measurements using WHO data
 // Features: Gender-specific charts, static pre-calculated WHO percentile data
 
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -115,21 +115,12 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
     return null;
   };
 
-  /**
-   * Measurement type selector
-   */
-  const [selectedType, setSelectedType] = useState(measurementType);
-  
-  const measurementOptions = [
-    { value: 'weight', label: 'Weight' },
-    { value: 'height', label: 'Height' },
-    { value: 'headCircumference', label: 'Head Circumference' }
-  ];
 
-  const currentAxisConfig = getAxisConfig(selectedType);
+
+  const currentAxisConfig = getAxisConfig(measurementType);
   const currentChartData = useMemo(() => {
     // Recalculate when type changes
-    const whoData = getPercentileData(selectedType, gender);
+    const whoData = getPercentileData(measurementType, gender);
     
     if (!whoData || whoData.length === 0) {
       return [];
@@ -147,13 +138,13 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
     // Add baby measurements if available and match the selected type
     if (measurements && babyData?.birthDate) {
       const babyPoints = measurements
-        .filter(m => m.measurements && m.measurements[selectedType] && m.measurementDate)
+        .filter(m => m.measurements && m.measurements[measurementType] && m.measurementDate)
         .map(m => {
           const ageMonths = calculateAgeInMonths(m.measurementDate, babyData.birthDate);
-          let value = parseFloat(m.measurements[selectedType]);
+          let value = parseFloat(m.measurements[measurementType]);
           
           // Convert units: weight from grams to kg
-          if (selectedType === 'weight') {
+          if (measurementType === 'weight') {
             value = value / 1000; // Convert grams to kg
           }
           
@@ -168,9 +159,9 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
 
       console.log(`📊 Debug measurements:`, {
         rawMeasurements: measurements,
-        selectedType,
+        measurementType,
         babyData,
-        filteredForType: measurements.filter(m => m.type === selectedType),
+        filteredForType: measurements.filter(m => m.measurements && m.measurements[measurementType]),
         processedPoints: babyPoints
       });
 
@@ -195,40 +186,20 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
     }
 
     return percentilePoints;
-  }, [measurements, selectedType, babyData, gender]);
+  }, [measurements, measurementType, babyData, gender]);
 
   if (!currentChartData || currentChartData.length === 0) {
     return (
       <div className="p-4 bg-gray-50 rounded">
-        <p className="text-gray-600">No percentile data available for {selectedType} ({gender})</p>
+        <p className="text-gray-600">No percentile data available for {measurementType} ({gender})</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Controls */}
-      <div className="mb-6">
-        <div className="w-full sm:w-auto">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Measurement Type:
-          </label>
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {measurementOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       {/* Chart */}
-      <div className="w-full h-[500px] md:h-96">
+      <div className="w-3/4 mx-auto h-[375px] md:h-[49vh] lg:h-[52vh]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={currentChartData}

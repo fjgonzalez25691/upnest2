@@ -3,6 +3,8 @@ import React from "react";
 
 /**
  * TextBox: Versatile component for input, select, or read-only display.
+ * @param {string} labelPosition - Position of label: "top" (default), "inline", "none"
+ * @param {string} size - Size variant: "default", "compact"
  */
 const TextBox = ({
   label,
@@ -20,14 +22,25 @@ const TextBox = ({
   error,
   className = "",
   renderValue,
+  labelPosition = "top", // New: "top", "inline", "none"
+  size = "default", // New: "default", "compact"
   ...props
 }) => {
   // Determines the base class according to type and state
   const getTextboxClasses = () => {
-    if (!editable) return `textbox-readonly ${className}`;
-    if (type === "number") return `textbox-input-edit-number ${className}`;
-    if (type === "select") return `textbox-select ${className}`;
-    return `textbox-input-edit ${className}`;
+    let baseClass = "";
+    
+    if (!editable) {
+      baseClass = "textbox-readonly";
+    } else if (type === "number") {
+      baseClass = "textbox-input-edit-number";
+    } else if (type === "select") {
+      baseClass = size === "compact" ? "textbox-select-compact" : "textbox-select";
+    } else {
+      baseClass = "textbox-input-edit";
+    }
+    
+    return `${baseClass} ${className}`;
   };
 
   // Maps type to read-only background class
@@ -40,13 +53,24 @@ const TextBox = ({
     default: "textbox-bg-default"
   };
 
+  // Render label based on position
+  const renderLabel = () => {
+    if (!label || labelPosition === "none") return null;
+    
+    return (
+      <label htmlFor={name} className={`textbox-label${required ? " textbox-label-required" : ""} ${labelPosition === "inline" ? "whitespace-nowrap" : ""}`}>
+        {label}
+      </label>
+    );
+  };
+
+  // Main container class based on label position
+  const containerClass = labelPosition === "inline" ? "flex items-center gap-3" : "textbox-group";
+
   return (
-    <div className="textbox-group">
-      {label && (
-        <label htmlFor={name} className={`textbox-label${required ? " textbox-label-required" : ""}`}>
-          {label}
-        </label>
-      )}
+    <div className={containerClass}>
+      {labelPosition === "top" && renderLabel()}
+      {labelPosition === "inline" && renderLabel()}
 
       {/* Editable field */}
       {editable ? (
