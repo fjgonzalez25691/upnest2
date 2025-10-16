@@ -493,8 +493,8 @@ const BabyProfile = () => {
                                         View WHO percentile charts and growth trends
                                     </p>
                                     <Link
-                                        to={`/baby/${babyId}/growth/tracking`}
-                                        state={{ babyName: baby.baby.name, birthDate: baby.baby.dateOfBirth, prevMeasurements: measurements }}
+                                        to={`/baby/${babyId}/charts`}
+                                        state={{ babyName: baby.baby.name, birthDate: baby.baby.dateOfBirth, gender: baby.baby.gender, prevMeasurements: measurements }}
                                     >
                                         <PrimaryButton variant="primary" size="sm">
                                             View Charts

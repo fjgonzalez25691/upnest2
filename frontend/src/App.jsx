@@ -17,6 +17,7 @@ import BabyProfile from "./pages/babies/BabyProfile.jsx";
 import AddBaby from "./pages/babies/AddBaby.jsx";
 import AddMeasurement from "./pages/measurements/AddMeasurement.jsx";
 import GrowthTracking from "./pages/measurements/GrowthTracking.jsx";
+import PercentilesView from "./pages/measurements/PercentilesView.jsx";
 import EditMeasurement from "./pages/measurements/EditMeasurement.jsx";
 import TestPollingCounter from "./test/TestPollingCounter.jsx";
 
@@ -40,6 +41,7 @@ export default function App() {
         {/* Growth Tracking Routes */}
         <Route path="/add-measurement" element={<ProtectedRoute element={<AddMeasurement />} />} />
         <Route path="/baby/:babyId/growth/tracking" element={<ProtectedRoute element={<GrowthTracking />} />} />
+        <Route path="/baby/:babyId/charts" element={<ProtectedRoute element={<PercentilesView />} />} />
         <Route path="/edit-measurement/:measurementId" element={<ProtectedRoute element={<EditMeasurement />} />} />
         <Route path="/test-polling-counter" element={<ProtectedRoute element={<TestPollingCounter />} />} />
       </Routes>

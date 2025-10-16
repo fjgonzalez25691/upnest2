@@ -27,6 +27,7 @@
     "react-dom": "^19.1.0",
     "react-oidc-context": "^3.3.0",
     "react-router-dom": "^7.6.2",
+    "recharts": "^3.2.1",
     "tailwindcss": "^4.1.10"
   },
   "devDependencies": {
