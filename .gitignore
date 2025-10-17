@@ -14,8 +14,8 @@ frontend/.storybook/*.backup
 frontend/.storybook/.cache/
 frontend/.storybook/public/
 
-# --- Storybook Stories (ejemplos/demo) ---
-frontend/src/stories/
+# --- Storybook Stories ---
+# (Previously ignored demo stories. Keep directory tracked for design system documentation.)
 
 # --- Python/Backend ---
 backend/venv*/

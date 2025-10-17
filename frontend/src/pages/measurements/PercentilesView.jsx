@@ -102,10 +102,10 @@ const PercentilesView = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
         {/* Navigation Header */}
-        <div className="mb-8">
+        <div className="mb-6 md:mb-8">
           <Link
             to={`/baby/${babyId}`}
             className="text-blue-600 hover:text-blue-800 flex items-center mb-4 transition-colors"
@@ -126,45 +126,54 @@ const PercentilesView = () => {
             Back to Profile
           </Link>
           
-          {/* Main Title */}
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+          {/* Main Title - Mobile First */}
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 md:mb-6">
             {babyName}'s Growth Charts
           </h1>
           
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-8">
-              <p className="text-gray-600">
+          {/* Mobile First Layout */}
+          <div className="space-y-4 lg:space-y-0 lg:flex lg:items-end lg:justify-between lg:gap-8">
+            
+            {/* Subtitle - Mobile: full width, Desktop: flex-1 */}
+            <div className="lg:flex-1">
+              <p className="text-sm md:text-base text-gray-600 leading-relaxed">
                 WHO percentile charts showing growth patterns over time
               </p>
-              
-              {/* Measurement Type Selector */}
-              <div className="min-w-[280px]">
-                <TextBox
-                  label="Measurement Type:"
-                  name="measurementType"
-                  type="select"
-                  value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value)}
-                  options={[
-                    { value: "weight", label: "Weight" },
-                    { value: "height", label: "Height" },
-                    { value: "headCircumference", label: "Head Circumference" }
-                  ]}
-                  editable={true}
-                  labelPosition="inline"
-                  size="compact"
-                  className="min-w-[180px]"
-                />
-              </div>
             </div>
             
-            {/* Quick Actions */}
-            <div className="flex items-center space-x-3">
+            {/* Measurement Type Selector - Mobile: full width, Desktop: auto */}
+            <div className="w-full sm:max-w-xs lg:max-w-sm xl:min-w-[280px]">
+              <TextBox
+                label="Measurement Type:"
+                name="measurementType"
+                type="select"
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                options={[
+                  { value: "weight", label: "Weight" },
+                  { value: "height", label: "Height" },
+                  { value: "headCircumference", label: "Head Circumference" }
+                ]}
+                editable={true}
+                labelPosition="inline"
+                size="compact"
+                className="w-full"
+              />
+            </div>
+            
+            {/* Quick Actions - Mobile: full width, Desktop: auto */}
+            <div className="w-full sm:w-auto lg:flex-shrink-0">
               <Link
                 to={`/baby/${babyId}/growth/tracking`}
                 state={{ babyName, birthDate, prevMeasurements: measurements }}
+                className="block w-full sm:w-auto"
               >
-                <PrimaryButton variant="primary" size="compact" showIcon={false}>
+                <PrimaryButton 
+                  variant="primary" 
+                  size="compact" 
+                  showIcon={false}
+                  className="w-full sm:w-auto whitespace-nowrap"
+                >
                   View Growth Dashboard
                 </PrimaryButton>
               </Link>
@@ -173,20 +182,20 @@ const PercentilesView = () => {
         </div>
 
         {/* Main Chart Container */}
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           {measurements.length === 0 ? (
-            <div className="bg-white rounded-3xl shadow-lg p-8 border border-blue-100">
-              <div className="text-center py-12">
-                <svg className="w-16 h-16 mx-auto mb-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+            <div className="bg-white rounded-2xl md:rounded-3xl shadow-lg p-6 md:p-8 border border-blue-100">
+              <div className="text-center py-8 md:py-12">
+                <svg className="w-12 md:w-16 h-12 md:h-16 mx-auto mb-4 md:mb-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">No Growth Data Available</h3>
-                <p className="text-gray-500 mb-6">
+                <h3 className="text-lg md:text-xl font-semibold text-gray-700 mb-2">No Growth Data Available</h3>
+                <p className="text-sm md:text-base text-gray-500 mb-4 md:mb-6 px-4">
                   Add measurements to {babyName}'s profile to see percentile charts and growth tracking.
                 </p>
-                <Link to={`/baby/${babyId}`}>
+                <Link to={`/baby/${babyId}`} className="inline-block">
                   <PrimaryButton variant="add" className="inline-flex items-center">
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
                     Add Measurements
@@ -203,39 +212,45 @@ const PercentilesView = () => {
             />
           )}
           
-          {/* Additional Information */}
+          {/* Additional Information - Mobile First Grid */}
           {measurements.length > 0 && (
-            <div className="bg-white rounded-xl shadow-lg p-6 border border-blue-100">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">About These Charts</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-600">
-                <div>
-                  <h4 className="font-semibold text-gray-700 mb-2">WHO Growth Standards</h4>
-                  <p>
+            <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border border-blue-100">
+              <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-3 md:mb-4">About These Charts</h3>
+              
+              {/* Mobile: 1 column, Tablet: 2 columns */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 text-xs md:text-sm text-gray-600">
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-gray-700 text-sm md:text-base">WHO Growth Standards</h4>
+                  <p className="leading-relaxed">
                     These charts are based on World Health Organization (WHO) growth standards, 
                     which represent optimal growth patterns for healthy children.
                   </p>
                 </div>
-                <div>
-                  <h4 className="font-semibold text-gray-700 mb-2">How to Read the Charts</h4>
-                  <p>
+                
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-gray-700 text-sm md:text-base">How to Read the Charts</h4>
+                  <p className="leading-relaxed">
                     The colored lines show different percentiles. Most healthy babies fall between 
                     the 3rd and 97th percentiles. Your baby's measurements are shown as blue dots.
                   </p>
                 </div>
-                <div>
-                  <h4 className="font-semibold text-gray-700 mb-2">Data Summary</h4>
-                  <p>
-                    Total measurements: <span className="font-medium">{measurements.length}</span>
-                    <br />
-                    Date range: {measurements.length > 1 ? 
-                      `${new Date(measurements[measurements.length - 1]?.measurementDate).toLocaleDateString()} - ${new Date(measurements[0]?.measurementDate).toLocaleDateString()}` 
-                      : new Date(measurements[0]?.measurementDate).toLocaleDateString()
-                    }
+                
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-gray-700 text-sm md:text-base">Data Summary</h4>
+                  <p className="leading-relaxed">
+                    <span className="block">Total measurements: <span className="font-medium">{measurements.length}</span></span>
+                    <span className="block mt-1">
+                      Date range: {measurements.length > 1 ? 
+                        `${new Date(measurements[measurements.length - 1]?.measurementDate).toLocaleDateString()} - ${new Date(measurements[0]?.measurementDate).toLocaleDateString()}` 
+                        : new Date(measurements[0]?.measurementDate).toLocaleDateString()
+                      }
+                    </span>
                   </p>
                 </div>
-                <div>
-                  <h4 className="font-semibold text-gray-700 mb-2">Medical Guidance</h4>
-                  <p>
+                
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-gray-700 text-sm md:text-base">Medical Guidance</h4>
+                  <p className="leading-relaxed">
                     These charts are for informational purposes. Always consult with your pediatrician 
                     for professional interpretation and medical advice.
                   </p>
