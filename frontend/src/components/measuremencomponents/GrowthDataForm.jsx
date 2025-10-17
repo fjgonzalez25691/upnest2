@@ -4,6 +4,7 @@
 import React, { useState } from "react";
 import PrimaryButton from "../PrimaryButton.jsx";
 import TextBox from "../TextBox.jsx";
+import Spinner from "../Spinner.jsx";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { normalizeNumber, formatNumberWithOptionalDecimal, validateRange, FIELD_RANGES } from "../../utils/numberUtils.js";
@@ -259,13 +260,7 @@ const GrowthDataForm = ({
                         disabled={isSubmitting}
                     >
                         {isSubmitting ? (
-                            <span className="flex items-center gap-2">
-                            <svg className="animate-spin h-5 w-5 text-blue-600" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                            </svg>
-                            Saving...
-                        </span>
+                            <Spinner variant="inline" color="custom" message="Saving..." />
                         ) : (
                             submitLabel
                         )}

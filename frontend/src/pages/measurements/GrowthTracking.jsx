@@ -6,6 +6,7 @@ import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { getGrowthData, deleteGrowthData } from "../../services/growthDataApi";
 import PrimaryButton from "../../components/PrimaryButton";
 import GrowthDataList from "../../components/measuremencomponents/GrowthDataList";
+import Spinner from "../../components/Spinner";
 
 const GrowthTracking = () => {
   const { babyId } = useParams();
@@ -101,7 +102,7 @@ const GrowthTracking = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="text-lg text-gray-600">Loading measurements...</div>
+          <Spinner variant="basic" size="md" color="primary" message="Loading measurements..." />
         </div>
       </div>
     );

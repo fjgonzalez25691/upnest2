@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import GrowthDataForm from "../../components/measuremencomponents/GrowthDataForm";
 import PrimaryButton from "../../components/PrimaryButton";
+import Spinner from "../../components/Spinner";
 import { getGrowthMeasurement, updateGrowthData } from "../../services/growthDataApi";
 import { getBaby } from "../../services/babyApi"; // Only if you need the name
 
@@ -80,7 +81,7 @@ const EditMeasurement = () => {
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
       <div className="max-w-2xl mx-auto text-center">
-        <div className="text-lg text-gray-600">Loading measurement...</div>
+        <Spinner variant="basic" size="md" color="primary" message="Loading measurement..." />
       </div>
     </div>
   );

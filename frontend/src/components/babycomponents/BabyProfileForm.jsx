@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import PrimaryButton from "../PrimaryButton.jsx";
 import TextBox from "../TextBox.jsx";
+import Spinner from "../Spinner.jsx";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { calculateAge } from "../../utils/dateUtils.js";
@@ -292,7 +293,7 @@ const BabyProfileForm = ({ baby, isEditable = false, isRecalculating = false, re
       {isEditable && isRecalculating && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg">
           <div className="flex items-center">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+            <Spinner variant="basic" size="sm" color="blue" className="mr-2" />
             Recalculating percentiles... this may take a few seconds.
           </div>
         </div>
@@ -347,10 +348,7 @@ const BabyProfileForm = ({ baby, isEditable = false, isRecalculating = false, re
                 }}
               >
                 {(isRecalculating || saving) ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Saving...
-                  </div>
+                  <Spinner variant="inline" color="white" message="Saving..." />
                 ) : (
                   "Save"
                 )}

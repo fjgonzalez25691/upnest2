@@ -7,6 +7,7 @@ import { getGrowthData } from "../../services/growthDataApi";
 import PercentilesChart from "../../components/PercentilesChart";
 import TextBox from "../../components/TextBox";
 import PrimaryButton from "../../components/PrimaryButton";
+import Spinner from "../../components/Spinner";
 
 const PercentilesView = () => {
   const { babyId } = useParams();
@@ -48,8 +49,7 @@ const PercentilesView = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div>
-            <div className="text-lg text-gray-600">Loading growth charts...</div>
+            <Spinner variant="basic" size="md" color="blue" message="Loading growth charts..." />
           </div>
         </div>
       </div>

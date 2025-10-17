@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { getBabies } from "../services/babyApi";
 import PrimaryButton from "../components/PrimaryButton";
+import Spinner from "../components/Spinner";
 
 const Dashboard = () => {
   const { user, userId, email, name } = useCurrentUser();
@@ -94,8 +95,7 @@ const Dashboard = () => {
 
           {loading ? (
             <div className="bg-surface p-6 rounded-2xl shadow-md text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading babies...</p>
+              <Spinner variant="basic" size="md" color="primary" message="Loading babies..." />
             </div>
           ) : error ? (
             <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
@@ -245,30 +245,32 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Help Section */}
-        <div className="mt-8 bg-textarea-info rounded-3xl border p-8">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              Need Help Getting Started?
-            </h2>
-            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-              UpNest is designed to be intuitive for parents of all technical backgrounds.
-              Add your baby's information and start tracking their growth with confidence.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/add-baby">
-                <PrimaryButton variant="add" className="w-full sm:w-auto">
-                  Add Your First Baby
-                </PrimaryButton>
-              </Link>
-              <Link to="/percentiles">
-                <PrimaryButton variant="primary" className="w-full sm:w-auto">
-                  Learn About Percentiles
-                </PrimaryButton>
-              </Link>
+        {/* Help Section - Only show when no babies exist */}
+        {babies.length === 0 && (
+          <div className="mt-8 bg-textarea-info rounded-3xl border p-8">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                Need Help Getting Started?
+              </h2>
+              <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+                UpNest is designed to be intuitive for parents of all technical backgrounds.
+                Add your baby's information and start tracking their growth with confidence.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link to="/add-baby">
+                  <PrimaryButton variant="add" className="w-full sm:w-auto">
+                    Add Your First Baby
+                  </PrimaryButton>
+                </Link>
+                <Link to="/percentiles">
+                  <PrimaryButton variant="primary" className="w-full sm:w-auto">
+                    Learn About Percentiles
+                  </PrimaryButton>
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

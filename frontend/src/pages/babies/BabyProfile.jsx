@@ -7,6 +7,7 @@ import { getBabyById, updateBaby, deleteBaby } from "../../services/babyApi";
 import { getGrowthData, getGrowthMeasurement } from "../../services/growthDataApi";
 import PrimaryButton from "../../components/PrimaryButton";
 import BabyProfileForm from "../../components/babycomponents/BabyProfileForm";
+import Spinner from "../../components/Spinner";
 import { usePolling } from "../../hooks/usePolling";
 
 // Utility comparator with numeric tolerance for percentile values (avoids noisy float diffs)
@@ -397,10 +398,7 @@ const BabyProfile = () => {
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading baby profile...</p>
-                </div>
+                <Spinner variant="basic" size="md" color="primary" message="Loading baby profile..." />
             </div>
         );
     }
@@ -567,56 +565,22 @@ const BabyProfile = () => {
 
             {/* Percentile Recalculation Overlay */}
             {(waitingForBirth || waitingForFull) && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 backdrop-blur-md"
-                    role="alert"
-                    aria-busy="true"
-                    aria-live="assertive"
-                >
-                    <div className="bg-white/90 backdrop-blur-sm shadow-2xl rounded-3xl p-8 border border-white/30 max-w-md w-full text-center transform animate-pulse">
-                        {/* Modern animated loader */}
-                        <div className="mb-6 flex justify-center">
-                            <div className="relative">
-                                {/* Outer rotating ring with gradient effect */}
-                                <div className="w-16 h-16 rounded-full animate-spin">
-                                    <div className="w-full h-full rounded-full border-4 border-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-border"></div>
-                                    <div className="absolute inset-1 bg-white rounded-full"></div>
-                                </div>
-                                {/* Inner pulsing core */}
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="w-4 h-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full animate-ping"></div>
-                                </div>
-                                {/* Floating particles */}
-                                <div className="absolute -inset-6">
-                                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce absolute top-0 left-1/2 transform -translate-x-1/2 opacity-75" style={{animationDelay: '0s'}}></div>
-                                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce absolute top-1/2 right-0 transform -translate-y-1/2 opacity-75" style={{animationDelay: '0.2s'}}></div>
-                                    <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce absolute bottom-0 left-1/2 transform -translate-x-1/2 opacity-75" style={{animationDelay: '0.4s'}}></div>
-                                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce absolute top-1/2 left-0 transform -translate-y-1/2 opacity-75" style={{animationDelay: '0.6s'}}></div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="space-y-3">
-                            <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                                Recalculating Percentiles
-                            </h2>
-                            <div className="h-1 w-32 mx-auto bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 rounded-full animate-pulse"></div>
-                        </div>
-                        
-                        <p className="text-gray-700 text-sm mt-5 leading-relaxed font-medium">
-                            {waitingForFull && !waitingForBirth && 'Processing all measurements. Please wait for completion to ensure percentiles are updated.'}
-                            {waitingForBirth && !waitingForFull && 'Updating birth percentiles. One moment...'}
-                            {waitingForBirth && waitingForFull && 'Updating percentiles (birth and all measurements)...'}
-                        </p>
-                        
-                        <div className="mt-4 flex items-center justify-center space-x-2 text-xs text-gray-500">
-                            <svg className="w-4 h-4 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                            </svg>
-                            <span>Please don't close this tab or navigate away</span>
-                        </div>
-                    </div>
-                </div>
+                <Spinner 
+                    variant="premium" 
+                    overlay={true}
+                    message1="Recalculating Percentiles"
+                    message2={
+                        waitingForFull && !waitingForBirth 
+                            ? 'Processing all measurements. Please wait for completion to ensure percentiles are updated.'
+                            : waitingForBirth && !waitingForFull 
+                            ? 'Updating birth percentiles. One moment...'
+                            : waitingForBirth && waitingForFull 
+                            ? 'Updating percentiles (birth and all measurements)...'
+                            : 'Processing your request...'
+                    }
+                    message3="Please don't close this tab or navigate away"
+                    particles={true}
+                />
             )}
         </>
     );
