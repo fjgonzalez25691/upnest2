@@ -77,7 +77,7 @@ const PrimaryButton = ({
     <button
       type={props.type || "button"}
       className={
-        `${getBaseClass()} ${variantStyles[variant] || variantStyles.default} ${iconPosition === "only" ? "" : "flex items-center"} ${className}`
+        `${getBaseClass()} ${variantStyles[variant] || variantStyles.default} ${iconPosition === "only" ? "" : "flex items-center justify-center"} ${className}`
       }
       {...props}
     >

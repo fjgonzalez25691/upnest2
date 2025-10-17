@@ -463,7 +463,7 @@ const BabyProfile = () => {
                     {/* Growth Tracking Section */}
                     {measurements.length > 0 && (
                         <div className="bg-white rounded-3xl shadow-lg p-8 border border-green-100">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                            <div className="flex flex-col items-center text-center sm:flex-row sm:text-left sm:items-center sm:justify-between gap-3 mb-6">
                                 <h2 className="text-2xl font-bold text-gray-800">Growth Tracking</h2>
                                 <Link
                                     to={`/baby/${babyId}/growth/tracking`}
@@ -473,7 +473,7 @@ const BabyProfile = () => {
                                         prevMeasurements: measurements
                                     }}
                                 >
-                                    <PrimaryButton variant="primary" className="mt-4 sm:mt-0">
+                                    <PrimaryButton variant="primary">
                                         View Growth Dashboard
                                     </PrimaryButton>
                                 </Link>
@@ -492,14 +492,16 @@ const BabyProfile = () => {
                                     <p className="text-gray-600 text-sm mb-4">
                                         View WHO percentile charts and growth trends
                                     </p>
-                                    <Link
-                                        to={`/baby/${babyId}/charts`}
-                                        state={{ babyName: baby.baby.name, birthDate: baby.baby.dateOfBirth, gender: baby.baby.gender, prevMeasurements: measurements }}
-                                    >
-                                        <PrimaryButton variant="primary" size="sm">
-                                            View Charts
-                                        </PrimaryButton>
-                                    </Link>
+                                    <div className="flex justify-center">
+                                        <Link
+                                            to={`/baby/${babyId}/charts`}
+                                            state={{ babyName: baby.baby.name, birthDate: baby.baby.dateOfBirth, gender: baby.baby.gender, prevMeasurements: measurements }}
+                                        >
+                                            <PrimaryButton variant="primary">
+                                                View Charts
+                                            </PrimaryButton>
+                                        </Link>
+                                    </div>
                                 </div>
 
                                 {/* Add Data card */}
@@ -513,9 +515,11 @@ const BabyProfile = () => {
                                     <p className="text-gray-600 text-sm mb-4">
                                         Record weight, height, and head circumference
                                     </p>
-                                    <PrimaryButton variant="add" size="sm" onClick={handleAddMeasurement}>
-                                        Add Data
-                                    </PrimaryButton>
+                                    <div className="flex justify-center">
+                                        <PrimaryButton variant="add" onClick={handleAddMeasurement}>
+                                            Add Data
+                                        </PrimaryButton>
+                                    </div>
                                 </div>
 
                                 {/* History card */}
@@ -529,14 +533,16 @@ const BabyProfile = () => {
                                     <p className="text-gray-600 text-sm mb-4">
                                         Browse all recorded measurements and data
                                     </p>
-                                    <Link
-                                        to={`/baby/${babyId}/growth/tracking`}
-                                        state={{ babyName: baby.baby.name, birthDate: baby.baby.dateOfBirth, prevMeasurements: measurements }}
-                                    >
-                                        <PrimaryButton variant="primary" size="sm">
-                                            View History
-                                        </PrimaryButton>
-                                    </Link>
+                                    <div className="flex justify-center">
+                                        <Link
+                                            to={`/baby/${babyId}/growth/tracking`}
+                                            state={{ babyName: baby.baby.name, birthDate: baby.baby.dateOfBirth, prevMeasurements: measurements }}
+                                        >
+                                            <PrimaryButton variant="primary">
+                                                View History
+                                            </PrimaryButton>
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
                         </div>

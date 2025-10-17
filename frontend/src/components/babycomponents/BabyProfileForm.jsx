@@ -305,7 +305,7 @@ const BabyProfileForm = ({ baby, isEditable = false, isRecalculating = false, re
       {/* Action Buttons for Edit Mode */}
       <div className="gradient-textarea-info rounded-xl shadow p-6 mt-8 border border-blue-100">
         <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">Profile Actions</h2>
-        <div className="grid grid-cols-1  md:grid-cols-2  justify-items-center gap-4">
+        <div className="flex flex-col items-center sm:grid sm:grid-cols-2 sm:justify-items-center gap-4">
           {!isEditable && (
             <>
               <PrimaryButton variant="edit" className="w-60" onClick={onEdit}>
