@@ -172,7 +172,7 @@ const SpacingContent = () => (
               <div className="w-20 text-xs text-gray-500">p-6 (24px)</div>
               <div className="p-6 bg-blue-100 rounded border-2 border-dashed border-blue-300">
                 <div className="bg-blue-500 rounded text-white text-xs px-2 py-1">Content</div>
-              </div>
+              </div>git
             </div>
           </div>
         </div>

@@ -1,0 +1,39 @@
+@layer components {
+  /* Page shell - Contenedor principal de páginas */
+  .page-shell {
+    @apply min-h-screen px-4 py-6 md:px-10 md:py-10;
+    background: linear-gradient(to bottom right, 
+      #eff6ff /* blue-50 */, 
+      #ffffff /* white */, 
+      #faf5ff /* purple-50 */
+    );
+  }
+
+  /* Contenedor de contenido con max-width */
+  .page-shell__content {
+    @apply mx-auto w-full max-w-6xl flex flex-col gap-8;
+  }
+
+  /* Header de página con responsive layout */
+  .page-header {
+    @apply flex flex-col gap-2 md:flex-row md:items-center md:justify-between;
+  }
+
+  /* Footer con acciones */
+  .page-footer-actions {
+    @apply flex flex-col-reverse gap-3 md:flex-row md:items-center md:justify-end;
+  }
+
+  /* Variantes específicas para casos especiales */
+  .page-shell--form {
+    @apply py-8 md:py-12;
+  }
+
+  .page-shell--compact {
+    @apply py-4 md:py-6;
+  }
+
+  .page-shell--full-height {
+    @apply h-screen;
+  }
+}

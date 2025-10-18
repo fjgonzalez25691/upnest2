@@ -7,6 +7,7 @@ import { getGrowthData, deleteGrowthData } from "../../services/growthDataApi";
 import PrimaryButton from "../../components/PrimaryButton";
 import GrowthDataList from "../../components/measuremencomponents/GrowthDataList";
 import Spinner from "../../components/Spinner";
+import PageShell from "../../components/layout/PageShell";
 
 const GrowthTracking = () => {
   const { babyId } = useParams();
@@ -100,29 +101,29 @@ const GrowthTracking = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+      <PageShell>
         <div className="max-w-4xl mx-auto text-center">
           <Spinner variant="basic" size="md" color="primary" message="Loading measurements..." />
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+      <PageShell>
         <div className="max-w-4xl mx-auto text-center">
           <div className="text-lg text-red-600 mb-4">{error}</div>
           <PrimaryButton onClick={() => window.location.reload()}>
             Retry
           </PrimaryButton>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+    <PageShell>
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <Link
@@ -167,7 +168,7 @@ const GrowthTracking = () => {
           )}
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 };
 

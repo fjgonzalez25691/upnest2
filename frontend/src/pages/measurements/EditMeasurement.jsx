@@ -8,6 +8,7 @@ import PrimaryButton from "../../components/PrimaryButton";
 import Spinner from "../../components/Spinner";
 import { getGrowthMeasurement, updateGrowthData } from "../../services/growthDataApi";
 import { getBaby } from "../../services/babyApi"; // Only if you need the name
+import PageShell from "../../components/layout/PageShell";
 
 const EditMeasurement = () => {
   const { measurementId } = useParams();
@@ -78,38 +79,44 @@ const EditMeasurement = () => {
     });
   };
 
-  if (loading) return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
-      <div className="max-w-2xl mx-auto text-center">
-        <Spinner variant="basic" size="md" color="primary" message="Loading measurement..." />
-      </div>
-    </div>
-  );
+  if (loading) {
+    return (
+      <PageShell>
+        <div className="max-w-2xl mx-auto text-center mt-20">
+          <Spinner variant="basic" size="md" color="primary" message="Loading measurement..." />
+        </div>
+      </PageShell>
+    );
+  }
 
-  if (error) return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
-      <div className="max-w-2xl mx-auto text-center">
-        <div className="text-lg text-red-600">{error}</div>
-        <button 
-          onClick={() => window.location.reload()} 
-          className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Retry
-        </button>
-      </div>
-    </div>
-  );
+    if (error) {
+    return (
+      <PageShell>
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="text-lg text-red-600">{error}</div>
+          <button 
+            onClick={() => navigate('/babies')}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Volver a bebés
+          </button>
+        </div>
+      </PageShell>
+    );
+  }
 
-  if (!measurement) return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
-      <div className="max-w-2xl mx-auto text-center">
-        <div className="text-lg text-gray-600">No measurement found</div>
-      </div>
-    </div>
-  );
+  if (!measurement) {
+    return (
+      <PageShell>
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="text-lg text-gray-600">No measurement found</div>
+        </div>
+      </PageShell>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+    <PageShell>
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -136,7 +143,7 @@ const EditMeasurement = () => {
           heading="Update Growth Measurement"
         />
       </div>
-    </div>
+    </PageShell>
   );
 };
 

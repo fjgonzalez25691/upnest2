@@ -9,6 +9,7 @@ import PrimaryButton from "../../components/PrimaryButton";
 import BabyProfileForm from "../../components/babycomponents/BabyProfileForm";
 import Spinner from "../../components/Spinner";
 import { usePolling } from "../../hooks/usePolling";
+import PageShell from "../../components/layout/PageShell";
 
 // Utility comparator with numeric tolerance for percentile values (avoids noisy float diffs)
  function comparePercentiles(persisted = {}, expected = {}, eps = 0.01) {
@@ -397,16 +398,16 @@ const BabyProfile = () => {
     // Loading skeleton state - spinner with gradient background
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6 flex items-center justify-center">
+            <PageShell className="flex items-center justify-center">
                 <Spinner variant="basic" size="md" color="primary" message="Loading baby profile..." />
-            </div>
+            </PageShell>
         );
     }
 
     // Error boundary state (basic inline handling)
     if (error || !baby) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+            <PageShell>
                 <div className="max-w-4xl mx-auto">
                     <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
                         <div className="text-red-500 mb-4">
@@ -421,14 +422,14 @@ const BabyProfile = () => {
                         </Link>
                     </div>
                 </div>
-            </div>
+            </PageShell>
         );
     }
 
     return (
         <>
             {/* Main content */}
-            <div className={`min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6 ${isRecalculating ? "pointer-events-none select-none" : ""}`}>
+            <PageShell className={isRecalculating ? "pointer-events-none select-none" : ""}>
                 <div className="max-w-4xl mx-auto">
                     {/* Navigation */}
                     <div className="mb-8">
@@ -561,7 +562,7 @@ const BabyProfile = () => {
                         </div>  
                     )}
                 </div>
-            </div>
+            </PageShell>
 
             {/* Percentile Recalculation Overlay */}
             {(waitingForBirth || waitingForFull) && (

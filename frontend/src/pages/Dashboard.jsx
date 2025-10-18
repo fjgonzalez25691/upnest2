@@ -6,6 +6,7 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { getBabies } from "../services/babyApi";
 import PrimaryButton from "../components/PrimaryButton";
 import Spinner from "../components/Spinner";
+import PageShell from "../components/layout/PageShell";
 
 const Dashboard = () => {
   const { user, userId, email, name } = useCurrentUser();
@@ -58,7 +59,7 @@ const Dashboard = () => {
   // So we can assume user is authenticated here
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+    <PageShell>
       <div className="max-w-5xl mx-auto">
 
         <div className="mb-8">
@@ -272,7 +273,7 @@ const Dashboard = () => {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 };
 

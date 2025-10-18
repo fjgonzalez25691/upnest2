@@ -6,6 +6,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import GrowthDataForm from "../../components/measuremencomponents/GrowthDataForm";
 import PrimaryButton from "../../components/PrimaryButton";
 import { createGrowthData } from "../../services/growthDataApi";
+import PageShell from "../../components/layout/PageShell";
 
 const AddMeasurement = () => {
     const location = useLocation();
@@ -14,7 +15,7 @@ const AddMeasurement = () => {
 
     if (!baby) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+            <PageShell>
                 <div className="max-w-2xl mx-auto text-center">
                     <h1 className="text-2xl font-bold text-gray-900 mb-4">
                         No Baby Selected
@@ -28,7 +29,7 @@ const AddMeasurement = () => {
                         </button>
                     </Link>
                 </div>
-            </div>
+            </PageShell>
         );
     }
 
@@ -54,7 +55,7 @@ const AddMeasurement = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+        <PageShell>
             {/* Header */}
             <div className="max-w-2xl mx-auto mb-8">
                 <div className="bg-white rounded-3xl shadow-lg p-8 border border-blue-100">
@@ -117,7 +118,7 @@ const AddMeasurement = () => {
                     </ul>
                 </div>
             </div>
-        </div>
+        </PageShell>
     );
 };
 
