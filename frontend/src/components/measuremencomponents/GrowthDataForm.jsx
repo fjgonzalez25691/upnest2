@@ -137,7 +137,7 @@ const GrowthDataForm = ({
     };
 
     return (
-        <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
+        <div className="max-w-2xl mx-auto card-basic">
             <h2 className="text-2xl font-semibold mb-6 text-center">{heading}</h2>
             
             {/* General errors */}

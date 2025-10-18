@@ -96,7 +96,7 @@ const MeasurementCard = ({
                     </svg>
                 </button>
                 {isOpen && (
-                    <div className="absolute right-0 top-8 z-20 w-32 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                    <div className="absolute right-0 top-8 z-20 w-32 card-dropdown">
                         <button
                             onClick={handleEditClick}
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"

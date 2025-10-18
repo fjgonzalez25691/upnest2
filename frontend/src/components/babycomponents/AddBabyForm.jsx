@@ -163,7 +163,7 @@ const BabyForm = ({
     };
 
     return (
-        <div className="bg-white rounded-3xl shadow-lg p-8 border border-blue-100">
+        <div className="card-elevated--bordered">
             <div className="max-w-4xl mx-auto">
                 <h2 className="text-2xl font-semibold mb-6 text-center">{heading}</h2>
             

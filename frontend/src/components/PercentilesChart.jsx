@@ -84,7 +84,7 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded shadow-lg">
+        <div className="card-dropdown" style={{padding: '0.75rem'}}>
           <p className="font-semibold">{`Age: ${label?.toFixed(1)} months`}</p>
           {payload.map((entry, index) => {
             if (entry.dataKey === 'actualValue') {

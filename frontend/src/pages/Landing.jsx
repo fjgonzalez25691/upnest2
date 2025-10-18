@@ -24,7 +24,7 @@ export default function Landing() {
 
     return (
         <div className="flex flex-col min-h-[calc(100vh-120px)] justify-center items-center bg-gray-50">
-            <div className="bg-white rounded-lg shadow p-10 flex flex-col items-center gap-4">
+            <div className="card-basic flex flex-col items-center gap-4" style={{padding: '2.5rem'}}>
                 {auth.isAuthenticated ? (
                     <div className="flex flex-col items-center gap-4 w-full">
                         <h1 className="text-2xl font-bold text-green-700 mb-2">

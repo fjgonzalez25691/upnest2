@@ -82,7 +82,7 @@ const GrowthChart = ({
 
     if (!chartData.points.length) {
         return (
-            <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="card-basic">
                 <h3 className="text-lg font-semibold mb-4">{getChartTitle()}</h3>
                 <div className="flex items-center justify-center h-64 text-gray-500">
                     <div className="text-center">
@@ -132,7 +132,7 @@ const GrowthChart = ({
     }
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="card-basic">
             <h3 className="text-lg font-semibold mb-4">{getChartTitle()}</h3>
             
             <div className="overflow-x-auto">

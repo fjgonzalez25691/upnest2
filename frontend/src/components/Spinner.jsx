@@ -89,7 +89,7 @@ const Spinner = ({
         aria-busy="true"
         aria-live="assertive"
       >
-        <div className="bg-white/90 backdrop-blur-sm shadow-2xl rounded-3xl p-8 border border-white/30 max-w-md w-full text-center transform animate-pulse">
+        <div className="card-loading max-w-md w-full">
           {renderSpinner()}
           
           <div className="space-y-3">
