@@ -147,7 +147,7 @@ const GrowthDataForm = ({
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="stack-form">
                 {/* Date Section */}
                 <div className="bg-gray-50 p-4 rounded-lg">
                     <h3 className="text-lg font-medium mb-3">Measurement Date</h3>

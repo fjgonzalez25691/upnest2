@@ -91,7 +91,7 @@ const BabyProfileForm = ({ baby, isEditable = false, isRecalculating = false, re
     <div className="card-elevated--bordered">
       {/* Baby Header */}
       <div className="flex items-center mb-6">
-        <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full flex items-center justify-center mr-6 shadow-lg">
+        <div className="avatar avatar-lg avatar-gradient-purple mr-6">
           <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
           </svg>
@@ -105,7 +105,7 @@ const BabyProfileForm = ({ baby, isEditable = false, isRecalculating = false, re
       </div>
 
       {/* Baby Details Form */}
-      <div className="space-y-6">
+      <div className="stack-section">
         {/* Basic Information Section */}
         <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
           <h3 className="text-lg font-medium mb-3">Basic Information</h3>
@@ -178,7 +178,7 @@ const BabyProfileForm = ({ baby, isEditable = false, isRecalculating = false, re
         {/* Birth Conditions Section */}
         <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
           <h3 className="text-lg font-medium mb-3">Birth Conditions</h3>
-          <div className="space-y-4">
+          <div className="stack-lg">
             {isEditable ? (
               <div>
                 <div className="flex items-center gap-3 mb-4">

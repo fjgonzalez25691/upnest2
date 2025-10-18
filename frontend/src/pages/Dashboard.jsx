@@ -104,7 +104,7 @@ const Dashboard = () => {
             </div>
           ) : babies.length === 0 ? (
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-8 rounded-3xl shadow-md text-center border border-purple-100">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="avatar avatar-lg avatar-gradient-pink mx-auto mb-4">
                 <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                 </svg>
@@ -122,7 +122,7 @@ const Dashboard = () => {
               {babies.map((baby) => (
                 <div key={baby.babyId} className="card-interactive--dashboard">
                   <div className="flex items-center mb-5">
-                    <div className="w-14 h-14 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full flex items-center justify-center mr-4 shadow-md">
+                    <div className="avatar avatar-md avatar-gradient-blue mr-4">
                       <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                       </svg>
@@ -178,7 +178,7 @@ const Dashboard = () => {
             <h2 className="text-xl font-bold mb-4 text-gray-800">
               Quick Actions
             </h2>
-            <div className="space-y-4">
+            <div className="stack-lg">
               <Link to="/add-baby">
                 <PrimaryButton variant="add" className="w-full">
                   Add New Baby

@@ -1,0 +1,253 @@
+/**
+ * =============================================================================
+ * AVATAR SYSTEM - TAILWIND v4 OPTIMIZED
+ * =============================================================================
+ * 
+ * Unified avatar system with circular gradients and semantic sizes.
+ * Replaces repetitive patterns of rounded-full + bg-gradient + dimensions.
+ * 
+ * Identified use cases:
+ * - Dashboard.jsx: Main user avatar
+ * - BabyProfile.jsx: Baby avatar in profile
+ * - BabyProfileForm.jsx: Avatar in forms
+ * - Header.jsx: Avatar in navigation
+ * 
+ * Typical migration:
+ * BEFORE: className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-400 to-purple-600"
+ * AFTER: className="avatar avatar-lg avatar-gradient-pink"
+ * =============================================================================
+ */
+
+@layer components {
+  /* ===== BASE AVATAR ===== */
+  .avatar {
+    @apply rounded-full object-cover flex-shrink-0;
+    @apply border-2 border-white shadow-lg;
+    @apply transition-all duration-200 ease-out;
+  }
+
+  /* ===== SEMANTIC SIZES ===== */
+  
+  /* Extra Small - 32px - For compact lists */
+  .avatar-xs {
+    @apply w-8 h-8;
+  }
+  
+  /* Small - 40px - For notifications, comments */
+  .avatar-sm {
+    @apply w-10 h-10;
+  }
+  
+  /* Medium - 48px - Standard size for lists */
+  .avatar-md {
+    @apply w-12 h-12;
+  }
+  
+  /* Large - 80px - Profiles, main headers */
+  .avatar-lg {
+    @apply w-20 h-20;
+  }
+  
+  /* Extra Large - 96px - Main profile page */
+  .avatar-xl {
+    @apply w-24 h-24;
+  }
+  
+  /* 2X Large - 128px - For detail pages */
+  .avatar-2xl {
+    @apply w-32 h-32;
+  }
+
+  /* ===== THEMATIC GRADIENTS ===== */
+  
+  /* Pink-Purple Gradient - For babies, main profile */
+  .avatar-gradient-pink {
+    @apply bg-gradient-to-br from-pink-400 to-purple-600;
+  }
+  
+  /* Blue-Indigo Gradient - For users, parents */
+  .avatar-gradient-blue {
+    @apply bg-gradient-to-br from-blue-400 to-indigo-600;
+  }
+  
+  /* Green-Teal Gradient - For positive data, growth */
+  .avatar-gradient-green {
+    @apply bg-gradient-to-br from-green-400 to-teal-600;
+  }
+  
+  /* Orange-Pink Gradient - For soft alerts, highlights */
+  .avatar-gradient-orange {
+    @apply bg-gradient-to-br from-orange-400 to-pink-500;
+  }
+  
+  /* Purple-Blue Gradient - For premium features */
+  .avatar-gradient-purple {
+    @apply bg-gradient-to-br from-purple-500 to-blue-500;
+  }
+  
+  /* Neutral Gradient - For placeholders, empty states */
+  .avatar-gradient-gray {
+    @apply bg-gradient-to-br from-gray-300 to-gray-500;
+  }
+
+  /* ===== INTERACTIVE STATES ===== */
+  
+  /* Clickable avatar - With hover and focus */
+  .avatar-interactive {
+    @apply cursor-pointer;
+    @apply hover:scale-105 hover:shadow-xl;
+    @apply focus:outline-none focus:ring-4 focus:ring-blue-300;
+    @apply active:scale-95;
+  }
+  
+  /* Avatar with online indicator */
+  .avatar-online {
+    @apply relative;
+  }
+  
+  .avatar-online::after {
+    content: '';
+    @apply absolute -bottom-0.5 -right-0.5;
+    @apply w-4 h-4 bg-green-500 rounded-full;
+    @apply border-2 border-white;
+  }
+  
+  /* Avatar with notification badge */
+  .avatar-notification {
+    @apply relative;
+  }
+  
+  .avatar-notification::after {
+    content: '';
+    @apply absolute -top-1 -right-1;
+    @apply w-5 h-5 bg-red-500 rounded-full;
+    @apply border-2 border-white;
+    @apply animate-pulse;
+  }
+
+  /* ===== SPECIAL VARIANTS ===== */
+  
+  /* Avatar with thematic border */
+  .avatar-bordered {
+    @apply border-4;
+  }
+  
+  .avatar-bordered.avatar-gradient-pink {
+    @apply border-pink-200;
+  }
+  
+  .avatar-bordered.avatar-gradient-blue {
+    @apply border-blue-200;
+  }
+  
+  .avatar-bordered.avatar-gradient-green {
+    @apply border-green-200;
+  }
+  
+  /* Avatar placeholder for loading states */
+  .avatar-skeleton {
+    @apply bg-gray-200 animate-pulse;
+  }
+  
+  /* Avatar with overlay for editing */
+  .avatar-editable {
+    @apply relative cursor-pointer;
+  }
+  
+  .avatar-editable::before {
+    content: '✏️';
+    @apply absolute inset-0 flex items-center justify-center;
+    @apply bg-black/40 text-white text-xl;
+    @apply opacity-0;
+    @apply transition-opacity duration-200;
+    @apply rounded-full;
+  }
+  
+  .avatar-editable:hover::before {
+    @apply opacity-100;
+  }
+
+  /* ===== AVATAR GROUPS ===== */
+  
+  /* Overlapping avatars stack */
+  .avatar-stack {
+    @apply flex -space-x-2;
+  }
+  
+  .avatar-stack .avatar {
+    @apply border-2 border-white hover:z-10;
+  }
+  
+  /* Horizontal avatar list */
+  .avatar-list {
+    @apply flex gap-2 items-center;
+  }
+  
+  /* Avatar grid */
+  .avatar-grid {
+    @apply grid grid-cols-3 gap-4;
+  }
+
+  /* ===== RESPONSIVE BEHAVIOR ===== */
+  
+  /* Avatar that adapts on mobile */
+  .avatar-responsive {
+    @apply w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20;
+  }
+
+  /* ===== ACCESSIBILITY ===== */
+  
+  /* For decorative avatars */
+  .avatar[role="presentation"] {
+    @apply select-none;
+  }
+  
+  /* For informational avatars */
+  .avatar[role="img"] {
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500;
+  }
+}
+
+/* ===== SPECIFIC UTILITIES ===== */
+
+/* Centered initials for avatars without image */
+.avatar-initials {
+  @apply flex items-center justify-center;
+  @apply text-white font-semibold select-none;
+}
+
+/* Text sizes for initials based on avatar size */
+.avatar-xs .avatar-initials { @apply text-xs; }
+.avatar-sm .avatar-initials { @apply text-sm; }
+.avatar-md .avatar-initials { @apply text-base; }
+.avatar-lg .avatar-initials { @apply text-xl; }
+.avatar-xl .avatar-initials { @apply text-2xl; }
+.avatar-2xl .avatar-initials { @apply text-3xl; }
+
+/**
+ * =============================================================================
+ * USAGE EXAMPLES
+ * =============================================================================
+ * 
+ * <!-- Basic avatar with gradient -->
+ * <img src="..." className="avatar avatar-lg avatar-gradient-pink" alt="User" />
+ * 
+ * <!-- Interactive avatar with online status -->
+ * <img src="..." className="avatar avatar-md avatar-gradient-blue avatar-interactive avatar-online" alt="User" />
+ * 
+ * <!-- Avatar with initials -->
+ * <div className="avatar avatar-lg avatar-gradient-green avatar-initials">
+ *   <span>AB</span>
+ * </div>
+ * 
+ * <!-- Stack of avatars -->
+ * <div className="avatar-stack">
+ *   <img src="..." className="avatar avatar-sm avatar-gradient-pink" alt="User 1" />
+ *   <img src="..." className="avatar avatar-sm avatar-gradient-blue" alt="User 2" />
+ *   <img src="..." className="avatar avatar-sm avatar-gradient-green" alt="User 3" />
+ * </div>
+ * 
+ * <!-- Editable avatar -->
+ * <img src="..." className="avatar avatar-xl avatar-gradient-purple avatar-editable" alt="Edit profile" />
+ * =============================================================================
+ */

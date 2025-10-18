@@ -173,7 +173,7 @@ const BabyForm = ({
                     </div>
                 )}
                 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="stack-form">
                     {/* Basic Information Section */}
                     <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
                         <h3 className="text-lg font-medium mb-3">Basic Information</h3>

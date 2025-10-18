@@ -5,6 +5,8 @@
 @import "./styles/components/cards.css";
 @import "./styles/components/skeleton.css";
 @import "./styles/components/navigation.css";
+@import "./styles/components/avatar.css";
+@import "./styles/utilities/stack.css";
 
 /* To check responsiveness, use Responsively App */
 /* Custom styles for the application */

@@ -477,7 +477,7 @@ const BabyProfile = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 {/* Charts card */}
                                 <div className="text-center p-6 bg-blue-50 rounded-xl border border-blue-100">
-                                    <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <div className="avatar avatar-md avatar-gradient-blue mx-auto mb-4">
                                         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                         </svg>
@@ -500,7 +500,7 @@ const BabyProfile = () => {
 
                                 {/* Add Data card */}
                                 <div className="text-center p-6 bg-green-50 rounded-xl border border-green-100">
-                                    <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <div className="avatar avatar-md avatar-gradient-green mx-auto mb-4">
                                         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                         </svg>
@@ -518,7 +518,7 @@ const BabyProfile = () => {
 
                                 {/* History card */}
                                 <div className="text-center p-6 bg-purple-50 rounded-xl border border-purple-100">
-                                    <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <div className="avatar avatar-md avatar-gradient-purple mx-auto mb-4">
                                         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>

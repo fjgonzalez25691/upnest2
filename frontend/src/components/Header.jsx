@@ -43,8 +43,8 @@ function Header() {
               <Link to="#" className="hover:text-primary">AI Chat</Link>
               <Link to="/dashboard" className="hover:text-primary">My Dashboard</Link>
               <Link to="#" className="hover:text-primary">Add Baby</Link>
-              <div className="bg-primary text-white rounded-full w-9 h-9 flex items-center justify-center font-bold text-lg">
-                {user.profile?.name?.[0]?.toUpperCase() || user.profile?.email?.[0]?.toUpperCase() || 'U'}
+              <div className="avatar avatar-sm avatar-gradient-blue avatar-initials">
+                <span>{user.profile?.name?.[0]?.toUpperCase() || user.profile?.email?.[0]?.toUpperCase() || 'U'}</span>
               </div>
               <PrimaryButton
                 variant="logout"
@@ -91,8 +91,8 @@ function Header() {
             <>
               <Link to="/dashboard" className="hover:text-primary" onClick={() => setMenuOpen(false)}>My Dashboard</Link>
               <Link to="/add-baby" className="hover:text-primary" onClick={() => setMenuOpen(false)}>Add Baby</Link>
-              <div className="bg-primary text-white rounded-full w-9 h-9 flex items-center justify-center font-bold text-lg">
-                {user.profile?.name?.[0]?.toUpperCase() || user.profile?.email?.[0]?.toUpperCase() || 'U'}
+              <div className="avatar avatar-sm avatar-gradient-blue avatar-initials">
+                <span>{user.profile?.name?.[0]?.toUpperCase() || user.profile?.email?.[0]?.toUpperCase() || 'U'}</span>
               </div>
               <PrimaryButton
                 variant="logout"
