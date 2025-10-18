@@ -33,6 +33,14 @@ export default {
     disabled: {
       control: 'boolean',
       description: 'Whether the button is disabled'
+    },
+    isLoading: {
+      control: 'boolean',
+      description: 'Show loading spinner and disable button'
+    },
+    loadingText: {
+      control: 'text',
+      description: 'Text to display while loading (optional)'
     }
   }
 };
@@ -162,6 +170,73 @@ export const States = {
     docs: {
       description: {
         story: 'Button states including normal and disabled states across different variants.'
+      }
+    }
+  }
+};
+
+export const LoadingStates = {
+  render: () => (
+    <div className="space-y-6">
+      <div>
+        <h4 className="font-semibold text-gray-700 mb-3">Basic Loading States</h4>
+        <div className="flex flex-wrap gap-3">
+          <PrimaryButton variant="primary">Normal Button</PrimaryButton>
+          <PrimaryButton variant="primary" isLoading>Loading...</PrimaryButton>
+          <PrimaryButton variant="primary" isLoading loadingText="Saving...">Save</PrimaryButton>
+        </div>
+      </div>
+      
+      <div>
+        <h4 className="font-semibold text-gray-700 mb-3">Loading with Icons</h4>
+        <div className="flex flex-wrap gap-3">
+          <PrimaryButton 
+            variant="add" 
+            icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>}
+          >
+            Add Item
+          </PrimaryButton>
+          <PrimaryButton 
+            variant="add" 
+            isLoading
+            icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>}
+          >
+            Adding...
+          </PrimaryButton>
+        </div>
+      </div>
+      
+      <div>
+        <h4 className="font-semibold text-gray-700 mb-3">Different Variants Loading</h4>
+        <div className="flex flex-wrap gap-3">
+          <PrimaryButton variant="success" isLoading>Processing...</PrimaryButton>
+          <PrimaryButton variant="danger" isLoading loadingText="Deleting...">Delete</PrimaryButton>
+          <PrimaryButton variant="edit" isLoading size="compact">Updating...</PrimaryButton>
+        </div>
+      </div>
+      
+      <div>
+        <h4 className="font-semibold text-gray-700 mb-3">Icon-Only Loading</h4>
+        <div className="flex flex-wrap gap-3">
+          <PrimaryButton 
+            variant="primary"
+            iconPosition="only"
+            icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>}
+          />
+          <PrimaryButton 
+            variant="primary"
+            iconPosition="only"
+            isLoading
+            icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>}
+          />
+        </div>
+      </div>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: 'Loading states with spinner animation. When isLoading=true, button shows spinner and becomes disabled. Optional loadingText can override button text during loading.'
       }
     }
   }

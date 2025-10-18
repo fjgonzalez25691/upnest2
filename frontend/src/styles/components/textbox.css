@@ -1,105 +1,205 @@
 /* /home/fjgaparicio/upnest2/frontend/src/styles/components/textbox.css */
 
-/* Atomic utilities */
-@utility textbox-base {
-  @apply w-full p-4 rounded-xl transition-all duration-200 outline-none text-gray-800 font-medium border;
-}
-
 /* TextBox component styles */
 @layer components {
-  /* TextBox variants */
+  /* Base textbox styles */
+  .textbox-base {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+    outline: none;
+    color: rgb(31 41 55);
+    font-weight: 500;
+    border: 1px solid;
+  }
 
+  /* TextBox variants */
   .textbox-input {
-    @apply textbox-base border-blue-100 bg-white;
-    @apply focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
-    @apply hover:border-blue-200;
+    width: 100%;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+    outline: none;
+    color: rgb(31 41 55);
+    font-weight: 500;
+    border: 1px solid rgb(219 234 254);
+    background-color: white;
+  }
+
+  .textbox-input:focus {
+    box-shadow: 0 0 0 2px rgb(59 130 246);
+    border-color: rgb(59 130 246);
+  }
+
+  .textbox-input:hover {
+    border-color: rgb(191 219 254);
   }
 
   .textbox-input-edit {
-    @apply textbox-base border-blue-200;
+    width: 100%;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+    outline: none;
+    color: rgb(31 41 55);
+    font-weight: 500;
+    border: 1px solid rgb(191 219 254);
     background: linear-gradient(to right, #eff6ff, #f0f9ff);
-    @apply focus:ring-2 focus:ring-blue-500 focus:border-transparent;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1); /* Inner shadow */
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .textbox-input-edit:focus {
+    box-shadow: 0 0 0 2px rgb(59 130 246), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-color: transparent;
   }
 
   .textbox-input-edit-number {
-    @apply textbox-base border-green-200;
+    width: 100%;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+    outline: none;
+    color: rgb(31 41 55);
+    font-weight: 500;
+    border: 1px solid rgb(187 247 208);
     background: var(--gradient-number);
-    @apply focus:ring-2 focus:ring-emerald-500 focus:border-transparent;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1); /* Inner shadow */
-  } 
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .textbox-input-edit-number:focus {
+    box-shadow: 0 0 0 2px rgb(16 185 129), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-color: transparent;
+  }
 
   .textbox-readonly {
-    @apply textbox-base border-gray-100 cursor-not-allowed;
+    width: 100%;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+    outline: none;
+    color: rgb(31 41 55);
+    font-weight: 500;
+    border: 1px solid rgb(243 244 246);
+    cursor: not-allowed;
     background: linear-gradient(to right, #f9fafb, #f1f5f9);
   }
 
   .textbox-select {
-    @apply textbox-base border-blue-100 bg-white;
-    @apply focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
-    @apply hover:border-blue-200;
+    width: 100%;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+    outline: none;
+    color: rgb(31 41 55);
+    font-weight: 500;
+    border: 1px solid rgb(219 234 254);
     background: var(--gradient-select);
-    @apply focus:ring-2 focus:ring-purple-500 focus:border-transparent;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1)
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .textbox-select:focus {
+    box-shadow: 0 0 0 2px rgb(168 85 247), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-color: transparent;
+  }
+
+  .textbox-select:hover {
+    border-color: rgb(191 219 254);
   }
 
   .textbox-select-compact {
-    @apply w-full px-3 py-2 rounded-xl transition-all duration-200 outline-none text-gray-800 font-medium border;
-    @apply border-blue-100 bg-white;
-    @apply focus:ring-2 focus:ring-purple-500 focus:border-transparent;
-    @apply hover:border-blue-200;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+    outline: none;
+    color: rgb(31 41 55);
+    font-weight: 500;
+    border: 1px solid rgb(219 234 254);
     background: var(--gradient-select);
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1)
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .textbox-select-compact:focus {
+    box-shadow: 0 0 0 2px rgb(168 85 247), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-color: transparent;
+  }
+
+  .textbox-select-compact:hover {
+    border-color: rgb(191 219 254);
   }
 
   .textbox-readonly-block {
-    @apply p-4 rounded-xl font-medium border;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    font-weight: 500;
+    border: 1px solid;
     min-height: 48px;
     display: flex;
     align-items: center;
-    /* Remove any bg-gradient or border-color here */
   }
 
-  .textbox-group {
-    @apply space-y-2;
+  .textbox-group > * + * {
+    margin-top: 0.5rem;
   }
 
   .textbox-label {
-    @apply block text-sm font-semibold text-gray-700;
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgb(55 65 81);
   }
 
   .textbox-label-required::after {
-    @apply text-red-500 ml-1;
+    color: rgb(239 68 68);
+    margin-left: 0.25rem;
     content: "*";
   }
 
+  .textbox-error {
+    color: rgb(239 68 68);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
   .textbox-error-message {
-    @apply text-red-500 text-sm mt-1;
+    color: rgb(239 68 68);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
   }
 
   .textbox-suffix {
-    @apply absolute right-4 top-4 text-gray-500 text-sm pointer-events-none;
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    color: rgb(107 114 128);
+    font-size: 0.875rem;
+    pointer-events: none;
   }
 
   /* Read-only backgrounds by type */
   .textbox-bg-string {
     background: var(--gradient-string);
-    @apply border-blue-100;
+    border-color: rgb(219 234 254);
   }
+  
   .textbox-bg-number {
     background: var(--gradient-number);
-    @apply border-green-100;
+    border-color: rgb(220 252 231);
   }
+  
   .textbox-bg-date {
     background: var(--gradient-date);
-    @apply border-gray-100;
+    border-color: rgb(243 244 246);
   }
+  
   .textbox-bg-select {
     background: var(--gradient-select);
-    @apply border-purple-100;
+    border-color: rgb(243 232 255);
   }
+  
   .textbox-bg-default {
     background: var(--gradient-string);
-    @apply border-blue-100;
+    border-color: rgb(219 234 254);
   }
 }

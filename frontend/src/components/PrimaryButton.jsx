@@ -2,6 +2,7 @@
 // Pourpose: A reusable primary button component for the UpNest application. Used for primary actions like submitting forms or confirming actions.
 
 import React from "react";
+import Spinner from "./Spinner";
 
 const variantStyles = {
   primary: "btn-primary",
@@ -21,6 +22,8 @@ const variantStyles = {
  * @param {JSX.Element} icon - Icon element to display
  * @param {string} iconPosition - Icon position: "left", "right", "only"
  * @param {boolean} showIcon - Whether to show icon (for backward compatibility)
+ * @param {boolean} isLoading - Show loading spinner and disable button
+ * @param {string} loadingText - Text to show when loading (optional)
  */
 const PrimaryButton = ({
   children,
@@ -29,6 +32,8 @@ const PrimaryButton = ({
   icon = null, // New: icon element
   iconPosition = "left", // New: "left", "right", "only"
   showIcon = true, // New: show/hide icon
+  isLoading = false, // New: loading state
+  loadingText = null, // New: optional loading text
   className = "",
   ...props
 }) => {
@@ -37,8 +42,21 @@ const PrimaryButton = ({
     return size === "compact" ? "btn-base-compact" : "btn-base";
   };
 
-  // Render icon with proper spacing
+  // Render icon with proper spacing (or loading spinner)
   const renderIcon = () => {
+    // Show loading spinner instead of icon when loading
+    if (isLoading) {
+      const spinnerClasses = iconPosition === "only" ? "" : 
+        iconPosition === "right" ? "ml-2" : "mr-2";
+      return (
+        <Spinner 
+          variant="inline" 
+          color="white" 
+          className={spinnerClasses}
+        />
+      );
+    }
+    
     if (!icon || !showIcon) return null;
     
     const iconClasses = iconPosition === "only" ? "" : 
@@ -49,8 +67,10 @@ const PrimaryButton = ({
     });
   };
 
-  // Determine button content based on iconPosition
+  // Determine button content based on iconPosition and loading state
   const getButtonContent = () => {
+    const displayText = isLoading && loadingText ? loadingText : children;
+    
     if (iconPosition === "only") {
       return renderIcon();
     }
@@ -58,7 +78,7 @@ const PrimaryButton = ({
     if (iconPosition === "right") {
       return (
         <>
-          {children}
+          {displayText}
           {renderIcon()}
         </>
       );
@@ -68,7 +88,7 @@ const PrimaryButton = ({
     return (
       <>
         {renderIcon()}
-        {children}
+        {displayText}
       </>
     );
   };
@@ -76,6 +96,7 @@ const PrimaryButton = ({
   return (
     <button
       type={props.type || "button"}
+      disabled={isLoading || props.disabled} // Disable when loading or explicitly disabled
       className={
         `${getBaseClass()} ${variantStyles[variant] || variantStyles.default} ${iconPosition === "only" ? "" : "flex items-center justify-center"} ${className}`
       }

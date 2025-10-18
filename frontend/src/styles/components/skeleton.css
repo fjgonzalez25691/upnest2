@@ -1,0 +1,263 @@
+@layer components {
+  /* ===== BASE SKELETON CLASSES ===== */
+  
+  /* Base skeleton animation */
+  .skeleton {
+    background: linear-gradient(90deg, 
+      rgb(229 231 235) 25%, 
+      rgb(243 244 246) 50%, 
+      rgb(229 231 235) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s ease-in-out infinite;
+    border-radius: 0.375rem;
+  }
+
+  @keyframes skeleton-loading {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* ===== SIZE VARIANTS ===== */
+  
+  /* Text skeletons */
+  .skeleton-text {
+    height: 1rem;
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .skeleton-text-sm {
+    height: 0.875rem;
+    width: 100%;
+    margin-bottom: 0.375rem;
+  }
+
+  .skeleton-text-lg {
+    height: 1.25rem;
+    width: 100%;
+    margin-bottom: 0.75rem;
+  }
+
+  .skeleton-text-xl {
+    height: 1.5rem;
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+
+  /* Width variants for text */
+  .skeleton-text--quarter {
+    width: 25%;
+  }
+
+  .skeleton-text--half {
+    width: 50%;
+  }
+
+  .skeleton-text--three-quarters {
+    width: 75%;
+  }
+
+  .skeleton-text--full {
+    width: 100%;
+  }
+
+  /* Avatar/Circle skeletons */
+  .skeleton-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+  }
+
+  .skeleton-avatar-sm {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+  }
+
+  .skeleton-avatar-lg {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+  }
+
+  .skeleton-avatar-xl {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+  }
+
+  /* Button skeletons */
+  .skeleton-button {
+    height: 2.5rem;
+    width: 6rem;
+    border-radius: 0.75rem;
+  }
+
+  .skeleton-button-compact {
+    height: 2rem;
+    width: 5rem;
+    border-radius: 0.75rem;
+  }
+
+  .skeleton-button-wide {
+    height: 2.5rem;
+    width: 8rem;
+    border-radius: 0.75rem;
+  }
+
+  /* ===== COMPONENT SKELETONS ===== */
+  
+  /* Card skeleton */
+  .skeleton-card {
+    background-color: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+
+  .skeleton-card-compact {
+    background-color: white;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  }
+
+  /* List item skeleton */
+  .skeleton-list-item {
+    background-color: white;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid rgb(229 231 235);
+  }
+
+  /* Table row skeleton */
+  .skeleton-table-row {
+    height: 3rem;
+    border-bottom: 1px solid rgb(229 231 235);
+  }
+
+  /* Form field skeleton */
+  .skeleton-form-field {
+    margin-bottom: 1rem;
+  }
+
+  .skeleton-input {
+    height: 2.5rem;
+    width: 100%;
+    border-radius: 0.375rem;
+    margin-top: 0.25rem;
+  }
+
+  .skeleton-select {
+    height: 2.5rem;
+    width: 100%;
+    border-radius: 0.375rem;
+    margin-top: 0.25rem;
+  }
+
+  /* ===== COMPLEX SKELETONS ===== */
+  
+  /* Profile skeleton */
+  .skeleton-profile {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  /* Post/Article skeleton */
+  .skeleton-post {
+    margin-bottom: 1.5rem;
+  }
+
+  /* Measurement card skeleton (específico para la app) */
+  .skeleton-measurement {
+    height: 6rem;
+    border-radius: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  /* Baby card skeleton (específico para la app) */
+  .skeleton-baby-card {
+    height: 8rem;
+    border-radius: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  /* ===== UTILITY CLASSES ===== */
+  
+  /* Slower animation for subtle content */
+  .skeleton--slow {
+    animation-duration: 2s;
+  }
+
+  /* Faster animation for active content */
+  .skeleton--fast {
+    animation-duration: 1s;
+  }
+
+  /* Pause animation on hover */
+  .skeleton--pausable:hover {
+    animation-play-state: paused;
+  }
+
+  /* Dark theme variant */
+  .skeleton--dark {
+    background: linear-gradient(90deg, 
+      rgb(55 65 81) 25%, 
+      rgb(75 85 99) 50%, 
+      rgb(55 65 81) 75%
+    );
+    background-size: 200% 100%;
+  }
+
+  /* No border radius for rectangular elements */
+  .skeleton--sharp {
+    border-radius: 0;
+  }
+
+  /* ===== CONTAINER PATTERNS ===== */
+  
+  /* Skeleton list container */
+  .skeleton-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  /* Skeleton grid container */
+  .skeleton-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+
+  /* Skeleton flex container */
+  .skeleton-flex {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  /* ===== RESPONSIVE VARIANTS ===== */
+  
+  @media (max-width: 640px) {
+    .skeleton-card {
+      padding: 1rem;
+    }
+    
+    .skeleton-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .skeleton-profile {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+}

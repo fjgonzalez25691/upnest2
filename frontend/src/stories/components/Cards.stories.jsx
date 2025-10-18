@@ -1,4 +1,4 @@
-import Card, { ElevatedCard, InteractiveCard, BasicCard, CompactCard, CardHeader } from '../components/ui/Card';
+import Card, { ElevatedCard, InteractiveCard, BasicCard, CompactCard, CardHeader } from '../../components/ui/Card';
 
 export default {
   title: 'Components/Cards',
@@ -136,8 +136,8 @@ export const WithHeaderAndActions = () => (
     }
     actions={
       <div className="flex gap-4">
-        <button className="btn btn--secondary">Cancel</button>
-        <button className="btn btn--primary">Save Changes</button>
+        <button className="btn-base-compact btn-cancel">Cancel</button>
+        <button className="btn-base-compact btn-primary">Save Changes</button>
       </div>
     }
   >
@@ -146,7 +146,7 @@ export const WithHeaderAndActions = () => (
         <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
         <input 
           type="number" 
-          className="textbox textbox--md" 
+          className="textbox-input" 
           placeholder="Enter weight"
           defaultValue="7.5"
         />
@@ -155,7 +155,7 @@ export const WithHeaderAndActions = () => (
         <label className="block text-sm font-medium text-gray-700 mb-1">Height (cm)</label>
         <input 
           type="number" 
-          className="textbox textbox--md" 
+          className="textbox-input" 
           placeholder="Enter height"
           defaultValue="68"
         />
