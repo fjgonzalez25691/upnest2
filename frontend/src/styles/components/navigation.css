@@ -1,0 +1,33 @@
+@layer components {
+  /* ===== BACK LINKS SYSTEM (Faithful extension of original plan) ===== */
+  
+  /* Back link base - Replaces repetitive navigation pattern */
+  .back-link {
+    @apply inline-flex items-center gap-2 transition-colors duration-200;
+    color: var(--color-primary);
+  }
+
+  .back-link:hover {
+    color: var(--color-secondary);
+  }
+
+  /* ===== NAVIGATION PILLS (According to original plan) ===== */
+  
+  /* Basic navigation pill */
+  .nav-pill {
+    @apply inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium;
+    background: var(--color-surface);
+    box-shadow: 0 6px 15px -10px rgba(34, 34, 59, 0.35);
+  }
+
+  /* ===== BASIC BREADCRUMB (According to original plan) ===== */
+  
+  /* Basic breadcrumb container */
+  .breadcrumb {
+    @apply flex items-center gap-2 text-sm text-gray-600;
+  }
+
+  .breadcrumb__separator {
+    @apply text-gray-400;
+  }
+}

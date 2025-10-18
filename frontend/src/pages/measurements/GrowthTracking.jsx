@@ -6,6 +6,7 @@ import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { getGrowthData, deleteGrowthData } from "../../services/growthDataApi";
 import PrimaryButton from "../../components/PrimaryButton";
 import GrowthDataList from "../../components/measuremencomponents/GrowthDataList";
+import BackLink from "../../components/navigation/BackLink";
 import Spinner from "../../components/Spinner";
 import PageShell from "../../components/layout/PageShell";
 
@@ -28,14 +29,14 @@ const GrowthTracking = () => {
 
   // If we came from an edit and have a previous list, show it immediately
     if (prev && Array.isArray(prev)) {
-      // Aplica el reemplazo optimista
+      // Apply optimistic replacement
       const firstPaint = updated
         ? prev.map((m) => (m.dataId === updated.dataId ? updated : m))
         : prev;
       setMeasurements(firstPaint);
-      setLoading(false); // no mostrar loader
+      setLoading(false); // don't show loader
     } else {
-      // Camino normal (sin volver de editar)
+      // Normal path (not returning from edit)
       setLoading(true);
     }
 
@@ -57,11 +58,11 @@ const GrowthTracking = () => {
     };
 
     if (babyId) doFetch();
-    // Nota: dependemos solo de babyId; location.state no es estable.
+    // Note: we only depend on babyId; location.state is not stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [babyId]);
 
-  // Efecto 2: si updatedMeasurement cambia, parchea en memoria sin refetch
+  // Effect 2: if updatedMeasurement changes, patch in memory without refetch
   useEffect(() => {
     const updated = location.state?.updatedMeasurement;
     if (!updated) return;
@@ -126,25 +127,9 @@ const GrowthTracking = () => {
     <PageShell>
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <Link
-            to={`/baby/${babyId}`}
-            className="text-blue-600 hover:text-blue-800 flex items-center mb-4 transition-colors"
-          >
-            <svg
-              className="w-5 h-5 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
+          <BackLink to={`/baby/${babyId}`}>
             Back to Profile
-          </Link>
+          </BackLink>
         </div>
         <div className="bg-white rounded-3xl shadow-lg p-8 border border-blue-100">
           <div className="flex items-center justify-between mb-6">

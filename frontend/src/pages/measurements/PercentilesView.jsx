@@ -7,6 +7,7 @@ import { getGrowthData } from "../../services/growthDataApi";
 import PercentilesChart from "../../components/PercentilesChart";
 import TextBox from "../../components/TextBox";
 import PrimaryButton from "../../components/PrimaryButton";
+import BackLink from "../../components/navigation/BackLink";
 import Spinner from "../../components/Spinner";
 import PageShell from "../../components/layout/PageShell";
 
@@ -62,25 +63,9 @@ const PercentilesView = () => {
       <PageShell>
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
-            <Link
-              to={`/baby/${babyId}`}
-              className="text-blue-600 hover:text-blue-800 flex items-center mb-4 transition-colors"
-            >
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
+            <BackLink to={`/baby/${babyId}`}>
               Back to Profile
-            </Link>
+            </BackLink>
           </div>
           
           <div className="card-elevated--danger">
@@ -107,25 +92,9 @@ const PercentilesView = () => {
       <div className="max-w-6xl mx-auto">
         {/* Navigation Header */}
         <div className="mb-6 md:mb-8">
-          <Link
-            to={`/baby/${babyId}`}
-            className="text-blue-600 hover:text-blue-800 flex items-center mb-4 transition-colors"
-          >
-            <svg
-              className="w-5 h-5 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
+          <BackLink to={`/baby/${babyId}`}>
             Back to Profile
-          </Link>
+          </BackLink>
           
           {/* Main Title - Mobile First */}
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 md:mb-6">
