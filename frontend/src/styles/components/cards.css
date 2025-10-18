@@ -1,0 +1,279 @@
+/**
+ * CARDS SYSTEM - Tailwind CSS Layers
+ * Unified card components for consistent UI patterns
+ * Based on analysis of 32+ card instances across the application
+ */
+
+@layer components {
+  
+  /* ===== BASE CARD ===== */
+  .card {
+    background-color: white;
+    border-radius: 0.5rem;
+  }
+
+  /* ===== ELEVATED CARDS (Most common - 47% of cases) ===== */
+  .card-elevated {
+    background-color: white;
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    padding: 2rem;
+  }
+
+  .card-elevated--bordered {
+    background-color: white;
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    padding: 2rem;
+    border: 1px solid rgb(219 234 254);
+  }
+
+  /* Color variants for elevated cards */
+  .card-elevated--success {
+    background-color: white;
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    padding: 2rem;
+    border: 1px solid rgb(220 252 231);
+  }
+
+  .card-elevated--danger {
+    background-color: white;
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    padding: 2rem;
+    border: 1px solid rgb(254 226 226);
+  }
+
+  .card-elevated--secondary {
+    background-color: white;
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    padding: 2rem;
+    border: 1px solid rgb(243 232 255);
+  }
+
+  .card-elevated--neutral {
+    background-color: white;
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    padding: 2rem;
+    border: 1px solid rgb(229 231 235);
+  }
+
+  /* ===== INTERACTIVE CARDS (Dashboard style - 12% of cases) ===== */
+  .card-interactive {
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    border: 1px solid rgb(219 234 254);
+    transition: all 0.3s ease;
+  }
+
+  .card-interactive:hover {
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    border-color: rgb(233 213 255);
+  }
+
+  /* Dashboard specific sizing */
+  .card-interactive--dashboard {
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    border: 1px solid rgb(219 234 254);
+    transition: all 0.3s ease;
+    min-width: 320px;
+    max-width: 380px;
+    flex-grow: 1;
+  }
+
+  .card-interactive--dashboard:hover {
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    border-color: rgb(233 213 255);
+  }
+
+  /* ===== BASIC CARDS (Components style - 25% of cases) ===== */
+  .card-basic {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    padding: 1.5rem;
+  }
+
+  /* Basic card with border */
+  .card-basic--bordered {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    padding: 1.5rem;
+    border: 1px solid rgb(229 231 235);
+  }
+
+  /* ===== COMPACT CARDS (Responsive - 16% of cases) ===== */
+  .card-compact {
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    padding: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    .card-compact {
+      padding: 1.5rem;
+    }
+  }
+
+  .card-compact--bordered {
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    padding: 1rem;
+    border: 1px solid rgb(219 234 254);
+  }
+
+  @media (min-width: 768px) {
+    .card-compact--bordered {
+      padding: 1.5rem;
+    }
+  }
+
+  /* Responsive border radius */
+  .card-compact--responsive {
+    background-color: white;
+    border-radius: 1rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    padding: 1rem;
+    border: 1px solid rgb(219 234 254);
+  }
+
+  @media (min-width: 768px) {
+    .card-compact--responsive {
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+    }
+  }
+
+  /* ===== SPECIAL PURPOSE CARDS ===== */
+  
+  /* Dropdown/Menu cards */
+  .card-dropdown {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    border: 1px solid rgb(229 231 235);
+    padding: 0.25rem 0;
+  }
+
+  /* Loading/Spinner cards */
+  .card-loading {
+    background-color: rgb(255 255 255 / 0.9);
+    backdrop-filter: blur(4px);
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    border: 1px solid rgb(255 255 255 / 0.3);
+    text-align: center;
+    transform: scale(1);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* ===== CARD ELEMENTS ===== */
+  
+  /* Card headers */
+  .card__header {
+    margin-bottom: 1.5rem;
+  }
+
+  .card__title {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 700;
+    color: rgb(30 58 138);
+    margin-bottom: 0.5rem;
+  }
+
+  .card__subtitle {
+    color: rgb(29 78 216);
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+
+  /* Card content */
+  .card__content > * + * {
+    margin-top: 1rem;
+  }
+
+  /* Card actions */
+  .card__actions {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+  }
+
+  .card__actions--center {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+  }
+
+  .card__actions--start {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-start;
+  }
+
+  /* ===== UTILITY MODIFIERS ===== */
+  
+  /* Padding variants */
+  .card--p-4 {
+    padding: 1rem;
+  }
+
+  .card--p-6 {
+    padding: 1.5rem;
+  }
+
+  .card--p-8 {
+    padding: 2rem;
+  }
+
+  /* Shadow variants */
+  .card--shadow-sm {
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  }
+
+  .card--shadow-md {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+
+  .card--shadow-lg {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+
+  .card--shadow-xl {
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
+
+  /* Border radius variants */
+  .card--rounded-lg {
+    border-radius: 0.5rem;
+  }
+
+  .card--rounded-xl {
+    border-radius: 0.75rem;
+  }
+
+  .card--rounded-2xl {
+    border-radius: 1rem;
+  }
+
+  .card--rounded-3xl {
+    border-radius: 1.5rem;
+  }
+
+}

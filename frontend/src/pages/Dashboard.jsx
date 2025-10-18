@@ -120,7 +120,7 @@ const Dashboard = () => {
           ) : (
             <div className="flex flex-wrap gap-6 justify-start">
               {babies.map((baby) => (
-                <div key={baby.babyId} className="bg-white p-6 rounded-3xl shadow-lg hover:shadow-xl transition-all duration-300 border border-blue-100 hover:border-purple-200 min-w-[320px] max-w-[380px] flex-grow">
+                <div key={baby.babyId} className="card-interactive--dashboard">
                   <div className="flex items-center mb-5">
                     <div className="w-14 h-14 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full flex items-center justify-center mr-4 shadow-md">
                       <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -174,7 +174,7 @@ const Dashboard = () => {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Quick Actions */}
-          <div className="bg-white p-6 rounded-3xl shadow-lg border border-green-100">
+          <div className="card-elevated--success card--p-6">
             <h2 className="text-xl font-bold mb-4 text-gray-800">
               Quick Actions
             </h2>
@@ -198,7 +198,7 @@ const Dashboard = () => {
           </div>
 
           {/* Account Info */}
-          <div className="bg-white p-6 rounded-3xl shadow-lg border border-blue-100">
+          <div className="card-elevated--bordered card--p-6">
             <h2 className="text-xl font-bold mb-4 text-gray-800">
               Account Info
             </h2>
@@ -225,7 +225,7 @@ const Dashboard = () => {
           </div>
 
           {/* Growth Insights */}
-          <div className="bg-white p-6 rounded-3xl shadow-lg border border-purple-100">
+          <div className="card-elevated--secondary card--p-6">
             <h2 className="text-xl font-bold mb-4 text-gray-800">
               Growth Insights
             </h2>

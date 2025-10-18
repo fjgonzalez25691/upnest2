@@ -92,7 +92,7 @@ const GrowthDataList = ({
 
     if (loading) {
         return (
-            <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="card-basic">
                 <div className="animate-pulse">
                     <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
                     <div className="space-y-4">
@@ -107,7 +107,7 @@ const GrowthDataList = ({
 
     if (error) {
         return (
-            <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="card-basic">
                 <div className="text-center">
                     <div className="text-red-500 mb-2">
                         <svg className="w-12 h-12 mx-auto" fill="currentColor" viewBox="0 0 20 20">
@@ -122,7 +122,7 @@ const GrowthDataList = ({
     }
 
     return (
-        <div className="bg-white rounded-lg shadow-md">
+        <div className="card-basic">
             {/* Header */}
             <div className="p-6 border-b border-gray-200">
                 <div className="flex justify-between items-center mb-4">

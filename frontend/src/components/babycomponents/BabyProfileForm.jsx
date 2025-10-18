@@ -79,7 +79,7 @@ const BabyProfileForm = ({ baby, isEditable = false, isRecalculating = false, re
 
   if (!baby) {
     return (
-      <div className="bg-white rounded-3xl shadow-lg p-8 border border-blue-100">
+      <div className="card-elevated--bordered">
         <div className="text-center py-8">
           <p className="text-gray-500">No baby data available</p>
         </div>
@@ -88,7 +88,7 @@ const BabyProfileForm = ({ baby, isEditable = false, isRecalculating = false, re
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-lg p-8 border border-blue-100">
+    <div className="card-elevated--bordered">
       {/* Baby Header */}
       <div className="flex items-center mb-6">
         <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full flex items-center justify-center mr-6 shadow-lg">

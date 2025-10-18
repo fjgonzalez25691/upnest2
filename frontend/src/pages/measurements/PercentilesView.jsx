@@ -83,7 +83,7 @@ const PercentilesView = () => {
             </Link>
           </div>
           
-          <div className="bg-white rounded-3xl shadow-lg p-8 border border-red-100">
+          <div className="card-elevated--danger">
             <div className="text-center">
               <svg className="w-12 h-12 mx-auto mb-4 text-red-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -185,7 +185,7 @@ const PercentilesView = () => {
         {/* Main Chart Container */}
         <div className="space-y-4 md:space-y-6">
           {measurements.length === 0 ? (
-            <div className="bg-white rounded-2xl md:rounded-3xl shadow-lg p-6 md:p-8 border border-blue-100">
+            <div className="card-compact--responsive">
               <div className="text-center py-8 md:py-12">
                 <svg className="w-12 md:w-16 h-12 md:h-16 mx-auto mb-4 md:mb-6 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -215,7 +215,7 @@ const PercentilesView = () => {
           
           {/* Additional Information - Mobile First Grid */}
           {measurements.length > 0 && (
-            <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border border-blue-100">
+            <div className="card-compact--bordered">
               <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-3 md:mb-4">About These Charts</h3>
               
               {/* Mobile: 1 column, Tablet: 2 columns */}
