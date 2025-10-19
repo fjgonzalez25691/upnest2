@@ -8,10 +8,28 @@
 @import "./styles/components/avatar.css";
 @import "./styles/utilities/stack.css";
 
-/* To check responsiveness, use Responsively App */
-/* Custom styles for the application */
 @theme {
   --font-display: "Inter", "sans-serif";
+
+  /* ===== COLORES GRISES - Para bg-gray-50, text-gray-900, etc. ===== */
+  --color-gray-50: #f9fafb;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-900: #111827;
+
+  /* ===== COLORES AMBER - Para from-amber-50, border-amber-200 ===== */
+  --color-amber-50: #fffbeb;
+  --color-amber-200: #fde68a;
+  --color-orange-50: #fff7ed;
+
+  /* ===== RADIUS - Para rounded-3xl, rounded-xl ===== */
+  --radius-xl: 0.75rem;
+  --radius-3xl: 1.5rem;
+
+  /* ===== SHADOWS - Para shadow-lg, hover:shadow-xl ===== */
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
   --color-primary: #3B82F6;
   --color-secondary: #8b5cf6;
   --color-cancel: #6B7280;
@@ -23,7 +41,8 @@
   --color-surface: #FFFFFF;
   --color-text-main: #22223B;
   --color-text-subtle: #64748B;
-  /* Individual gradient colors - right variants only (left uses base colors) */
+
+  /* Gradients */
   --color-gradient-primary-right: #2563eb;
   --color-gradient-edit-right: #7c3aed;
   --color-gradient-success-right: #16a34a;
@@ -33,7 +52,6 @@
   --color-gradient-cancel-right: #4b5563;
   --color-gradient-logout-right: #9ca3af;
 
-  /* Gradients for buttons using base colors as left and right variants */
   --color-gradient-primary: linear-gradient(to right, var(--color-primary), var(--color-gradient-primary-right));
   --color-gradient-edit: linear-gradient(to right, var(--color-secondary), var(--color-gradient-edit-right));
   --color-gradient-success: linear-gradient(to right, var(--color-success), var(--color-gradient-success-right));
@@ -42,7 +60,8 @@
   --color-gradient-ai: linear-gradient(to right, var(--color-ai), var(--color-gradient-ai-right));
   --color-gradient-cancel: linear-gradient(to right, var(--color-cancel), var(--color-gradient-cancel-right));
   --color-gradient-logout: linear-gradient(to right, var(--color-logout), var(--color-gradient-logout-right));
-  /* Individual UI gradient colors */
+
+  /* UI gradients */
   --gradient-string-left: #eff6ff;
   --gradient-string-right: #f0f9ff;
   --gradient-number-left: #f0fdf4;
@@ -54,25 +73,22 @@
   --gradient-textarea-info-left: #f0f9ff;
   --gradient-textarea-info-right: #f0fdf4;
 
-  /* Gradients for text boxes using variables */
   --gradient-string: linear-gradient(to right, var(--gradient-string-left), var(--gradient-string-right));
   --gradient-number: linear-gradient(to right, var(--gradient-number-left), var(--gradient-number-right));
   --gradient-date: linear-gradient(to right, var(--gradient-date-left), var(--gradient-date-right));
   --gradient-select: linear-gradient(to right, var(--gradient-select-left), var(--gradient-select-right));
-  /* Gradients for text areas using variables */
   --gradient-textarea-info: linear-gradient(to right, var(--gradient-textarea-info-left), var(--gradient-textarea-info-right));
 }
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900;
     font-family: var(--font-display);
     background-color: var(--color-background);
     color: var(--color-text-main);
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold;
+    font-weight: 600;
     color: var(--color-text-main);
   }
 
@@ -82,36 +98,39 @@
 
   a {
     color: var(--color-primary);
-    @apply transition-colors duration-300;
+    transition: color 0.3s ease;
   }
 
   a:hover {
     color: var(--color-secondary);
   }
 
-  /* Base styles for form elements */
-  input, select, textarea {
+  input, select, textarea, button {
     font-family: inherit;
   }
 
-  button {
-    font-family: inherit;
-  }
-
-  /* Utility classes for your custom buttons */
   .rounded-card {
-    @apply rounded-3xl;
+    border-radius: 1.5rem;
   }
 
   .rounded-input {
-    @apply rounded-xl;
+    border-radius: 0.75rem;
   }
 
   .shadow-card {
-    @apply shadow-lg hover:shadow-xl;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    transition: box-shadow 0.15s ease;
+  }
+
+  .shadow-card:hover {
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
 
   .bg-textarea-info {
-    @apply bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200 border;
+    background: linear-gradient(to right, #fffbeb, #fff7ed);
+    border: 1px solid #fde68a;
   }
 }
+
+
+

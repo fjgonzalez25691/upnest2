@@ -1,250 +1,194 @@
 /**
  * =============================================================================
- * STACK UTILITIES - TAILWIND v4 OPTIMIZED
+ * STACK UTILITIES - TAILWIND v4 NATIVE (@utility approach)
  * =============================================================================
  * 
- * Semantic vertical spacing utilities to replace repetitive space-y-* patterns.
- * Simplifies spacing in lists, forms, and vertical containers.
+ * Semantic vertical spacing utilities using Tailwind v4's @utility directive.
+ * This creates proper utilities that work with variants like hover, focus, etc.
  * 
- * Identified use cases:
- * - Forms: Spacing between fields
- * - Lists: Separation between elements
- * - Cards: Internal spacing
- * - Sections: Content separation
+ * Advantages over @apply:
+ * - No dependency on existing classes
+ * - Works with variants automatically  
+ * - Better performance
+ * - CSS-first approach
  * 
- * Typical migration:
- * BEFORE: <div className="space-y-4">
- * AFTER: <div className="stack-md">
- * 
- * Found patterns:
- * - space-y-2: 8px - Compact elements
- * - space-y-3: 12px - Standard separation
- * - space-y-4: 16px - Forms, lists
- * - space-y-6: 24px - Sections
- * - space-y-8: 32px - Large blocks
+ * Reference: https://tailwindcss.com/docs/functions-and-directives#utility
  * =============================================================================
  */
 
-@layer utilities {
-  /* ===== STACK BASE ===== */
-  
-  /* Extra Tight - 4px - For very compact elements */
-  .stack-xs > * + * {
-    @apply mt-1;
-  }
-  
-  /* Tight - 8px - For dense lists, navigation */
-  .stack-sm > * + * {
-    @apply mt-2;
-  }
-  
-  /* Default - 12px - Standard spacing for text and elements */
-  .stack-md > * + * {
-    @apply mt-3;
-  }
-  
-  /* Comfortable - 16px - For forms, internal cards */
-  .stack-lg > * + * {
-    @apply mt-4;
-  }
-  
-  /* Spacious - 20px - For highlighted content */
-  .stack-xl > * + * {
-    @apply mt-5;
-  }
-  
-  /* Wide - 24px - For sections, important blocks */
-  .stack-2xl > * + * {
-    @apply mt-6;
-  }
-  
-  /* Extra Wide - 32px - For main section separation */
-  .stack-3xl > * + * {
-    @apply mt-8;
-  }
-  
-  /* Huge - 48px - For main block separation */
-  .stack-4xl > * + * {
-    @apply mt-12;
-  }
+/* ===== STACK BASE UTILITIES ===== */
 
-  /* ===== STACK RESPONSIVE ===== */
-  
-  /* Stack that adapts based on viewport */
-  .stack-responsive > * + * {
-    @apply mt-2 sm:mt-3 md:mt-4 lg:mt-6;
-  }
-  
-  /* More compact stack on mobile */
-  .stack-mobile-compact > * + * {
-    @apply mt-2 sm:mt-4;
-  }
-  
-  /* More spacious stack on desktop */
-  .stack-desktop-spacious > * + * {
-    @apply mt-3 lg:mt-6;
-  }
-
-  /* ===== CONTEXTUAL STACKS ===== */
-  
-  /* For forms - comfortable spacing between fields */
-  .stack-form > * + * {
-    @apply mt-4;
-  }
-  
-  /* For lists - compact but readable spacing */
-  .stack-list > * + * {
-    @apply mt-2;
-  }
-  
-  /* For cards - balanced internal spacing */
-  .stack-card > * + * {
-    @apply mt-3;
-  }
-  
-  /* For navigation - minimal spacing */
-  .stack-nav > * + * {
-    @apply mt-1;
-  }
-  
-  /* For article content */
-  .stack-content > * + * {
-    @apply mt-4;
-  }
-  
-  /* For main sections */
-  .stack-section > * + * {
-    @apply mt-8;
-  }
-
-  /* ===== STACK WITH SEPARATORS ===== */
-  
-  /* Stack with dividing lines */
-  .stack-divided > * + * {
-    @apply mt-4 pt-4 border-t border-gray-200;
-  }
-  
-  /* Stack with subtle separators */
-  .stack-subtle-divided > * + * {
-    @apply mt-3 pt-3 border-t border-gray-100;
-  }
-
-  /* ===== HORIZONTAL STACKS ===== */
-  
-  /* For inline elements with horizontal spacing */
-  .stack-inline-xs > * + * {
-    @apply ml-1;
-  }
-  
-  .stack-inline-sm > * + * {
-    @apply ml-2;
-  }
-  
-  .stack-inline-md > * + * {
-    @apply ml-3;
-  }
-  
-  .stack-inline-lg > * + * {
-    @apply ml-4;
-  }
-  
-  .stack-inline-xl > * + * {
-    @apply ml-6;
-  }
-
-  /* ===== SPECIAL STACKS ===== */
-  
-  /* No spacing - For reset */
-  .stack-none > * + * {
-    @apply mt-0;
-  }
-  
-  /* Stack with negative spacing for overlap */
-  .stack-overlap > * + * {
-    @apply -mt-2;
-  }
-  
-  /* Stack with variable spacing using CSS custom properties */
-  .stack-custom {
-    --stack-space: 1rem;
-  }
-  
-  .stack-custom > * + * {
-    margin-top: var(--stack-space);
-  }
-
-  /* ===== USEFUL COMBINATIONS ===== */
-  
-  /* Stack with fade between elements */
-  .stack-fade > * + * {
-    @apply mt-4 opacity-90;
-  }
-  
-  /* Stack with entrance animation */
-  .stack-animated > * {
-    @apply transition-all duration-200 ease-out;
-  }
-  
-  .stack-animated > * + * {
-    @apply mt-4;
-  }
-
-  /* ===== BREAKPOINT SPECIFIC ===== */
-  
-  /* Mobile only */
-  .stack-mobile-only > * + * {
-    @apply mt-3 sm:mt-0;
-  }
-  
-  /* Desktop only */
-  .stack-desktop-only > * + * {
-    @apply mt-0 lg:mt-4;
+@utility stack-xs {
+  & > * + * {
+    margin-top: 0.25rem;
   }
 }
 
-/* ===== LAYOUT COMBINATIONS ===== */
-
-/* For grids that need vertical spacing on mobile */
-.stack-grid-fallback {
-  @apply space-y-4 sm:space-y-0;
+@utility stack-sm {
+  & > * + * {
+    margin-top: 0.5rem;
+  }
 }
 
-/* For flex that becomes stack on mobile */
-.stack-flex-mobile {
-  @apply flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4;
+@utility stack-md {
+  & > * + * {
+    margin-top: 0.75rem;
+  }
+}
+
+@utility stack-lg {
+  & > * + * {
+    margin-top: 1rem;
+  }
+}
+
+@utility stack-xl {
+  & > * + * {
+    margin-top: 1.25rem;
+  }
+}
+
+@utility stack-2xl {
+  & > * + * {
+    margin-top: 1.5rem;
+  }
+}
+
+@utility stack-3xl {
+  & > * + * {
+    margin-top: 2rem;
+  }
+}
+
+@utility stack-4xl {
+  & > * + * {
+    margin-top: 3rem;
+  }
+}
+
+/* ===== CONTEXTUAL STACK UTILITIES ===== */
+
+@utility stack-form {
+  & > * + * {
+    margin-top: 1rem;
+  }
+}
+
+@utility stack-list {
+  & > * + * {
+    margin-top: 0.5rem;
+  }
+}
+
+@utility stack-card {
+  & > * + * {
+    margin-top: 0.75rem;
+  }
+}
+
+@utility stack-nav {
+  & > * + * {
+    margin-top: 0.25rem;
+  }
+}
+
+@utility stack-content {
+  & > * + * {
+    margin-top: 1rem;
+  }
+}
+
+@utility stack-section {
+  & > * + * {
+    margin-top: 2rem;
+  }
+}
+
+/* ===== RESPONSIVE STACK UTILITIES ===== */
+
+@utility stack-responsive {
+  & > * + * {
+    margin-top: 0.5rem;
+  }
+  
+  @media (min-width: 640px) {
+    & > * + * {
+      margin-top: 0.75rem;
+    }
+  }
+  
+  @media (min-width: 768px) {
+    & > * + * {
+      margin-top: 1rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    & > * + * {
+      margin-top: 1.5rem;
+    }
+  }
+}
+
+@utility stack-mobile-compact {
+  & > * + * {
+    margin-top: 0.5rem;
+  }
+  
+  @media (min-width: 640px) {
+    & > * + * {
+      margin-top: 1rem;
+    }
+  }
+}
+
+/* ===== SPECIAL STACK UTILITIES ===== */
+
+@utility stack-divided {
+  & > * + * {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+  }
+}
+
+@utility stack-none {
+  & > * + * {
+    margin-top: 0;
+  }
 }
 
 /**
  * =============================================================================
- * USAGE EXAMPLES - COMMON MIGRATIONS
+ * USAGE EXAMPLES
  * =============================================================================
  * 
- * FORMS:
- * BEFORE: <div className="space-y-4">
- * AFTER: <div className="stack-form"> or <div className="stack-lg">
+ * <!-- Form with comfortable spacing -->
+ * <div className="stack-form">
+ *   <input type="text" />
+ *   <input type="email" />
+ *   <button>Submit</button>
+ * </div>
  * 
- * LISTS:
- * BEFORE: <ul className="space-y-2">
- * AFTER: <ul className="stack-list"> or <ul className="stack-sm">
+ * <!-- Responsive stack that adapts to screen size -->
+ * <div className="stack-responsive">
+ *   <div>Item 1</div>
+ *   <div>Item 2</div>
+ *   <div>Item 3</div>
+ * </div>
  * 
- * INTERNAL CARDS:
- * BEFORE: <div className="space-y-3">
- * AFTER: <div className="stack-card"> or <div className="stack-md">
+ * <!-- Navigation with minimal spacing -->
+ * <nav className="stack-nav">
+ *   <a href="/">Home</a>
+ *   <a href="/about">About</a>
+ *   <a href="/contact">Contact</a>
+ * </nav>
  * 
- * SECTIONS:
- * BEFORE: <div className="space-y-6">
- * AFTER: <div className="stack-section"> or <div className="stack-2xl">
- * 
- * NAVIGATION:
- * BEFORE: <nav className="space-y-1">
- * AFTER: <nav className="stack-nav"> or <nav className="stack-xs">
- * 
- * RESPONSIVE:
- * BEFORE: <div className="space-y-3 md:space-y-4">
- * AFTER: <div className="stack-responsive">
- * 
- * WITH DIVIDERS:
- * BEFORE: <div className="space-y-4 divide-y">
- * AFTER: <div className="stack-divided">
+ * <!-- Content sections with large spacing -->
+ * <div className="stack-section">
+ *   <section>Section 1</section>
+ *   <section>Section 2</section>
+ *   <section>Section 3</section>
+ * </div>
  * =============================================================================
  */

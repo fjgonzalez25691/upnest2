@@ -10,10 +10,41 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer
 } from "recharts";
 import { getPercentileData } from '../data/whoPercentiles';
+
+// Custom Legend Component - Mobile-first responsive design
+const CustomLegend = () => {
+  const legendItems = [
+    { name: "Baby's measurements", color: '#3b82f6', strokeWidth: 3 },
+    { name: "P3", color: '#ef4444', strokeWidth: 2 },
+    { name: "P15", color: '#f97316', strokeWidth: 2 },
+    { name: "P50 (median)", color: '#10b981', strokeWidth: 3 },
+    { name: "P85", color: '#f97316', strokeWidth: 2 },
+    { name: "P97", color: '#ef4444', strokeWidth: 2 }
+  ];
+
+  return (
+    <div className="mt-2 mb-2">
+      {/* Mobile-first: compact grid layout */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-gray-700 md:flex md:flex-wrap md:justify-center md:gap-x-6 md:gap-y-0">
+        {legendItems.map((item, index) => (
+          <div key={index} className="flex items-center">
+            <div 
+              className="w-3 h-0.5 mr-2 rounded-sm md:w-4 md:h-1"
+              style={{ 
+                backgroundColor: item.color,
+                height: item.strokeWidth === 3 ? '2.5px' : '2px'
+              }}
+            />
+            <span className="font-medium md:text-sm">{item.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyData, gender = 'male' }) => {
   /**
@@ -223,10 +254,6 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
             />
             
             <Tooltip content={<CustomTooltip />} />
-            <Legend 
-              wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
-              iconSize={12}
-            />
 
             {/* Percentile lines */}
             <Line
@@ -235,7 +262,8 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
               stroke="#ef4444"
               strokeWidth={2}
               dot={false}
-              name="Percentile 3"
+              name="P3"
+              legendType="none"
             />
             <Line
               type="monotone"
@@ -243,7 +271,8 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
               stroke="#f97316"
               strokeWidth={2}
               dot={false}
-              name="Percentile 15"
+              name="P15"
+              legendType="none"
             />
             <Line
               type="monotone"
@@ -251,7 +280,8 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
               stroke="#10b981"
               strokeWidth={3}
               dot={false}
-              name="Percentile 50 (median)"
+              name="P50 (median)"
+              legendType="none"
             />
             <Line
               type="monotone"
@@ -259,7 +289,8 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
               stroke="#f97316"
               strokeWidth={2}
               dot={false}
-              name="Percentile 85"
+              name="P85"
+              legendType="none"
             />
             <Line
               type="monotone"
@@ -267,7 +298,8 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
               stroke="#ef4444"
               strokeWidth={2}
               dot={false}
-              name="Percentile 97"
+              name="P97"
+              legendType="none"
             />
 
             {/* Baby measurements */}
@@ -279,9 +311,13 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
               dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
               name="Baby's measurements"
               connectNulls={false}
+              legendType="none"
             />
           </LineChart>
         </ResponsiveContainer>
+        
+        {/* Custom responsive legend */}
+        <CustomLegend />
       </div>
 
       {/* Info */}

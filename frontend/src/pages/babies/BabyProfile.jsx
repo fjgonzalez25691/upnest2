@@ -28,7 +28,7 @@ import PageShell from "../../components/layout/PageShell";
 
 const BabyProfile = () => {
     // Minimum polling/spinner runtime before allowing completion (ms)
-    const MIN_POLL_DURATION_MS = 2000;
+    const MIN_POLL_DURATION_MS = 4000;
 
     const { babyId } = useParams();
     const [baby, setBaby] = useState(null);
