@@ -1,41 +1,13 @@
 // src/components/PercentilesChart.jsx
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceDot } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getPercentileData } from '../data/whoPercentiles';
 import { calculateAgeInMonths } from '../utils/dateUtils';
 import TextBox from './TextBox';
 import '../styles/recharts-fix.css';
 
-const CustomLegend = React.memo(() => {
-  const legendItems = [
-    { name: "Baby's measurements", color: '#3b82f6', strokeWidth: 3 },
-    { name: "P3", color: '#ef4444', strokeWidth: 2 },
-    { name: "P15", color: '#f97316', strokeWidth: 2 },
-    { name: "P50 (median)", color: '#10b981', strokeWidth: 3 },
-    { name: "P85", color: '#f97316', strokeWidth: 2 },
-    { name: "P97", color: '#ef4444', strokeWidth: 2 }
-  ];
-
-  return (
-    <div className="mt-2 mb-2">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-gray-700 md:flex md:flex-wrap md:justify-center md:gap-x-6 md:gap-y-0">
-        {legendItems.map((item, index) => (
-          <div key={index} className="flex items-center">
-            <div 
-              className="w-3 h-0.5 mr-2 rounded-sm md:w-4 md:h-1"
-              style={{ 
-                backgroundColor: item.color,
-                height: item.strokeWidth === 3 ? '2.5px' : '2px'
-              }}
-            />
-            <span className="font-medium md:text-sm">{item.name}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-});
+// Using native Recharts <Legend/> inside the chart. Custom legend removed for simplicity.
 
 // Memoized Tooltip component that accepts selectedType via prop
 const MemoTooltip = React.memo(function MemoTooltip({ axisConfig, active, payload, label }) {
@@ -73,9 +45,13 @@ const MemoTooltip = React.memo(function MemoTooltip({ axisConfig, active, payloa
 const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', birthDate }) => {
   const [selectedType, setSelectedType] = useState('weight');
   const [isChartReady, setIsChartReady] = useState(false);
+  const [isMdUp, setIsMdUp] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 768 : true));
 
   useEffect(() => {
     setIsChartReady(true);
+    const onResize = () => setIsMdUp(window.innerWidth >= 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   const getAxisConfig = (type) => {
@@ -84,6 +60,7 @@ const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', b
       case 'weight': {
         const weightConfig = {
           yAxisLabel: 'Weight (kg)',
+          yAxisShortLabel: 'kg',
           yAxisDomain: [0, 20],
           yAxisTicks: [0, 5, 10, 15, 20],
           unit: 'kg',
@@ -94,6 +71,7 @@ const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', b
       case 'height': {
         const heightConfig = {
           yAxisLabel: 'Height (cm)',
+          yAxisShortLabel: 'cm',
           yAxisDomain: [40, 100],
           yAxisTicks: [40, 50, 60, 70, 80, 90, 100],
           unit: 'cm',
@@ -104,6 +82,7 @@ const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', b
       case 'headCircumference': {
         const headConfig = {
           yAxisLabel: 'Head Circumference (cm)',
+          yAxisShortLabel: 'HC (cm)',
           yAxisDomain: [30, 55],
           yAxisTicks: [30, 35, 40, 45, 50, 55],
           unit: 'cm',
@@ -114,6 +93,7 @@ const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', b
       default: {
         const defaultConfig = {
           yAxisLabel: 'Value',
+          yAxisShortLabel: 'Value',
           yAxisDomain: [0, 100],
           yAxisTicks: [0, 25, 50, 75, 100],
           unit: '',
@@ -211,7 +191,7 @@ const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', b
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="w-full sm:max-w-xs lg:max-w-sm xl:min-w-[280px] mx-auto mb-6">
         <TextBox
           label="Measurement Type:"
@@ -229,12 +209,12 @@ const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', b
         />
       </div>
 
-      <div className="w-3/4 mx-auto h-[375px] md:h-[49vh] lg:h-[52vh]">
+      <div className="w-full md:w-3/4 md:mx-auto h-[375px] md:h-[49vh] lg:h-[52vh]">
         <ResponsiveContainer width="100%" height="100%" className="recharts-fix-container">
           <LineChart
             key={selectedType}
             data={currentChartData}
-            margin={{ top: 20, right: 20, left: 70, bottom: 120 }}
+            margin={{ top: 20, right: 20, left: isMdUp ? 56 : 28, bottom: isMdUp ? 80 : 32 }}
             className="recharts-chart-fixed"
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -249,17 +229,18 @@ const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', b
               label={{ 
                 value: 'Age (months)', 
                 position: 'insideBottom', 
-                offset: -10,
-                style: { fontSize: '14px', fill: '#334155', fontFamily: 'inherit', letterSpacing: 'normal' }
+                offset: -15,
+                style: { fontSize: '16px', fill: '#334155', fontFamily: 'inherit', letterSpacing: 'normal' }
               }}
             />
             
             <YAxis
               domain={currentAxisConfig.yAxisDomain}
               ticks={currentAxisConfig.yAxisTicks}
+              width={isMdUp ? 56 : 42}
               tick={{ fontSize: '14px', fill: '#334155', fontFamily: 'inherit', letterSpacing: 'normal' }}
               label={{ 
-                value: currentAxisConfig.yAxisLabel, 
+                value: isMdUp ? currentAxisConfig.yAxisLabel : currentAxisConfig.yAxisShortLabel, 
                 angle: -90, 
                 position: 'insideLeft',
                 style: { fontSize: '14px', fill: '#334155', fontFamily: 'inherit', letterSpacing: 'normal' }
@@ -267,6 +248,16 @@ const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', b
             />
             
             <Tooltip content={<MemoTooltip selectedType={selectedType} axisConfig={currentAxisConfig} />} />
+            {isMdUp && (
+              <Legend 
+                verticalAlign="bottom" 
+                align="center" 
+                layout="horizontal"
+                iconType="plainline"
+                iconSize={16}
+                wrapperStyle={{ paddingTop: 25, color: '#334155' }}
+              />
+            )}
 
             <Line
               type="monotone"
@@ -275,7 +266,7 @@ const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', b
               strokeWidth={2}
               dot={false}
               name="P3"
-              legendType="none"
+              legendType="plainline"
             />
             <Line
               type="monotone"
@@ -284,7 +275,7 @@ const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', b
               strokeWidth={2}
               dot={false}
               name="P15"
-              legendType="none"
+              legendType="plainline"
             />
             <Line
               type="monotone"
@@ -293,7 +284,7 @@ const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', b
               strokeWidth={3}
               dot={false}
               name="P50 (median)"
-              legendType="none"
+              legendType="plainline"
             />
             <Line
               type="monotone"
@@ -302,7 +293,7 @@ const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', b
               strokeWidth={2}
               dot={false}
               name="P85"
-              legendType="none"
+              legendType="plainline"
             />
             <Line
               type="monotone"
@@ -311,7 +302,7 @@ const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', b
               strokeWidth={2}
               dot={false}
               name="P97"
-              legendType="none"
+              legendType="plainline"
             />
 
             <Line
@@ -322,13 +313,24 @@ const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', b
               dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
               name="Baby's measurements"
               connectNulls={false}
-              legendType="none"
+              legendType="circle"
             />
           </LineChart>
         </ResponsiveContainer>
-        <CustomLegend />
       </div>
-
+      {/* Mobile legend: vertical stacked below chart for small screens */}
+      {!isMdUp && (
+        <div className="mt-2 px-2 md:hidden">
+          <div className="flex flex-col gap-1 text-sm text-gray-700">
+            <div className="flex items-center"><span className="inline-block w-4 h-0.5 mr-2" style={{backgroundColor:'#3b82f6', height:'3px'}}></span>Baby's measurements</div>
+            <div className="flex items-center"><span className="inline-block w-4 h-0.5 mr-2" style={{backgroundColor:'#ef4444'}}></span>P3</div>
+            <div className="flex items-center"><span className="inline-block w-4 h-0.5 mr-2" style={{backgroundColor:'#f97316'}}></span>P15</div>
+            <div className="flex items-center"><span className="inline-block w-4 h-0.5 mr-2" style={{backgroundColor:'#10b981', height:'3px'}}></span>P50 (median)</div>
+            <div className="flex items-center"><span className="inline-block w-4 h-0.5 mr-2" style={{backgroundColor:'#f97316'}}></span>P85</div>
+            <div className="flex items-center"><span className="inline-block w-4 h-0.5 mr-2" style={{backgroundColor:'#ef4444'}}></span>P97</div>
+          </div>
+        </div>
+      )}
       <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
         <p><strong>WHO Data:</strong> World Health Organization child growth standards</p>
         <p><strong>Range:</strong> 0-24 months • <strong>Gender:</strong> {gender === 'male' ? 'Boy' : 'Girl'}</p>
