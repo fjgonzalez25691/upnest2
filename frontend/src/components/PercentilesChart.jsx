@@ -47,6 +47,10 @@ const CustomLegend = () => {
 };
 
 const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyData, gender = 'male' }) => {
+  // Using native Recharts tick styling to avoid CSS parsing conflicts
+
+  // ✅ Remove debug useEffect that was causing style computation issues
+
   /**
    * Calculate age in months from measurement date to birth date
    */
@@ -188,13 +192,8 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
         })
         .filter(point => point.ageMonths >= 0 && point.ageMonths <= 24);
 
-      console.log(`📊 Debug measurements:`, {
-        rawMeasurements: measurements,
-        measurementType,
-        babyData,
-        filteredForType: measurements.filter(m => m.measurements && m.measurements[measurementType]),
-        processedPoints: babyPoints
-      });
+      // ✅ Simplified debug logging
+      console.log(`📊 Processed ${babyPoints.length} measurements for ${measurementType}`);
 
       // Merge data
       const allAges = new Set([
