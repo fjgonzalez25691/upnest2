@@ -1,0 +1,14 @@
+# Generated artifacts
+storybook-static/
+dist/
+coverage/
+
+# Dependencies
+node_modules/
+
+# Vite cache
+.vite/
+
+# Misc
+*.min.js
+*.bundle.js

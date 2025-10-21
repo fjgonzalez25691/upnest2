@@ -81,6 +81,11 @@
 }
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: auto;
+    text-size-adjust: 100%;
+  }
+
   body {
     font-family: var(--font-display);
     background-color: var(--color-background);
@@ -131,6 +136,4 @@
     border: 1px solid #fde68a;
   }
 }
-
-
 

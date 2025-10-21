@@ -1,39 +1,72 @@
 @layer components {
   /* Page shell - Contenedor principal de páginas */
   .page-shell {
-    @apply min-h-screen px-4 py-6 md:px-10 md:py-10;
-    background: linear-gradient(to bottom right, 
-      #eff6ff /* blue-50 */, 
-      #ffffff /* white */, 
-      #faf5ff /* purple-50 */
-    );
+    min-height: 100vh;
+    padding: 1.5rem 1rem;
+    background: linear-gradient(to bottom right, #eff6ff, #ffffff, #faf5ff);
   }
 
   /* Contenedor de contenido con max-width */
   .page-shell__content {
-    @apply mx-auto w-full max-w-6xl flex flex-col gap-8;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 72rem; /* 6xl */
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
   }
 
   /* Header de página con responsive layout */
   .page-header {
-    @apply flex flex-col gap-2 md:flex-row md:items-center md:justify-between;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
   /* Footer con acciones */
   .page-footer-actions {
-    @apply flex flex-col-reverse gap-3 md:flex-row md:items-center md:justify-end;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.75rem;
   }
 
   /* Variantes específicas para casos especiales */
   .page-shell--form {
-    @apply py-8 md:py-12;
+    padding: 2rem 1rem;
   }
 
   .page-shell--compact {
-    @apply py-4 md:py-6;
+    padding: 1rem;
   }
 
   .page-shell--full-height {
-    @apply h-screen;
+    height: 100vh;
+  }
+
+  /* Responsive breakpoints */
+  @media (min-width: 768px) {
+    .page-shell {
+      padding: 2.5rem;
+    }
+
+    .page-header {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .page-footer-actions {
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .page-shell--form {
+      padding: 3rem 2.5rem;
+    }
+
+    .page-shell--compact {
+      padding: 1.5rem 2.5rem;
+    }
   }
 }

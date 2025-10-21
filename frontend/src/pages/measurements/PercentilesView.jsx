@@ -1,11 +1,9 @@
 // src/pages/measurements/PercentilesView.jsx
-// Dedicated page for displaying WHO percentile charts for baby growth measurements
 
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import { getGrowthData } from "../../services/growthDataApi";
 import PercentilesChart from "../../components/PercentilesChart";
-import TextBox from "../../components/TextBox";
 import PrimaryButton from "../../components/PrimaryButton";
 import BackLink from "../../components/navigation/BackLink";
 import Spinner from "../../components/Spinner";
@@ -16,7 +14,6 @@ const PercentilesView = () => {
   const [measurements, setMeasurements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedType, setSelectedType] = useState('weight');
 
   const location = useLocation();
   
@@ -24,19 +21,24 @@ const PercentilesView = () => {
   const birthDate = location.state?.birthDate || null;
   const gender = location.state?.gender || 'male';
 
-  // Load measurements for the baby
   useEffect(() => {
+    
     const loadMeasurements = async () => {
-      if (!babyId) return;
+      if (!babyId) {
+        return;
+      }
       
       try {
         setLoading(true);
         setError("");
+        
         const data = await getGrowthData(babyId);
+        
         const measurementsList = Array.isArray(data) ? data : [];
+        
         setMeasurements(measurementsList);
       } catch (err) {
-        console.error("Error loading measurements for charts:", err);
+        console.error("Error loading measurements:", err);
         setError("Failed to load measurement data. Please try again.");
       } finally {
         setLoading(false);
@@ -90,48 +92,24 @@ const PercentilesView = () => {
   return (
     <PageShell>
       <div className="max-w-6xl mx-auto">
-        {/* Navigation Header */}
         <div className="mb-6 md:mb-8">
           <BackLink to={`/baby/${babyId}`}>
             Back to Profile
           </BackLink>
           
-          {/* Main Title - Mobile First */}
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 md:mb-6">
             {babyName}'s Growth Charts
           </h1>
           
-          {/* Mobile First Layout */}
           <div className="space-y-4 lg:space-y-0 lg:flex lg:items-end lg:justify-between lg:gap-8">
             
-            {/* Subtitle - Mobile: full width, Desktop: flex-1 */}
             <div className="lg:flex-1">
               <p className="text-sm md:text-base text-gray-600 leading-relaxed">
-                WHO percentile charts showing growth patterns over time
+                WHO percentile charts showing growth patterns over time. 
+                Use the chart selector below to switch between measurement types.
               </p>
             </div>
             
-            {/* Measurement Type Selector - Mobile: full width, Desktop: auto */}
-            <div className="w-full sm:max-w-xs lg:max-w-sm xl:min-w-[280px]">
-              <TextBox
-                label="Measurement Type:"
-                name="measurementType"
-                type="select"
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                options={[
-                  { value: "weight", label: "Weight" },
-                  { value: "height", label: "Height" },
-                  { value: "headCircumference", label: "Head Circumference" }
-                ]}
-                editable={true}
-                labelPosition="inline"
-                size="compact"
-                className="w-full"
-              />
-            </div>
-            
-            {/* Quick Actions - Mobile: full width, Desktop: auto */}
             <div className="w-full sm:w-auto lg:flex-shrink-0">
               <Link
                 to={`/baby/${babyId}/growth/tracking`}
@@ -151,7 +129,6 @@ const PercentilesView = () => {
           </div>
         </div>
 
-        {/* Main Chart Container */}
         <div className="space-y-4 md:space-y-6">
           {measurements.length === 0 ? (
             <div className="card-compact--responsive">
@@ -174,20 +151,19 @@ const PercentilesView = () => {
               </div>
             </div>
           ) : (
-            <PercentilesChart 
-              measurements={measurements} 
-              babyData={{ birthDate }}
-              gender={gender}
-              measurementType={selectedType}
-            />
+            <>
+              <PercentilesChart 
+                measurementsWithPercentiles={measurements}
+                gender={gender}
+                birthDate={birthDate}
+              />
+            </>
           )}
           
-          {/* Additional Information - Mobile First Grid */}
           {measurements.length > 0 && (
             <div className="card-compact--bordered">
               <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-3 md:mb-4">About These Charts</h3>
               
-              {/* Mobile: 1 column, Tablet: 2 columns */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 text-xs md:text-sm text-gray-600">
                 <div className="space-y-2">
                   <h4 className="font-semibold text-gray-700 text-sm md:text-base">WHO Growth Standards</h4>

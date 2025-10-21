@@ -1,21 +1,13 @@
 // src/components/PercentilesChart.jsx
-// Purpose: Interactive percentile charts for baby growth measurements using WHO data
-// Features: Gender-specific charts, static pre-calculated WHO percentile data
 
-import React, { useMemo } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer
-} from "recharts";
+import React, { useState, useMemo, useEffect } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceDot } from 'recharts';
 import { getPercentileData } from '../data/whoPercentiles';
+import { calculateAgeInMonths } from '../utils/dateUtils';
+import TextBox from './TextBox';
+import '../styles/recharts-fix.css';
 
-// Custom Legend Component - Mobile-first responsive design
-const CustomLegend = () => {
+const CustomLegend = React.memo(() => {
   const legendItems = [
     { name: "Baby's measurements", color: '#3b82f6', strokeWidth: 3 },
     { name: "P3", color: '#ef4444', strokeWidth: 2 },
@@ -27,7 +19,6 @@ const CustomLegend = () => {
 
   return (
     <div className="mt-2 mb-2">
-      {/* Mobile-first: compact grid layout */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-gray-700 md:flex md:flex-wrap md:justify-center md:gap-x-6 md:gap-y-0">
         {legendItems.map((item, index) => (
           <div key={index} className="flex items-center">
@@ -44,118 +35,108 @@ const CustomLegend = () => {
       </div>
     </div>
   );
-};
+});
 
-const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyData, gender = 'male' }) => {
-  // Using native Recharts tick styling to avoid CSS parsing conflicts
+// Memoized Tooltip component that accepts selectedType via prop
+const MemoTooltip = React.memo(function MemoTooltip({ axisConfig, active, payload, label }) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="card-dropdown" style={{padding: '0.75rem'}}>
+        <p className="font-semibold">{`Age: ${label?.toFixed(1)} months`}</p>
+        {payload.map((entry, index) => {
+          if (entry.dataKey === 'actualValue') {
+            return (
+              <p key={index} style={{ color: entry.color }} className="font-bold">
+                {`Baby's measurement: ${entry.value?.toFixed(1)} ${axisConfig.unit}`}
+              </p>
+            );
+          }
+          const percentileLabels = {
+            p3: 'Percentile 3',
+            p15: 'Percentile 15', 
+            p50: 'Percentile 50 (median)',
+            p85: 'Percentile 85',
+            p97: 'Percentile 97'
+          };
+          return (
+            <p key={index} style={{ color: entry.color }}>
+              {`${percentileLabels[entry.dataKey] || entry.dataKey}: ${entry.value?.toFixed(1)} ${axisConfig.unit}`}
+            </p>
+          );
+        })}
+      </div>
+    );
+  }
+  return null;
+});
 
-  // ✅ Remove debug useEffect that was causing style computation issues
+const PercentilesChart = ({ measurementsWithPercentiles = [], gender = 'male', birthDate }) => {
+  const [selectedType, setSelectedType] = useState('weight');
+  const [isChartReady, setIsChartReady] = useState(false);
 
-  /**
-   * Calculate age in months from measurement date to birth date
-   */
-  const calculateAgeInMonths = (measurementDate, birthDate) => {
-    if (!measurementDate || !birthDate) return 0;
-    
-    const measurement = new Date(measurementDate);
-    const birth = new Date(birthDate);
-    
-    // Calculate difference in months
-    const diffTime = measurement - birth;
-    const diffMonths = diffTime / (1000 * 60 * 60 * 24 * 30.44); // 30.44 days per month average
-    
-    return Math.max(0, diffMonths);
-  };
+  useEffect(() => {
+    setIsChartReady(true);
+  }, []);
 
-
-
-
-
-  /**
-   * Get configuration for different measurement types
-   */
   const getAxisConfig = (type) => {
+    
     switch (type) {
-      case 'weight':
-        return {
+      case 'weight': {
+        const weightConfig = {
           yAxisLabel: 'Weight (kg)',
           yAxisDomain: [0, 20],
           yAxisTicks: [0, 5, 10, 15, 20],
           unit: 'kg',
           precision: 1
         };
-      case 'height':
-        return {
+        return weightConfig;
+      }
+      case 'height': {
+        const heightConfig = {
           yAxisLabel: 'Height (cm)',
           yAxisDomain: [40, 100],
           yAxisTicks: [40, 50, 60, 70, 80, 90, 100],
           unit: 'cm',
           precision: 1
         };
-      case 'headCircumference':
-        return {
+        return heightConfig;
+      }
+      case 'headCircumference': {
+        const headConfig = {
           yAxisLabel: 'Head Circumference (cm)',
           yAxisDomain: [30, 55],
           yAxisTicks: [30, 35, 40, 45, 50, 55],
           unit: 'cm',
           precision: 1
         };
-      default:
-        return {
-          yAxisLabel: 'Valor',
-          yAxisDomain: [0, 'dataMax'],
-          yAxisTicks: null,
+        return headConfig;
+      }
+      default: {
+        const defaultConfig = {
+          yAxisLabel: 'Value',
+          yAxisDomain: [0, 100],
+          yAxisTicks: [0, 25, 50, 75, 100],
           unit: '',
           precision: 1
         };
+        return defaultConfig;
+      }
     }
   };
 
-  const axisConfig = getAxisConfig(measurementType);
+  const currentAxisConfig = useMemo(() => {
+    const cfg = getAxisConfig(selectedType);
+    return cfg;
+  }, [selectedType]);
 
-  /**
-   * Custom tooltip with Spanish labels
-   */
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="card-dropdown" style={{padding: '0.75rem'}}>
-          <p className="font-semibold">{`Age: ${label?.toFixed(1)} months`}</p>
-          {payload.map((entry, index) => {
-            if (entry.dataKey === 'actualValue') {
-              return (
-                <p key={index} style={{ color: entry.color }} className="font-bold">
-                  {`Baby's measurement: ${entry.value?.toFixed(1)} ${axisConfig.unit}`}
-                </p>
-              );
-            }
-            
-            const percentileLabels = {
-              p3: 'Percentile 3',
-              p15: 'Percentile 15', 
-              p50: 'Percentile 50 (median)',
-              p85: 'Percentile 85',
-              p97: 'Percentile 97'
-            };
-            
-            return (
-              <p key={index} style={{ color: entry.color }}>
-                {`${percentileLabels[entry.dataKey] || entry.dataKey}: ${entry.value?.toFixed(1)} ${axisConfig.unit}`}
-              </p>
-            );
-          })}
-        </div>
-      );
-    }
-    return null;
-  };
-
-
-
-  const currentAxisConfig = getAxisConfig(measurementType);
+  const measurementTypeOptions = useMemo(() => ([
+    { value: "weight", label: "Weight" },
+    { value: "height", label: "Height" },
+    { value: "headCircumference", label: "Head Circumference" }
+  ]), []);
+  
   const currentChartData = useMemo(() => {
-    // Recalculate when type changes
-    const whoData = getPercentileData(measurementType, gender);
+    const whoData = getPercentileData(selectedType, gender);
     
     if (!whoData || whoData.length === 0) {
       return [];
@@ -170,70 +151,91 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
       p97: point.p97
     }));
 
-    // Add baby measurements if available and match the selected type
-    if (measurements && babyData?.birthDate) {
-      const babyPoints = measurements
-        .filter(m => m.measurements && m.measurements[measurementType] && m.measurementDate)
-        .map(m => {
-          const ageMonths = calculateAgeInMonths(m.measurementDate, babyData.birthDate);
-          let value = parseFloat(m.measurements[measurementType]);
-          
-          // Convert units: weight from grams to kg
-          if (measurementType === 'weight') {
-            value = value / 1000; // Convert grams to kg
-          }
-          
-          return {
-            ageMonths: Math.round(ageMonths * 10) / 10,
-            actualValue: Math.round(value * 100) / 100, // Round to 2 decimals
-            date: m.measurementDate,
-            dataId: m.dataId
-          };
-        })
-        .filter(point => point.ageMonths >= 0 && point.ageMonths <= 24);
+    const measurementsWithSelectedType = measurementsWithPercentiles.filter(
+      m => m.measurements && m.measurements[selectedType] && m.measurementDate
+    );
 
-      // ✅ Simplified debug logging
-      console.log(`📊 Processed ${babyPoints.length} measurements for ${measurementType}`);
-
-      // Merge data
-      const allAges = new Set([
-        ...percentilePoints.map(p => p.ageMonths),
-        ...babyPoints.map(p => p.ageMonths)
-      ]);
-
-      return Array.from(allAges)
-        .sort((a, b) => a - b)
-        .map(age => {
-          const percentilePoint = percentilePoints.find(p => Math.abs(p.ageMonths - age) < 0.01);
-          const babyPoint = babyPoints.find(p => Math.abs(p.ageMonths - age) < 0.5);
-          
-          return {
-            ageMonths: age,
-            ...(percentilePoint || {}),
-            ...(babyPoint || {})
-          };
-        });
+    if (measurementsWithSelectedType.length === 0) {
+      return percentilePoints;
     }
 
-    return percentilePoints;
-  }, [measurements, measurementType, babyData, gender]);
+    const babyPoints = measurementsWithSelectedType.map((m) => {
+      let value = parseFloat(m.measurements[selectedType]);
+      
+      if (selectedType === 'weight' && value > 100) {
+        value = value / 1000;
+      }
+      
+      const ageMonths = m.ageInMonths || 
+        (birthDate ? calculateAgeInMonths(m.measurementDate, birthDate) : 0);
+      
+      const processedPoint = {
+        ageMonths: Math.round(ageMonths * 10) / 10,
+        actualValue: Math.round(value * 100) / 100,
+        date: m.measurementDate,
+        dataId: m.dataId
+      };
+      
+      return processedPoint;
+    });
 
-  if (!currentChartData || currentChartData.length === 0) {
+    const allAges = new Set([
+      ...percentilePoints.map(p => p.ageMonths),
+      ...babyPoints.map(p => p.ageMonths)
+    ]);
+
+    const finalResult = Array.from(allAges)
+      .sort((a, b) => a - b)
+      .map(age => {
+        const percentilePoint = percentilePoints.find(p => Math.abs(p.ageMonths - age) < 0.01);
+        const babyPoint = babyPoints.find(p => Math.abs(p.ageMonths - age) < 0.5);
+        
+        return {
+          ageMonths: age,
+          ...(percentilePoint || {}),
+          ...(babyPoint || {})
+        };
+      });
+    
+    return finalResult;
+  }, [measurementsWithPercentiles, selectedType, gender, birthDate]);
+
+  if (!isChartReady || !currentChartData || currentChartData.length === 0) {
     return (
-      <div className="p-4 bg-gray-50 rounded">
-        <p className="text-gray-600">No percentile data available for {measurementType} ({gender})</p>
+      <div className="space-y-4">
+        <div className="w-3/4 mx-auto h-[375px] md:h-[49vh] lg:h-[52vh]">
+          <div className="h-full w-full animate-pulse rounded bg-slate-100" />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Chart */}
+      <div className="w-full sm:max-w-xs lg:max-w-sm xl:min-w-[280px] mx-auto mb-6">
+        <TextBox
+          label="Measurement Type:"
+          name="measurementType"
+          type="select"
+          value={selectedType}
+          onChange={(e) => {
+            setSelectedType(e.target.value);
+          }}
+          options={measurementTypeOptions}
+          editable={true}
+          labelPosition="inline"
+          size="compact"
+          className="w-full"
+        />
+      </div>
+
       <div className="w-3/4 mx-auto h-[375px] md:h-[49vh] lg:h-[52vh]">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" className="recharts-fix-container">
           <LineChart
+            key={selectedType}
             data={currentChartData}
             margin={{ top: 20, right: 20, left: 70, bottom: 120 }}
+            className="recharts-chart-fixed"
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             
@@ -243,18 +245,29 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
               scale="linear"
               domain={[0, 24]}
               ticks={[0, 3, 6, 9, 12, 15, 18, 21, 24]}
-              label={{ value: 'Age (months)', position: 'insideBottom', offset: -10 }}
+              tick={{ fontSize: '14px', fill: '#334155', fontFamily: 'inherit', letterSpacing: 'normal' }}
+              label={{ 
+                value: 'Age (months)', 
+                position: 'insideBottom', 
+                offset: -10,
+                style: { fontSize: '14px', fill: '#334155', fontFamily: 'inherit', letterSpacing: 'normal' }
+              }}
             />
             
             <YAxis
               domain={currentAxisConfig.yAxisDomain}
               ticks={currentAxisConfig.yAxisTicks}
-              label={{ value: currentAxisConfig.yAxisLabel, angle: -90, position: 'insideLeft' }}
+              tick={{ fontSize: '14px', fill: '#334155', fontFamily: 'inherit', letterSpacing: 'normal' }}
+              label={{ 
+                value: currentAxisConfig.yAxisLabel, 
+                angle: -90, 
+                position: 'insideLeft',
+                style: { fontSize: '14px', fill: '#334155', fontFamily: 'inherit', letterSpacing: 'normal' }
+              }}
             />
             
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<MemoTooltip selectedType={selectedType} axisConfig={currentAxisConfig} />} />
 
-            {/* Percentile lines */}
             <Line
               type="monotone"
               dataKey="p3"
@@ -301,7 +314,6 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
               legendType="none"
             />
 
-            {/* Baby measurements */}
             <Line
               type="monotone"
               dataKey="actualValue"
@@ -314,19 +326,17 @@ const PercentilesChart = ({ measurements = [], measurementType = 'weight', babyD
             />
           </LineChart>
         </ResponsiveContainer>
-        
-        {/* Custom responsive legend */}
         <CustomLegend />
       </div>
 
-      {/* Info */}
       <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
         <p><strong>WHO Data:</strong> World Health Organization child growth standards</p>
         <p><strong>Range:</strong> 0-24 months • <strong>Gender:</strong> {gender === 'male' ? 'Boy' : 'Girl'}</p>
         <p><strong>Percentiles shown:</strong> P3, P15, P50 (median), P85, P97</p>
+        <p><strong>Current type:</strong> {selectedType}</p>
       </div>
     </div>
   );
 };
 
-export default PercentilesChart;
+export default React.memo(PercentilesChart);

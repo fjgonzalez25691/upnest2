@@ -135,3 +135,36 @@ export const getWeeksSinceBirth = (dateOfBirth) => {
         totalDays: totalDays
     };
 };
+
+/**
+ * Calculate age in months from measurement date and birth date
+ * Useful for percentile chart calculations
+ * 
+ * @param {string|Date} measurementDate - Date when measurement was taken
+ * @param {string|Date} birthDate - Date of birth
+ * @returns {number} - Age in months (with decimal precision)
+ */
+export const calculateAgeInMonths = (measurementDate, birthDate) => {
+    const measurement = new Date(measurementDate);
+    const birth = new Date(birthDate);
+    
+    const yearDiff = measurement.getFullYear() - birth.getFullYear();
+    const monthDiff = measurement.getMonth() - birth.getMonth();
+    const dayDiff = measurement.getDate() - birth.getDate();
+    
+    // Calculate total months
+    let totalMonths = yearDiff * 12 + monthDiff;
+    
+    // Add fractional month based on day difference
+    if (dayDiff >= 0) {
+        // Use average days per month (30.44) for decimal precision
+        totalMonths += dayDiff / 30.44;
+    } else {
+        // If we're before the birth day in the month, subtract from total and add days
+        totalMonths -= 1;
+        const daysInPrevMonth = new Date(measurement.getFullYear(), measurement.getMonth(), 0).getDate();
+        totalMonths += (daysInPrevMonth + dayDiff) / 30.44;
+    }
+    
+    return Math.max(0, totalMonths); // Ensure non-negative
+};

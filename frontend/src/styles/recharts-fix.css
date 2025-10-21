@@ -1,0 +1,58 @@
+/* Recharts CSS Fix - Sobrescribir conflictos de Tailwind CSS */
+/* Forzar valores CSS nativos explícitos para prevenir parsing errors */
+
+/* Contenedor principal */
+.recharts-fix-container .recharts-wrapper,
+.recharts-chart-fixed {
+  font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+/* Ejes y ticks - Forzar valores CSS válidos */
+.recharts-fix-container .recharts-cartesian-axis-tick text,
+.recharts-fix-container .recharts-cartesian-axis-tick-value,
+.recharts-chart-fixed .recharts-cartesian-axis-tick text,
+.recharts-chart-fixed .recharts-cartesian-axis-tick-value {
+  font-size: 14px !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  letter-spacing: 0 !important;
+  fill: #334155 !important;
+}
+
+/* Labels de ejes */
+.recharts-fix-container .recharts-label,
+.recharts-chart-fixed .recharts-label {
+  font-size: 14px !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  letter-spacing: 0 !important;
+  fill: #334155 !important;
+}
+
+/* Grid lines */
+.recharts-fix-container .recharts-cartesian-grid-horizontal line,
+.recharts-fix-container .recharts-cartesian-grid-vertical line,
+.recharts-chart-fixed .recharts-cartesian-grid-horizontal line,
+.recharts-chart-fixed .recharts-cartesian-grid-vertical line {
+  stroke: #f0f0f0 !important;
+}
+
+/* Tooltip */
+.recharts-fix-container .recharts-tooltip-wrapper,
+.recharts-chart-fixed .recharts-tooltip-wrapper {
+  font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+/* Override total para todos los elementos text en SVG de Recharts */
+.recharts-fix-container svg text,
+.recharts-chart-fixed svg text {
+  font-size: 14px !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  letter-spacing: 0 !important;
+}
+
+/* Prevenir que Tailwind CSS aplique sus clases a Recharts */
+.recharts-fix-container *,
+.recharts-chart-fixed * {
+  font-size: revert !important;
+  letter-spacing: revert !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+}

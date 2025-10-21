@@ -1,10 +1,10 @@
 @layer components {
   .btn-base {
-    border-radius: 0.75rem;
-    padding: 1rem 1.5rem;
+    border-radius: var(--radius-xl);
+    padding: --spacing(4) --spacing(6);
     font-weight: 600;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    box-shadow: var(--shadow-lg);
     color: white;
     border: none;
     cursor: pointer;
@@ -14,7 +14,7 @@
   }
 
   .btn-base:hover {
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    box-shadow: var(--shadow-xl);
     filter: brightness(0.9);
   }
 
@@ -24,11 +24,11 @@
   }
 
   .btn-base-compact {
-    border-radius: 0.75rem;
-    padding: 0.5rem 1rem;
+    border-radius: var(--radius-xl);
+    padding: --spacing(2) --spacing(4);
     font-weight: 600;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    box-shadow: var(--shadow-lg);
     color: white;
     border: none;
     cursor: pointer;
@@ -38,7 +38,7 @@
   }
 
   .btn-base-compact:hover {
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    box-shadow: var(--shadow-xl);
     filter: brightness(0.9);
   }
 

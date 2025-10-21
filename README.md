@@ -121,6 +121,28 @@ sam deploy --guided
 
 ---
 
+## 📚 Technical Documentation
+
+### 🔧 Major Issues Resolved
+
+#### CSS/Recharts Integration (October 2025)
+- **Issue**: Persistent `font-size`/`letter-spacing` CSS parsing errors in PercentilesChart component
+- **Root Cause**: Custom `renderAxisTick` function conflicting with Recharts internal SVG processing
+- **Solution**: Replaced custom rendering with native Recharts props (`tick={{ fontSize: 14, fill: '#334155' }}`)
+- **Documentation**: See [`/docs/RESOLUCION_ERRORES_CSS_PERCENTILES.md`](./docs/RESOLUCION_ERRORES_CSS_PERCENTILES.md)
+
+#### Best Practices Established
+- **Recharts Guidelines**: [`/docs/RECHARTS_BEST_PRACTICES.md`](./docs/RECHARTS_BEST_PRACTICES.md)
+- **CSS Architecture**: Detailed analysis in [`/docs/css-componentes-percentiles-detallado.md`](./docs/css-componentes-percentiles-detallado.md)
+- **Storybook Integration**: Full component documentation with interactive examples
+
+### 🎯 Architecture Principles
+- **CSS Strategy**: Hybrid approach using custom CSS for reusable components, Tailwind for layout-specific styling
+- **Component Design**: PageShell, BackLink, TextBox use predefined CSS; PercentilesChart uses Tailwind + JS styles
+- **Chart Integration**: Native library props preferred over custom render functions for performance and compatibility
+
+---
+
 ## ❌ Lessons Learned / What Went Wrong
 
 Despite not shipping a full MVP before the hackathon deadline, here’s what I learned:

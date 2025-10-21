@@ -20,49 +20,49 @@
 
 @utility stack-xs {
   & > * + * {
-    margin-top: 0.25rem;
+    margin-top: --spacing(1);
   }
 }
 
 @utility stack-sm {
   & > * + * {
-    margin-top: 0.5rem;
+    margin-top: --spacing(2);
   }
 }
 
 @utility stack-md {
   & > * + * {
-    margin-top: 0.75rem;
+    margin-top: --spacing(3);
   }
 }
 
 @utility stack-lg {
   & > * + * {
-    margin-top: 1rem;
+    margin-top: --spacing(4);
   }
 }
 
 @utility stack-xl {
   & > * + * {
-    margin-top: 1.25rem;
+    margin-top: --spacing(5);
   }
 }
 
 @utility stack-2xl {
   & > * + * {
-    margin-top: 1.5rem;
+    margin-top: --spacing(6);
   }
 }
 
 @utility stack-3xl {
   & > * + * {
-    margin-top: 2rem;
+    margin-top: --spacing(8);
   }
 }
 
 @utility stack-4xl {
   & > * + * {
-    margin-top: 3rem;
+    margin-top: --spacing(12);
   }
 }
 
@@ -70,37 +70,37 @@
 
 @utility stack-form {
   & > * + * {
-    margin-top: 1rem;
+    margin-top: --spacing(4);
   }
 }
 
 @utility stack-list {
   & > * + * {
-    margin-top: 0.5rem;
+    margin-top: --spacing(2);
   }
 }
 
 @utility stack-card {
   & > * + * {
-    margin-top: 0.75rem;
+    margin-top: --spacing(3);
   }
 }
 
 @utility stack-nav {
   & > * + * {
-    margin-top: 0.25rem;
+    margin-top: --spacing(1);
   }
 }
 
 @utility stack-content {
   & > * + * {
-    margin-top: 1rem;
+    margin-top: --spacing(4);
   }
 }
 
 @utility stack-section {
   & > * + * {
-    margin-top: 2rem;
+    margin-top: --spacing(8);
   }
 }
 
@@ -108,36 +108,36 @@
 
 @utility stack-responsive {
   & > * + * {
-    margin-top: 0.5rem;
+    margin-top: --spacing(2);
   }
   
   @media (min-width: 640px) {
     & > * + * {
-      margin-top: 0.75rem;
+      margin-top: --spacing(3);
     }
   }
   
   @media (min-width: 768px) {
     & > * + * {
-      margin-top: 1rem;
+      margin-top: --spacing(4);
     }
   }
   
   @media (min-width: 1024px) {
     & > * + * {
-      margin-top: 1.5rem;
+      margin-top: --spacing(6);
     }
   }
 }
 
 @utility stack-mobile-compact {
   & > * + * {
-    margin-top: 0.5rem;
+    margin-top: --spacing(2);
   }
   
   @media (min-width: 640px) {
     & > * + * {
-      margin-top: 1rem;
+      margin-top: --spacing(4);
     }
   }
 }
@@ -146,8 +146,8 @@
 
 @utility stack-divided {
   & > * + * {
-    margin-top: 1rem;
-    padding-top: 1rem;
+    margin-top: --spacing(4);
+    padding-top: --spacing(4);
     border-top: 1px solid #e5e7eb;
   }
 }
